@@ -17,7 +17,7 @@ test('WarcReader replay strips <base> and injects strict CSP (S1, AC1)', async (
 
   const out = reader.renderPage('http://h.test/');
   assert.equal(/<base/i.test(out), false);
-  assert.equal(out.indexOf(WarcReader.REPLAY_CSP_META), out.indexOf('<head>') + 6);
+  assert.equal(out.indexOf(WarcReader.REPLAY_CSP_META, out.indexOf('<head>') + 6), out.indexOf('<head>') + 6);
   assert.ok(out.includes("default-src 'none'"));
 });
 
@@ -47,4 +47,12 @@ test('WarcReader rewrites requisites to blob: and inert anchors (S2, AC2)', asyn
   assert.ok(out.includes('data-archived-href="http://h.test/p2" href="#"'));
   assert.equal(/\ssrcset=/.test(out), false);
   assert.equal(/<base/i.test(out), false);
+});
+
+test('replay places CSP before pre-head content and removes refresh navigation', async () => {
+  const reader = new WarcReader();
+  reader.recordsByUrl.set(reader.normalizeUrl('http://h.test/'), {url: 'http://h.test/', bodyBytes: new TextEncoder().encode('<img src="http://remote.test/x"><head><meta http-equiv="refresh" content="0;url=http://remote.test/"></head>'), mimeType: 'text/html'});
+  const html = reader.renderPage('http://h.test/');
+  assert.ok(html.startsWith(WarcReader.REPLAY_CSP_META));
+  assert.ok(!html.includes('http-equiv="refresh"'));
 });

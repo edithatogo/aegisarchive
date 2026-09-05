@@ -517,6 +517,11 @@
 
     importCheckpoint(cp) {
       if (!cp || cp.version !== 1 || !Array.isArray(cp.queue)) return false;
+      if (cp.profile_id !== (this.profile.profile_id || null) || !Array.isArray(cp.visited)) return false;
+      if (!cp.queue.every(task => task && typeof task.url === 'string' &&
+          this.canonicalizeUrl(task.url) === task.url && this.isUrlInScope(task.url) &&
+          Number.isInteger(task.depth) && task.depth >= 0 && Number.isInteger(task.tier) && task.tier >= 1)) return false;
+      if (!cp.visited.every(url => typeof url === 'string' && this.isUrlInScope(url))) return false;
       this.queue = cp.queue.slice();
       this.visited = new Set(cp.visited || []);
       return true;

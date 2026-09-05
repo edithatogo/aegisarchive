@@ -64,7 +64,7 @@
     constructor(options = {}) {
       const dateStr = new Date().toISOString().slice(0, 10);
       const prefix = options.prefix || 'aegis_archive';
-      this.filename = options.filename || `${prefix}_${dateStr}.warc`;
+      this.filename = options.filename || `${prefix}_${dateStr}_${generateUUID()}.warc`;
       this.records = [];
       this.recordCount = 0;
       this.streamer = null; // OpfsStreamer once attached (V5)

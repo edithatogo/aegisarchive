@@ -64,3 +64,11 @@ test('CoreCrawler emits onCheckpoint(null) when queue drains on completion (S6, 
   assert.ok(checkpoints.length >= 1);
   assert.equal(checkpoints[checkpoints.length - 1], null);
 });
+
+test('checkpoint cannot inject out-of-scope URLs or a different profile', () => {
+  const c = new CoreCrawler({profile_id: 'a', target: {allowed_domains: ['h.test']}});
+  const cp = {version: 1, profile_id: 'a', visited: [], queue: [{url: 'http://other.test/', tier: 1, depth: 0}]};
+  assert.equal(c.importCheckpoint(cp), false);
+  cp.queue[0].url = 'http://h.test/'; cp.profile_id = 'b';
+  assert.equal(c.importCheckpoint(cp), false);
+});

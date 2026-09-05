@@ -153,8 +153,8 @@
       return {
         totalRecords: this.recordsByUrl.size,
         warcInfo: this.warcInfo,
-        urls: this.urlList
-        , warnings
+        urls: this.urlList,
+        warnings
       };
     }
 
@@ -255,6 +255,8 @@
 
       // Never resolve against the live origin (V2); lock the document down with a CSP (V1).
       html = html.replace(/<base\b[^>]*>/gi, '');
+      // Prevent refresh navigation and place the restrictive policy before any archived markup.
+      html = html.replace(/<meta\b[^>]*>/gi, '');
       html = this.rewriteRequisites(html, record.url);
       const csp = WarcReader.REPLAY_CSP_META;
       if (/<head[^>]*>/i.test(html)) {
@@ -263,7 +265,7 @@
         html = csp + html;
       }
 
-      return html;
+      return csp + html;
     }
   }
 

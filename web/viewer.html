@@ -160,7 +160,7 @@
               <span id="activeUrlDisplay" style="font-family: var(--font-mono); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;"></span>
             </div>
             <div>
-              <button class="btn btn-secondary" onclick="openCurrentInNewTab()" style="padding: 4px 10px; font-size: 0.75rem;">↗️ Open In Tab</button>
+              <button class="btn btn-secondary" onclick="openCurrentInNewTab()" style="padding: 4px 10px; font-size: 0.75rem;">Download record</button>
             </div>
           </div>
           <iframe id="replayFrame" class="view-frame" sandbox=""></iframe>
@@ -198,8 +198,13 @@
       `;
 
       try {
-        const buffer = await file.arrayBuffer();
+        let buffer = await file.arrayBuffer();
+        if (file.name.toLowerCase().endsWith('.gz')) {
+          if (typeof DecompressionStream === 'undefined') throw new Error('This browser cannot decompress gzip; select an uncompressed WARC.');
+          buffer = await new Response(new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+        }
         const result = await reader.loadWarcBuffer(buffer);
+        if (result.warnings.length) throw new Error(result.warnings.join('; '));
         currentUrls = result.urls;
 
         document.getElementById('emptyState').style.display = 'none';
@@ -275,6 +280,7 @@
       document.getElementById('activeMimeBadge').textContent = rec.mimeType;
 
       const frame = document.getElementById('replayFrame');
+      frame.removeAttribute('src');
 
       if (rec.mimeType.includes('html')) {
         const renderedHtml = reader.renderPage(url);
@@ -283,7 +289,10 @@
         // Binary or image file: create Blob URL
         const blob = new Blob([rec.bodyBytes], { type: rec.mimeType });
         const blobUrl = URL.createObjectURL(blob);
-        frame.src = blobUrl;
+        frame.srcdoc = WarcReader.REPLAY_CSP_META +
+          (/^image\/(png|jpeg|gif|webp|avif|bmp)$/.test(rec.mimeType)
+            ? `<img src="${blobUrl}" alt="Archived image">`
+            : '<p>This record is available using Download record.</p>');
       }
     }
 
@@ -293,7 +302,11 @@
       if (!rec) return;
       const blob = new Blob([rec.bodyBytes], { type: rec.mimeType });
       const blobUrl = URL.createObjectURL(blob);
-      window.open(blobUrl, '_blank');
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = 'archived-record';
+      link.click();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
     }
   </script>
 </body>
