@@ -19,7 +19,7 @@ Global drift guards (apply to every task):
 
 ## Phase 2 — Configuration and code hardening (no new workflow yet)
 
-- [ ] **T1 Dev requirements and scanner configuration files** *(R3, R7, R11)*
+- [x] **T1 Dev requirements and scanner configuration files** *(R3, R7, R11)* (0274912)
 
   **Files**: `tests/requirements-dev.txt` (append, or create if missing), create `.gitleaks.toml`, `.github/zizmor.yml`, `.github/codeql/codeql-config.yml`.
 
@@ -84,7 +84,7 @@ Global drift guards (apply to every task):
 
   **Do not**: put these packages in `pyproject.toml`; allow-list anything other than `tests/fixtures/.*`; ignore any file other than `ci.yml` in zizmor config.
 
-- [ ] **T2 Extract importable MCP dispatch (no behaviour change)** *(R1, AC1)*
+- [x] **T2 Extract importable MCP dispatch (no behaviour change)** *(R1, AC1)* (063101c)
 
   **Files**: modify `mcp/server.py` only.
 
@@ -222,7 +222,7 @@ Global drift guards (apply to every task):
 
   **Do not**: change any response payload, error code, protocol version, tool description, or the `id: None` on internal errors; add input validation (that would be a behaviour change — the fuzz harness relies on the try/except in `process_line`); reorder or rename existing functions.
 
-- [ ] **T3 Harden `verify_warc` and allow-list URL schemes in the CLI** *(R2, AC2; also clears Bandit/Semgrep findings in `aegis_cli.py`)*
+- [x] **T3 Harden `verify_warc` and allow-list URL schemes in the CLI** *(R2, AC2; also clears Bandit/Semgrep findings in `aegis_cli.py`)* (494583f)
 
   **Files**: modify `cli/warc_verify.py` and `cli/aegis_cli.py` only.
 
