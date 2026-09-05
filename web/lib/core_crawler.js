@@ -253,11 +253,20 @@
       const { url, depth, tier } = task; // task.retries is managed by requeueForRetry
 
       // Acquire permission from Politeness Engine (applies rate limit, EWMA backoff, Retry-After, circuit tripwire)
-      const gate = await this.politeness.acquirePermission(url);
-      if (gate.aborted) return;
       if (!(await this.isAllowedByRobots(url))) {
+        if (this.shouldStop || this.politeness.abortController?.signal.aborted) {
+          this.visited.delete(url);
+          this.queue.unshift(task);
+          return;
+        }
         this.auditLedger.push({ url, status: -1, mimeType: 'robots_disallow', latency_ms: 0, size_bytes: 0, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] Skipped (Disallow): ${url}`);
+        return;
+      }
+      const gate = await this.politeness.acquirePermission(url);
+      if (gate.aborted || this.shouldStop) {
+        this.visited.delete(url);
+        this.queue.unshift(task);
         return;
       }
       const reqStartTime = performance.now();
@@ -266,7 +275,8 @@
         const resp = await fetch(url, {
           method: 'GET',
           headers: REQUEST_HEADERS,
-          cache: 'no-store'
+          cache: 'no-store',
+          redirect: 'manual'
         });
 
         const reqEndTime = performance.now();
@@ -382,16 +392,21 @@
       if (this.robotsPolicy !== 'respect') return true;
       const origin = new URL(urlStr).origin;
       if (!this.robotsRules.has(origin)) {
-        this.robotsRules.set(origin, []); // reserve first: a failed fetch is never retried
         const robotsUrl = origin + '/robots.txt';
         const gate = await this.politeness.acquirePermission(robotsUrl);
-        if (gate.aborted) return true;
+        if (gate.aborted || this.shouldStop) return false;
         let status = 0, rules = [];
+        const started = performance.now();
         try {
-          const resp = await fetch(robotsUrl, { method: 'GET', headers: { 'X-Preservation-Agent': 'AegisArchive/1.0' }, cache: 'no-store' });
+          const resp = await fetch(robotsUrl, { method: 'GET', headers: { 'X-Preservation-Agent': 'AegisArchive/1.0' }, cache: 'no-store', redirect: 'manual' });
           status = resp.status;
           if (resp.ok) rules = this.parseRobotsTxt(await resp.text());
+          if (resp.ok) this.politeness.recordSuccess(robotsUrl, performance.now() - started);
+          else this.politeness.recordFailure(robotsUrl, status, resp.headers?.get('retry-after'));
         } catch (e) { status = 0; }
+        if (status === 0) this.politeness.recordFailure(robotsUrl, 0);
+        // An unavailable robots policy must not silently grant access.
+        if (status === 0 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];
         this.robotsRules.set(origin, rules);
         this.auditLedger.push({ url: robotsUrl, status, mimeType: 'robots_txt', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, disallow_count: rules.length, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] ${robotsUrl} -> HTTP ${status}; ${rules.length} Disallow rule(s) honoured.`);

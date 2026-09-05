@@ -519,3 +519,12 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 - [x] **F1** Final validation: all Verify commands of T1–T10; `python3 -m py_compile cli/*.py mcp/server.py`; leak-prevention gate (`grep -rnI -E` pattern from `.github/workflows/ci.yml`) clean. Append a `checkpoint_validated` line to `evidence.jsonl`.
 - [x] **F2** Update `metadata.json` (`status`, `updated_at`) and hand the registry update (G2) to the integrator.
+
+## Review Fixes
+
+- [ ] Rev-1 Preserve cancellation and gate every outbound request after robots checks.
+  - **Files**: `web/lib/core_crawler.js`, `tests/js/core_crawler.test.js`.
+  - **Change**: perform robots checks before the page permission gate; prevent implicit redirects; retain interrupted tasks for resumption; account for robots failures in backoff.
+  - **Verify**: `node --test tests/js/core_crawler.test.js`; `python3 scripts/gate.py test`.
+  - **Done when**: cancellation sends no subsequent page request and robots/page gate ordering is covered by regression tests.
+  - **Do not**: weaken timing or retry thresholds.
