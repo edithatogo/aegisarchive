@@ -16,6 +16,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -182,9 +183,21 @@ def main(argv=None) -> int:
             receipt["files"].append({**entry, "status": result})
             print(f"{result}: {entry['path']}", flush=True)
     receipt["verified_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    temporary = root / "model-receipt.json.part"
-    temporary.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")
-    os.replace(temporary, root / "model-receipt.json")
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=root,
+                                     prefix=".model-receipt-", delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(json.dumps(receipt, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        except BaseException:
+            stream.close()
+            temporary.unlink()
+            raise
+    try:
+        os.replace(temporary, root / "model-receipt.json")
+    finally:
+        temporary.unlink(missing_ok=True)
     return 0
 
 
