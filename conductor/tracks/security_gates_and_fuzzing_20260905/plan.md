@@ -312,7 +312,7 @@ Global drift guards (apply to every task):
 
 ## Phase 3 — Gate scripts and harnesses
 
-- [ ] **T4 SARIF medium-or-higher gate script** *(R4, AC3)*
+- [x] **T4 SARIF medium-or-higher gate script** *(R4, AC3)* (1790b13)
 
   **Files**: create `scripts/sarif_gate.py`.
 
@@ -413,7 +413,7 @@ Global drift guards (apply to every task):
 
   **Do not**: import anything outside the standard library; change the default threshold.
 
-- [ ] **T5 atheris fuzz harnesses with stdlib smoke fallback** *(R8, AC2)*
+- [x] **T5 atheris fuzz harnesses with stdlib smoke fallback** *(R8, AC2)* (3f4b7a1)
 
   **Files**: create `tests/fuzz/_harness.py`, `tests/fuzz/fuzz_warc_parse.py`, `tests/fuzz/fuzz_cdx_search.py`, `tests/fuzz/fuzz_mcp_rpc.py`. Requires T2 and T3.
 
@@ -589,7 +589,7 @@ Global drift guards (apply to every task):
 
   **Do not**: name files `test_*.py` (unittest discovery must not pick them up); import `atheris` at module top without the try/except; catch exceptions inside `TestOneInput` (that hides crashes).
 
-- [ ] **T6 JS property tests (no npm)** *(R8, AC7)*
+- [x] **T6 JS property tests (no npm)** *(R8, AC7)* (f14beec)
 
   **Files**: create `tests/js/fuzz_props.test.js`.
 
@@ -671,7 +671,7 @@ Global drift guards (apply to every task):
 
   **Do not**: add `package.json` or any npm dependency; modify files under `web/`.
 
-- [ ] **T7 Bandit baseline for the one parallel-owned finding** *(R6, AC4)*
+- [x] **T7 Bandit baseline for the one parallel-owned finding** *(R6, AC4)* (d36a66b)
 
   **Files**: create `.bandit-baseline.json`. Requires T1 and T3.
 
@@ -717,7 +717,7 @@ Global drift guards (apply to every task):
 
   **Do not**: baseline anything in `cli/aegis_cli.py`, `cli/warc_verify.py`, or `mcp/`; add `skips` to any Bandit config.
 
-- [ ] **T8 Local gate runner** *(R10, AC7)*
+- [x] **T8 Local gate runner** *(R10, AC7)* (26c18b8)
 
   **Files**: create `scripts/gate.py`.
 
