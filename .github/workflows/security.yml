@@ -1,0 +1,147 @@
+name: Security gates
+
+# Every job fails when a medium-or-higher finding persists. Thresholds are fixed here;
+# lowering them is a specification change, not an implementation detail.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '41 2 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  gitleaks:
+    name: Secrets scan (gitleaks)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_CONFIG: .gitleaks.toml
+          GITLEAKS_ENABLE_COMMENTS: "false"
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: "false"
+          GITLEAKS_ENABLE_SUMMARY: "true"
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      actions: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        language: [python, javascript-typescript]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: ${{ matrix.language }}
+          config-file: .github/codeql/codeql-config.yml
+      - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          upload: never
+          output: sarif-results
+      - name: Gate on medium-or-higher findings
+        run: python3 scripts/sarif_gate.py sarif-results/*.sarif
+      - name: Upload SARIF to code scanning (always, for visibility)
+        if: always()
+        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          sarif_file: sarif-results
+
+  semgrep:
+    name: Static analysis (Semgrep)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+      # WARNING == medium, ERROR == high. --error makes any remaining finding fail the job.
+      # The single excluded audit rule duplicates Bandit B310 (tracked via .bandit-baseline.json);
+      # cli/aegis_cli.py allow-lists http/https before urlopen.
+      - run: >
+          semgrep scan --error --severity WARNING --severity ERROR
+          --config p/default --config p/python --config p/javascript --config p/owasp-top-ten
+          --exclude-rule python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+          --exclude web/lib/minisearch.min.js
+          cli mcp web scripts tests
+
+  bandit:
+    name: Static analysis (Bandit)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+      # -ll = medium+ severity, -ii = medium+ confidence. Baseline holds one finding in a file
+      # owned by another track (see handoff.md); nothing else may be added to it.
+      - run: bandit -r cli mcp -ll -ii -b .bandit-baseline.json
+
+  zizmor:
+    name: Workflow lint (zizmor)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+      - run: zizmor --min-severity medium --min-confidence medium --offline .github/workflows
+
+  fuzz:
+    name: Fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+      - name: atheris harnesses (60 s each, crash = failure)
+        run: |
+          set -e
+          for harness in tests/fuzz/fuzz_*.py; do
+            echo "== $harness"
+            python "$harness" -max_total_time=60 -atheris_runs=500000 -rss_limit_mb=2048
+          done
+      - name: JS property tests (node --test)
+        run: FUZZ_RUNS=2000 node --test tests/js/
