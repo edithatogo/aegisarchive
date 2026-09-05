@@ -10,6 +10,7 @@ import os
 from pathlib import Path, PurePosixPath
 import re
 import shutil
+import shlex
 import stat
 import tarfile
 import tempfile
@@ -156,6 +157,25 @@ def assemble(source, destination, assets=()):
             shutil.copyfile(license_path, root / 'licenses' / (identifier + '.txt'))
             records.append({k: asset[k] for k in ('id', 'platform', 'sha256', 'source_url',
                                                 'license', 'license_file', 'entrypoint')})
+        python_assets = [asset for asset in records if asset['id'] == 'python']
+        if python_assets:
+            interpreter = 'runtime/python/' + safe_path(python_assets[0]['entrypoint']).as_posix()
+            launcher = ('#!/bin/sh\nset -eu\n'
+                        'cd "$(dirname "$0")"\n'
+                        'bundle_root="$PWD"\n'
+                        'cd app\n'
+                        'exec "$bundle_root"/' + shlex.quote(interpreter) +
+                        ' -I -B cli/launch.py "$@"\n')
+            for name in ('START_MAC.command', 'START_LINUX.sh'):
+                (root / name).write_text(launcher)
+                (root / name).chmod(0o755)
+            if python_assets[0]['platform'].startswith('windows'):
+                if any(char in interpreter for char in '%!"'):
+                    raise ValueError('unsafe Windows interpreter path')
+                (root / 'START_WINDOWS.cmd').write_text(
+                    '@echo off\r\ncd /d "%~dp0app"\r\n"%~dp0' +
+                    interpreter.replace('/', '\\') +
+                    '" -I -B cli/launch.py %*\r\n')
         manifest = {'schema_version': 1, 'application': 'AegisArchive',
                     'layout': {'application': 'app', 'writable_data': 'data', 'runtimes': 'runtime'},
                     'assets': records, 'files': files(root)}
