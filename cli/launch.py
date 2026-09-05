@@ -182,7 +182,18 @@ def main():
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the default web browser")
     parser.add_argument("--profile", type=str, default=None, help="Optional path to preset profile JSON to load")
     parser.add_argument("--idle-timeout", type=float, default=0.0, help="Minutes of inactivity before automatic shutdown (0 = disabled)")
+    parser.add_argument("--verify", action="store_true", help="Verify the bundle checksum manifest before starting (fail-closed)")
     args = parser.parse_args()
+
+    if args.verify:
+        import verify_bundle
+        rc = verify_bundle.main([
+            "--manifest", os.path.join(REPO_ROOT, "CHECKSUMS.sha256"),
+            "--root", REPO_ROOT,
+        ])
+        if rc != 0:
+            print("[Error] Bundle integrity verification failed; refusing to start.")
+            sys.exit(rc)
 
     if probe_existing_station(args.port):
         existing_url = f"http://127.0.0.1:{args.port}/index.html"

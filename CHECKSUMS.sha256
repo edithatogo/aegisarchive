@@ -1,0 +1,11 @@
+# AegisArchive bundle integrity manifest (SHA-256)
+#
+# The zero-install repository ships no binaries by design. When portable
+# runtimes, engines, or models are vendored alongside this repository
+# (e.g. runtime/python/, runtime/llama/), pin their digests here:
+#
+#   python3 cli/verify_bundle.py --generate --root runtime
+#   python3 cli/verify_bundle.py --manifest CHECKSUMS.sha256 --root runtime
+#
+# The launcher's --verify flag runs the same check before starting the
+# station and refuses to start on any failure (fail-closed).

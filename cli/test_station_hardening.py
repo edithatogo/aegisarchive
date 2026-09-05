@@ -8,6 +8,7 @@ Run from the repository root:
 """
 
 import json
+import os
 import socket
 import threading
 import unittest
@@ -185,6 +186,49 @@ class StationControlEndpointTests(unittest.TestCase):
             httpd.server_close()
             launch.AegisArchiveHandler.allowed_hosts = original_hosts
             launch.AegisArchiveHandler.session_token = "test-token-123"
+
+
+class BundleIntegrityTests(unittest.TestCase):
+    """AC5: fail-closed verification of the SHA-256 bundle manifest."""
+
+    def setUp(self):
+        import tempfile
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.good = os.path.join(self.tmp.name, "artifact.bin")
+        with open(self.good, "wb") as fh:
+            fh.write(b"aegisarchive-integrity-payload")
+        self.manifest = os.path.join(self.tmp.name, "CHECKSUMS.sha256")
+        import verify_bundle
+        self.vb = verify_bundle
+
+    def test_verify_passes_for_intact_artifact(self):
+        digest = self.vb.sha256_of(self.good)
+        with open(self.manifest, "w", encoding="utf-8") as fh:
+            fh.write(f"{digest}  artifact.bin\n")
+        self.assertEqual(self.vb.verify(self.manifest, self.tmp.name), 0)
+
+    def test_verify_fails_for_tampered_artifact(self):
+        with open(self.manifest, "w", encoding="utf-8") as fh:
+            fh.write(f"{'0' * 64}  artifact.bin\n")
+        self.assertEqual(self.vb.verify(self.manifest, self.tmp.name), 1)
+
+    def test_verify_fails_closed_for_missing_artifact(self):
+        digest = self.vb.sha256_of(self.good)
+        with open(self.manifest, "w", encoding="utf-8") as fh:
+            fh.write(f"{digest}  artifact.bin\n{digest}  gone.bin\n")
+        self.assertEqual(self.vb.verify(self.manifest, self.tmp.name), 1)
+
+    def test_verify_fails_closed_for_missing_manifest(self):
+        self.assertEqual(
+            self.vb.verify(os.path.join(self.tmp.name, "nope.sha256"), self.tmp.name), 1
+        )
+
+    def test_generate_roundtrip(self):
+        out = os.path.join(self.tmp.name, "gen.sha256")
+        count = self.vb.generate_manifest(self.tmp.name, out)
+        self.assertEqual(count, 1)
+        self.assertEqual(self.vb.verify(out, self.tmp.name), 0)
 
 
 if __name__ == "__main__":
