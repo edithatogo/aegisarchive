@@ -47,7 +47,7 @@ Skip heading/separator lines and any row whose `status` is not `open`/`in_progre
 
 - `status` is `open` (or `in_progress` with `owner` equal to you);
 - `blocked_by` is `-` or every referenced task is ticked `- [x]` in its own `plan.md`;
-- the referenced track's `metadata.json.status` is `planned` or `in_progress`;
+- the referenced track's `metadata.json.status` is `new` (canonical planned state), legacy `planned`, or `in_progress`;
 - inside that track's `plan.md`, the task is the FIRST unchecked `- [ ] T<n>` in document order (tasks are ordered; do not skip ahead).
 
 If no row qualifies, stop and report "no selectable task".
@@ -61,7 +61,7 @@ python3 - "$TRACK" "$TS" <<'EOF'
 import json, sys
 p = f"conductor/tracks/{sys.argv[1]}/metadata.json"
 m = json.load(open(p))
-if m["status"] == "planned":
+if m["status"] in ("new", "planned"):
     m["status"] = "in_progress"
 m["updated_at"] = sys.argv[2]
 json.dump(m, open(p, "w"), indent=2); open(p, "a").write("\n")
@@ -310,3 +310,7 @@ git commit -m "docs(docs): add QUICKSTART page (T4, AC3) [contributor_experience
 ```
 
 If `docs/QUICKSTART.md` had already existed with different content, the correct action would have been `blocked` ("target file exists with unexpected content") rather than merging or overwriting.
+
+## Post-review evidence compatibility
+
+For metadata with `evidence_schema: "1.0"`, use the installed Conductor evidence-ledger helper to append canonical hash-chained events. The older ts/kind JSON snippets above are historical examples and must not be appended to a canonical ledger. Preserve `evidence.legacy.jsonl` unchanged. Read completed dependency plans in either `conductor/tracks/` or `conductor/archive/`; absence from the active directory alone is not a blocker. A pending gate that is part of acceptance keeps the track in progress even if all local code exists.

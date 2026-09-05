@@ -1,13 +1,13 @@
 # Track Plan: WARC/CDX Interoperability & Integrity
 
-## Status: PLANNED
+## Status: COMPLETED (implementation; post-review disposition in review.md)
 
 Conventions: paths relative to the repository root; line numbers refer to commit `3f00f46` (re-locate by the quoted snippet if they shifted); Verify commands run from the repository root with Node >= 18 and Python >= 3.9; complete a task only when every "Done when" item holds. Edit only the files listed under **Files**. Never create `._*` files. No new dependencies. Do not commit or push unless the operator explicitly asks. Temporary fixtures go under `/tmp`, never inside the repository.
 
 ## Phase 1 — Specification & approval
 
-- [ ] Capture reproduced defects Da–Dg and requirements R1–R8 in `spec.md` (traces to AC1–AC8).
-- [ ] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review; implementation waits for the integrator to register the track.
+- [x] Capture reproduced defects Da–Dg and requirements R1–R8 in `spec.md` (traces to AC1–AC8). *(Reconciled in post-implementation review; source specification and registration verified.)*
+- [x] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review; implementation waits for the integrator to register the track. *(Reconciled in post-implementation review; source specification and registration verified.)*
 
 ## Phase 2 — Writers
 
@@ -512,7 +512,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 ## Review Fixes
 
-- [ ] Rev-1 Preserve replay URL identity and fail closed on malformed containers.
+- [x] Rev-1 Preserve replay URL identity and fail closed on malformed containers. — review evidence d219c79
   - **Files**: `web/lib/warc_reader.js`, `cli/warc_verify.py`, `tests/js/warc_reader.test.js`, `tests/test_warc_review.py`.
   - **Change**: retain path/query case and trailing slashes, reset reader state on load, prefer record-ID/digest revisit linkage, bound record lengths, reject empty/truncated/invalid gzip containers, and report malformed CDX spans without an exception.
   - **Verify**: `node --test tests/js/warc_reader.test.js`; `python3 -m unittest tests.test_warc_review`; `python3 scripts/gate.py test`.

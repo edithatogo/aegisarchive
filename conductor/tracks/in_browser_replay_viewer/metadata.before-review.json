@@ -1,0 +1,9 @@
+{
+  "track_id": "in_browser_replay_viewer",
+  "type": "feature",
+  "status": "completed",
+  "created_at": "2026-09-05T07:50:07Z",
+  "updated_at": "2026-09-05T07:50:07Z",
+  "description": "In-Browser Sandboxed WARC Replay Viewer",
+  "metadata_origin": "Reconstructed during retrospective review; original plan retained in Git history."
+}

@@ -1,6 +1,6 @@
 # Track Plan: Self-Improving System Loop
 
-## Status: PLANNED
+## Status: IN PROGRESS
 
 Implementers follow `conductor/implementation_contract.md`. Tasks are ordered; take the first unchecked one. Every task lists **Files / Change / Verify / Done when / Do not**. Files quoted in full are to be created byte-for-byte as shown.
 
@@ -685,3 +685,12 @@ FORBIDDEN_PATTERN=$(grep -oE '"[A-Za-z0-9+/=]{40,}"' .github/workflows/ci.yml | 
 **Done when**: all boxes above are ticked; `metadata.json.status` is `completed`; `conductor/lessons.md` has an entry with id `self_improvement_loop_20260905`.
 
 **Do not**: push (G1).
+
+## Post-implementation review integration
+
+- [x] Rev-1 Preserve audit coverage when reviewed dependencies are archived.
+  - **Files**: `scripts/track_health.py`, `tests/test_track_health_review.py`.
+  - **Change**: inspect active and archived packs, recognize canonical new/planned status, and distinguish the explicitly external G2 table from local track references.
+  - **Verify**: `python3 -m unittest tests.test_track_health_review`; `python3 scripts/track_health.py --strict` after archive closeout.
+  - **Done when**: archived dependencies remain discoverable and local broken references still produce findings.
+  - **Do not**: complete or implement the remaining T3–T7 tasks.

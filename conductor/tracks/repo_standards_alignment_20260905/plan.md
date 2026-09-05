@@ -1,6 +1,6 @@
 # Track Plan: Repository Standards Alignment
 
-## Status: COMPLETED
+## Status: IN PROGRESS — hosted ruleset acceptance pending
 
 Implementation contract for every task: touch only the files under **Files**; write exactly the content under **Change**; run the **Verify** command from the repository root and require the stated result; stop when **Done when** holds; never do anything listed under **Do not**. Tasks are ordered so the repository stays green after each one. Commit after each task with the conventional-commit message given (do not push; pushing is gate G1 and belongs to the integrator).
 
@@ -565,7 +565,7 @@ Global drift guards (apply to every task):
  
    **Do not**: edit `ci.yml` or the external registry yourself.
  
-- [-] **T11 Rulesets and repository topics via `gh api`** *(R10, AC9)* — **gated by G1: do not run without explicit user authorisation recorded in `evidence.jsonl` as `gate_authorized`.** Run only after T1–T9 and the security track's `security.yml` have been pushed to `main` and have completed at least one successful run (check names must resolve).
+- [ ] **T11 Rulesets and repository topics via `gh api`** *(R10, AC9)* — **gated by G1: do not run without explicit user authorisation recorded in `evidence.jsonl` as `gate_authorized`.** Run only after T1–T9 and the security track's `security.yml` have been pushed to `main` and have completed at least one successful run (check names must resolve).
  
    **Files**: none in the repo except appending to `evidence.jsonl`; writes GitHub settings.
  
@@ -626,7 +626,7 @@ Global drift guards (apply to every task):
 
 ## Review Fixes
 
-- [ ] Rev-1 Reconcile capability documentation with the implemented browser and CLI.
+- [x] Rev-1 Reconcile capability documentation with the implemented browser and CLI. — review evidence 831b93f
   - **Files**: `README.md`, `conductor/tech-stack.md`, `profiles/schema.json`.
   - **Change**: separate gzip input from planned output, identify localStorage frontier-only resume, mark OPFS/request records implemented, use portable JS test expansion, correct deprecated concurrency default to its allowed value.
   - **Verify**: `python3 scripts/build_profile_bundle.py --check`; `python3 -m unittest tests.test_profile_schema`; README nine-section check.

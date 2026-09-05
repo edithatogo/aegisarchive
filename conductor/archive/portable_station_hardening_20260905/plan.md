@@ -1,6 +1,6 @@
 # Track Plan: Portable Station Hardening & Diagnostics
 
-## Status: COMPLETED (2026-09-05 — all phases done; implementation commits recorded below; G2 closure verified via companion track `station_hardening_delegation_20260905`)
+## Status: COMPLETED (implementation; post-review disposition in review.md)
 
 ## Phase 1 — Specification & approval
 

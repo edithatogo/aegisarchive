@@ -1,0 +1,45 @@
+{
+  "recorded_at": "2026-09-05T07:57:11Z",
+  "reviewed_revision": "2f13d9cffe3333623020ee8204b5cdb6dc7e43d9",
+  "base_revision": "748d468",
+  "python_test_counts": [
+    "37",
+    "18"
+  ],
+  "node_tests": 36,
+  "plan_command_blocks": 47,
+  "plan_expected_results": "Matched; three grep no-match exits are expected negative assertions.",
+  "commands": [
+    {
+      "command": "python3 scripts/gate.py test",
+      "output_sha256": "54d1d094515a265e065456f9572380bb6e9cbd7036b2333a689ae79a2f11b048",
+      "result": "passed with disclosed limitations"
+    },
+    {
+      "command": "python3 scripts/gate.py leak",
+      "output_sha256": "c207997f3b67eb8ab84bc63214d0075254079968e25f342adb61b036b2bfb73a",
+      "result": "passed with disclosed limitations"
+    },
+    {
+      "command": "python3 scripts/gate.py",
+      "output_sha256": "f25033977f10a282a3c8d70da8c0c807bddbfbd5bf0ba5e84a323b17f739e0b4",
+      "result": "passed with disclosed limitations"
+    },
+    {
+      "command": "reviewed plan Verify commands",
+      "output_sha256": "c077dae1e9c7e7a1c4a54145c1dba7485e75fdc2d57d2cdf7f699b73be9c1678",
+      "result": "passed with disclosed limitations"
+    },
+    {
+      "command": "isolated pip install -e .",
+      "output_sha256": "b93011e0958e7bdd8d8be7953fc59b30b8aadac4f6c095e49d964773968f7dec",
+      "result": "passed with disclosed limitations"
+    }
+  ],
+  "limitations": [
+    "Bandit, Semgrep and zizmor not installed locally; full local gate explicitly reports skips.",
+    "Native Windows double-click and third-party WARC conformance not performed.",
+    "No push, hosted-settings write, service activation, release or publication authorized by this review."
+  ],
+  "browser_smoke": "Local console and viewer rendered with no captured warning/error console entries; no production crawl started."
+}

@@ -1,0 +1,9 @@
+{
+  "track_id": "warc_iso28500_engine",
+  "type": "feature",
+  "status": "completed",
+  "created_at": "2026-09-05T07:50:07Z",
+  "updated_at": "2026-09-05T07:50:07Z",
+  "description": "ISO 28500 WARC/1.1 Archival & Deduplication Engine",
+  "metadata_origin": "Reconstructed during retrospective review; original plan retained in Git history."
+}

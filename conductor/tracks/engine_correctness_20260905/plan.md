@@ -1,6 +1,6 @@
 # Track Plan: Politeness Engine & Crawler Correctness
 
-## Status: COMPLETED (2026-09-05 — Politeness Engine & Crawler Correctness)
+## Status: COMPLETED (implementation; post-review disposition in review.md)
 
 Conventions for every task below: paths are relative to the repository root; line numbers refer to the files as of commit `3f00f46` (re-locate by the quoted snippet if lines have shifted); "Verify" commands run from the repository root with Node >= 18 and Python >= 3.9; a task is complete only when every "Done when" item is true. Never edit files outside the task's **Files** list. Never create files whose names start with `._`. Never add dependencies (no `npm install`, no `pip install`). Do not commit or push unless the operator explicitly asks.
 
@@ -12,8 +12,8 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 1 — Specification & approval
 
-- [ ] Capture reproduced defects D1–D10 and requirements R1–R11 in `spec.md` (traces to AC1–AC11).
-- [ ] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review findings; implementation waits for the integrator to register the track.
+- [x] Capture reproduced defects D1–D10 and requirements R1–R11 in `spec.md` (traces to AC1–AC11). *(Reconciled in post-implementation review; source specification and registration verified.)*
+- [x] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review findings; implementation waits for the integrator to register the track. *(Reconciled in post-implementation review; source specification and registration verified.)*
 
 ## Phase 2 — Politeness engine (`web/lib/politeness_engine.js`)
 
@@ -140,7 +140,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Verify**:
   ```
-  node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');global.WarcWriter=require('./web/lib/warc_writer.js');global.SelfReflectionEngine=require('./web/lib/self_reflection.js');const C=require('./web/lib/core_crawler.js');const c=new C({target:{allowed_domains:['h.test']},politeness:{min_delay_ms:1,max_delay_ms:2}});global.fetch=async()=>({ok:false,status:503,headers:new Headers()});(async()=>{const t={url:'http://h.test/a',tier:1,depth:0,parentUrl:'root'};c.visited.add(t.url);await c.processUrl(t);console.log(c.queue.length,c.queue[0].retries,c.visited.has(t.url));console.log(c.requeueForRetry({url:'http://h.test/b',retries:3}),c.queue.length)})()"
+  node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');global.WarcWriter=require('./web/lib/warc_writer.js');global.SelfReflectionEngine=require('./web/lib/self_reflection.js');const C=require('./web/lib/core_crawler.js');const c=new C({target:{allowed_domains:['h.test']},politeness:{min_delay_ms:1,max_delay_ms:2,robots_policy:'ignore_authorised'}});global.fetch=async()=>({ok:false,status:503,headers:new Headers()});(async()=>{const t={url:'http://h.test/a',tier:1,depth:0,parentUrl:'root'};c.visited.add(t.url);await c.processUrl(t);console.log(c.queue.length,c.queue[0].retries,c.visited.has(t.url));console.log(c.requeueForRetry({url:'http://h.test/b',retries:3}),c.queue.length)})()"
   ```
   Expected: `1 1 false` then `false 1`.
 
@@ -238,7 +238,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
   ```
   grep -c "cache: 'no-store'" web/lib/core_crawler.js; grep -c "cache: 'default'" web/lib/core_crawler.js
   ```
-  Expected: `1` then `0`.
+  Expected: `2` then `0` (page and robots fetches both bypass cache).
 
   **Done when**: Verify matches and `node -e "require('./web/lib/core_crawler.js')"` (with the globals bootstrap) exits 0.
 
@@ -522,9 +522,11 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Review Fixes
 
-- [ ] Rev-1 Preserve cancellation and gate every outbound request after robots checks.
+- [x] Rev-1 Preserve cancellation and gate every outbound request after robots checks. — review evidence 07a343a
   - **Files**: `web/lib/core_crawler.js`, `tests/js/core_crawler.test.js`.
   - **Change**: perform robots checks before the page permission gate; prevent implicit redirects; retain interrupted tasks for resumption; account for robots failures in backoff.
   - **Verify**: `node --test tests/js/core_crawler.test.js`; `python3 scripts/gate.py test`.
   - **Done when**: cancellation sends no subsequent page request and robots/page gate ordering is covered by regression tests.
   - **Do not**: weaken timing or retry thresholds.
+
+Review verification correction: the retry-only mock opts out of robots fetching so a mocked page 503 does not also deny robots access; the original one-occurrence cache check predated the second robots fetch. No timing, retry-budget or cache protection was relaxed.

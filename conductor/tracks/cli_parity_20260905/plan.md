@@ -1,13 +1,13 @@
 # Track Plan: Headless CLI Parity with the Browser Engine
 
-## Status: PLANNED
+## Status: COMPLETED (implementation; post-review disposition in review.md)
 
 Conventions: paths relative to the repository root; line numbers refer to `cli/aegis_cli.py` at commit `3f00f46` (re-locate by the quoted snippet if `warc_interop_20260905` W1/W2/W4/W6 already shifted them); Verify commands run from the repository root with Python >= 3.9; complete a task only when every "Done when" item holds. Edit only the files under **Files**. Never create `._*` files. Standard library only — no `pip install`. Do not commit or push unless the operator explicitly asks. Fixtures live under `tempfile`/`/tmp`, never inside the repository.
 
 ## Phase 1 — Specification & approval
 
-- [ ] Capture reproduced defects P1–P5 and requirements R1–R6 in `spec.md` (traces to AC1–AC6).
-- [ ] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review; implementation waits for the integrator to register the track.
+- [x] Capture reproduced defects P1–P5 and requirements R1–R6 in `spec.md` (traces to AC1–AC6). *(Reconciled in post-implementation review; source specification and registration verified.)*
+- [x] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review; implementation waits for the integrator to register the track. *(Reconciled in post-implementation review; source specification and registration verified.)*
 
 ## Phase 2 — Correctness of the existing CLI
 
@@ -493,7 +493,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
 ## Review Fixes
 
-- [ ] Rev-1 Preserve URL identity, decode HTTP payloads and gate redirect hops.
+- [x] Rev-1 Preserve URL identity, decode HTTP payloads and gate redirect hops. — review evidence 49e10f3
   - **Files**: `cli/aegis_cli.py`, `tests/test_cli_review.py`.
   - **Change**: preserve duplicate query value order, IPv6 brackets and semicolon paths; honour depth zero; scope seeds and redirect destinations; return redirects to the gated frontier; decode gzip/deflate before omitting encoding headers.
   - **Verify**: `python3 -m unittest tests.test_cli_review tests.test_cli tests.test_cli_parity`; `python3 scripts/gate.py test`.

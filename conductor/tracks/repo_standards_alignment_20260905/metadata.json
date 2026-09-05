@@ -1,9 +1,28 @@
 {
   "track_id": "repo_standards_alignment_20260905",
   "type": "chore",
-  "status": "completed",
+  "status": "in_progress",
   "created_at": "2026-09-05T04:45:00Z",
-  "updated_at": "2026-09-05T06:55:00Z",
+  "updated_at": "2026-09-05T07:57:11Z",
   "description": "Align the repository with the edithatogo/repository-standards control plane: Renovate preset, CITATION.cff, CalVer changelog, security-insights.yml (schema 2.2.0), managed Scorecard and zizmor workflows copied verbatim, pyproject packaging with zero runtime dependencies and non-shadowing package names, thin standards CI calling the reusable python-ci and supply-chain-evidence workflows, nine-section README with an honest status table, and (gated) branch rulesets with zero human approvals.",
-  "evidence_schema": "1.0"
+  "evidence_schema": "1.0",
+  "gates": [
+    {
+      "id": "G1",
+      "kind": "hosted_settings",
+      "status": "pending"
+    },
+    {
+      "id": "G2",
+      "kind": "service_activation",
+      "status": "pending"
+    }
+  ],
+  "legacy_evidence": "evidence.legacy.jsonl",
+  "review": {
+    "status": "blocked",
+    "recorded_at": "2026-09-05T07:57:11Z",
+    "revision": "2f13d9cffe3333623020ee8204b5cdb6dc7e43d9",
+    "report": "review.md"
+  }
 }

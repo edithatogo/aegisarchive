@@ -48,3 +48,27 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 ## 2026-09-05 — security_gates_and_fuzzing_20260905
 - **Surprise**: Static scanners (Bandit, Semgrep, CodeQL) flag standard-library network calls (such as `urllib.request.urlopen`) even on hardcoded loopback URLs or allow-listed HTTP schemes unless audited with explicit inline scanner pragmas (`# nosec B310`). Furthermore, native coverage-guided fuzzers like Atheris require specific CPython architectures and Linux wheels, which fail in diverse developer environments without a deterministic fallback.
 - **Change for the next planner**: Security analysis rules must be backed by a tightly scoped baseline file (`.bandit-baseline.json`) for parallel-owned code and inline pragmas on verified paths; and all fuzz harnesses must provide a deterministic stdlib smoke mode (`--smoke`) alongside Node property tests (`node --test`) so all gates pass locally with zero third-party dependencies.
+
+## 2026-09-05 — core_engine_politeness
+- **Surprise**: original completion prose did not include a review receipt.
+- **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.
+
+## 2026-09-05 — warc_iso28500_engine
+- **Surprise**: original completion prose did not include a review receipt.
+- **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.
+
+## 2026-09-05 — in_browser_replay_viewer
+- **Surprise**: original completion prose did not include a review receipt.
+- **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.
+
+## 2026-09-05 — cross_platform_hardening
+- **Surprise**: original completion prose did not include a review receipt.
+- **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.
+
+## 2026-09-05 — headless_cli_mcp
+- **Surprise**: original completion prose did not include a review receipt.
+- **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.
+
+## 2026-09-05 — ci_cd_repo_hardening
+- **Surprise**: original completion prose did not include a review receipt.
+- **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.

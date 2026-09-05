@@ -1,6 +1,6 @@
 # Track Plan: Web Console Security & Persistence Claims
 
-## Status: PLANNED
+## Status: COMPLETED (implementation; post-review disposition in review.md)
 
 Conventions: paths relative to the repository root; line numbers refer to commit `3f00f46` (re-locate by the quoted snippet if they shifted); Verify commands run from the repository root with Node >= 18 and Python >= 3.9; complete a task only when every "Done when" item holds. Edit only the files listed under **Files**. Never create `._*` files. No new dependencies, no npm, no bundler. Do not commit or push unless the operator explicitly asks. Test fixtures live under `/tmp` or in memory.
 
@@ -12,8 +12,8 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 1 — Specification & approval
 
-- [ ] Capture reproduced defects V1–V7 and requirements R1–R8 in `spec.md` (traces to AC1–AC8).
-- [ ] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review; implementation waits for the integrator to register the track.
+- [x] Capture reproduced defects V1–V7 and requirements R1–R8 in `spec.md` (traces to AC1–AC8). *(Reconciled in post-implementation review; source specification and registration verified.)*
+- [x] Approval basis: user requested Conductor planning artifacts for the 2026-09-05 review; implementation waits for the integrator to register the track. *(Reconciled in post-implementation review; source specification and registration verified.)*
 
 ## Phase 2 — Replay viewer hardening
 
@@ -62,7 +62,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
   ```
   Expected: `1` then `0`.
   ```
-  node -e "const W=require('./web/lib/warc_writer.js');const R=require('./web/lib/warc_reader.js');(async()=>{const w=new W({filename:'t.warc'});const h=()=>({status:200,statusText:'OK',headers:new Headers({'content-type':'text/html'})});await w.addResponseRecord('http://h.test/',h(),new TextEncoder().encode('<html><head><base href=\"http://live.test/\"><title>t</title></head><body>x</body></html>'));const r=new R();await r.loadWarcBuffer(await (await w.getWarcBlob()).arrayBuffer());const out=r.renderPage('http://h.test/');console.log(/<base/i.test(out),out.indexOf(R.REPLAY_CSP_META)===out.indexOf('<head>')+6,out.includes(\"default-src 'none'\"))})()"
+  node -e "const W=require('./web/lib/warc_writer.js');const R=require('./web/lib/warc_reader.js');(async()=>{const w=new W({filename:'t.warc'});const h=()=>({status:200,statusText:'OK',headers:new Headers({'content-type':'text/html'})});await w.addResponseRecord('http://h.test/',h(),new TextEncoder().encode('<html><head><base href=\"http://live.test/\"><title>t</title></head><body>x</body></html>'));const r=new R();await r.loadWarcBuffer(await (await w.getWarcBlob()).arrayBuffer());const out=r.renderPage('http://h.test/');console.log(/<base/i.test(out),out.indexOf(R.REPLAY_CSP_META,out.indexOf('<head>')+6)===out.indexOf('<head>')+6,out.includes(\"default-src 'none'\"))})()"
   ```
   Expected: `false true true`.
 
@@ -560,9 +560,11 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Review Fixes
 
-- [ ] Rev-1 Keep untrusted records sandboxed and prevent storage/checkpoint mix-ups.
+- [x] Rev-1 Keep untrusted records sandboxed and prevent storage/checkpoint mix-ups. — review evidence d000e1c
   - **Files**: `web/viewer.html`, `web/lib/warc_reader.js`, `web/lib/warc_writer.js`, `web/lib/core_crawler.js`, `tests/js/warc_reader_render.test.js`, `tests/js/core_crawler_checkpoint.test.js`.
   - **Change**: replace unsandboxed raw-record tab opening with download; place CSP before all archived markup and remove refresh metadata; clear stale frame src; decompress advertised gzip inputs; surface parser warnings; use unique default archive filenames; reject foreign-profile and out-of-scope checkpoints.
   - **Verify**: `node --test tests/js/warc_reader_render.test.js tests/js/core_crawler_checkpoint.test.js`; `python3 scripts/gate.py test`.
   - **Done when**: replay/checkpoint regressions and baseline pass.
   - **Do not**: restore scripts or same-origin permissions to the iframe.
+
+Review verification correction: the CSP assertion still checks the first child of head, and the regression suite also requires a policy before any pre-head markup. Raw-record tab opening is superseded by download to preserve the sandbox boundary.

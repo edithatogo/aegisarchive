@@ -1,6 +1,6 @@
 # Track Plan: Security Gates & Fuzzing
 
-## Status: PLANNED
+## Status: IN PROGRESS — hosted acceptance failed
 
 Implementation contract for every task: touch only the files under **Files**; write exactly the content under **Change**; run the **Verify** command(s) from the repository root and require the stated result; stop when **Done when** holds; never do anything under **Do not**. Tasks are ordered so the repository stays green after each commit and so that `security.yml` (T9) is green on its first run. Commit after each task with the given conventional-commit message. Do not push (gate G1).
 
@@ -14,8 +14,8 @@ Global drift guards (apply to every task):
 
 ## Phase 1 — Specification & approval
 
-- [ ] Capture requirements, severity semantics, verified findings and pre-approved exceptions in the track specification (R1–R11). *(evidence: spec.md)*
-- [ ] Approval basis: user requested gitleaks/CodeQL/Semgrep/Bandit/fuzzing gates that fail on medium-or-higher findings (2026-09-05). Tracks-only scope; implementation by a later agent.
+- [x] Capture requirements, severity semantics, verified findings and pre-approved exceptions in the track specification (R1–R11). *(evidence: spec.md)* *(Reconciled in post-implementation review; source specification and registration verified.)*
+- [x] Approval basis: user requested gitleaks/CodeQL/Semgrep/Bandit/fuzzing gates that fail on medium-or-higher findings (2026-09-05). Tracks-only scope; implementation by a later agent. *(Reconciled in post-implementation review; source specification and registration verified.)*
 
 ## Phase 2 — Configuration and code hardening (no new workflow yet)
 
@@ -1144,12 +1144,12 @@ Global drift guards (apply to every task):
 
 ## Phase 6 — Completion (after G1 push by the integrator)
 
-- [x] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
-- [x] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11).
+- [ ] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
+- [ ] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11).
 
 ## Review Fixes
 
-- [ ] Rev-1 Repair hosted runtime incompatibilities and fail-closed SARIF handling.
+- [x] Rev-1 Repair hosted runtime incompatibilities and fail-closed SARIF handling. — review evidence 17adab3
   - **Files**: `.github/workflows/security.yml`, `tests/requirements-dev.txt`, `scripts/gate.py`, `scripts/sarif_gate.py`, `tests/test_security_review.py`.
   - **Change**: restrict atheris to supported Python versions; expand JS test filenames for Node 22; reject malformed/failed SARIF runs, resolve indexed rules and reject thresholds above medium.
   - **Verify**: `python3 -m unittest tests.test_security_review`; `actionlint .github/workflows/security.yml`; `python3 scripts/gate.py test`.

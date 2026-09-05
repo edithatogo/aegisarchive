@@ -1,18 +1,18 @@
 # Track Plan: Core Engine & Server Preservation Suite
 
-## Status: COMPLETED
+## Status: COMPLETED (implementation; post-review disposition in review.md)
 
 ### Objectives
-- Implement Token-Bucket and Leaky-Bucket rate limiting.
-- Implement decorrelated full-jitter exponential back-off.
-- Implement real-time EWMA response latency tracking.
-- Implement autonomous circuit breaker with nominal, throttled, tripped, and probe states.
-- RFC 9110 compliant Retry-After header parsing (delta-seconds & HTTP-dates).
-- Parameter scrubbing and crawler trap detection.
+- [x] Implement Token-Bucket and Leaky-Bucket rate limiting.
+- [x] Implement decorrelated full-jitter exponential back-off.
+- [x] Implement real-time EWMA response latency tracking.
+- [x] Implement autonomous circuit breaker with nominal, throttled, tripped, and probe states.
+- [x] RFC 9110 compliant Retry-After header parsing (delta-seconds & HTTP-dates).
+- [x] Parameter scrubbing and crawler trap detection.
 
 ## Review Fixes
 
-- [ ] Rev-1 Make output pacing explicit and bound unusually long Retry-After values.
+- [x] Rev-1 Make output pacing explicit and bound unusually long Retry-After values. — review evidence 022097c
   - **Files**: `web/lib/politeness_engine.js`, `cli/politeness.py`, `tests/js/politeness_engine.test.js`.
   - **Change**: reserve leaky-bucket output slots alongside token admission; keep the existing single-flight crawler; parse finite decimal Retry-After delays.
   - **Verify**: `node --test tests/js/politeness_engine.test.js`; `python3 -m unittest tests.test_politeness`; `python3 scripts/gate.py test`.
