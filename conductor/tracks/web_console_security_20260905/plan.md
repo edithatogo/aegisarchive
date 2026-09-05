@@ -17,7 +17,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 2 — Replay viewer hardening
 
-- [ ] **S1 Sandbox without flags + CSP meta, drop `<base>`** *(AC1)*
+- [x] **S1 Sandbox without flags + CSP meta, drop `<base>`** *(AC1)*
 
   **Files**: `web/viewer.html`, `web/lib/warc_reader.js`.
 
@@ -70,7 +70,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: add `allow-scripts` back; do not use `frame.src` with a `blob:` HTML document as a workaround; do not modify `loadWarcBuffer`.
 
-- [ ] **S2 Rewrite requisites to `blob:` URLs** *(AC2)*
+- [x] **S2 Rewrite requisites to `blob:` URLs** *(AC2)*
 
   **Files**: `web/lib/warc_reader.js` only. Requires S1.
 

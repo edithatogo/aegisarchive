@@ -194,6 +194,35 @@
       };
     }
 
+    /** Returns (and caches) a blob: URL for an archived record. */
+    blobUrlFor(record) {
+      if (!record.blobUrl) {
+        record.blobUrl = URL.createObjectURL(new Blob([record.bodyBytes], { type: record.mimeType || 'application/octet-stream' }));
+      }
+      return record.blobUrl;
+    }
+
+    /**
+     * Rewrites src/href/srcset so replay only reaches archived requisites (V2).
+     * Anchors become inert (#) and keep the original target in data-archived-href.
+     */
+    rewriteRequisites(html, pageUrl) {
+      const attrSafe = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+      const resolve = raw => { try { return new URL(raw, pageUrl).href; } catch (e) { return null; } };
+      html = html.replace(/\ssrcset\s*=\s*("[^"]*"|'[^']*')/gi, ' data-archived-srcset=$1');
+      const re = /<(a|link|area|img|script|iframe|source|video|audio)\b([^>]*?)\s(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
+      return html.replace(re, (m, tag, before, attr, v1, v2, v3) => {
+        const raw = v1 !== undefined ? v1 : (v2 !== undefined ? v2 : (v3 || ''));
+        const abs = resolve(raw) || raw;
+        if (/^(a|area)$/i.test(tag)) {
+          return `<${tag}${before} data-archived-href="${attrSafe(abs)}" ${attr}="#"`;
+        }
+        const rec = this.getRecord(abs);
+        const target = rec ? this.blobUrlFor(rec) : 'data:,';
+        return `<${tag}${before} data-archived-${attr}="${attrSafe(abs)}" ${attr}="${target}"`;
+      });
+    }
+
     /**
      * Renders a captured HTML page with inlined or rewritten assets.
      */
@@ -203,17 +232,21 @@
 
       let html = new TextDecoder('utf-8').decode(record.bodyBytes);
 
-      // Create a base tag to resolve relative URLs
-      const baseTag = `<base href="${record.url}">`;
-      if (html.includes('<head>')) {
-        html = html.replace('<head>', `<head>${baseTag}`);
+      // Never resolve against the live origin (V2); lock the document down with a CSP (V1).
+      html = html.replace(/<base\b[^>]*>/gi, '');
+      html = this.rewriteRequisites(html, record.url);
+      const csp = WarcReader.REPLAY_CSP_META;
+      if (/<head[^>]*>/i.test(html)) {
+        html = html.replace(/<head[^>]*>/i, m => m + csp);
       } else {
-        html = `${baseTag}${html}`;
+        html = csp + html;
       }
 
       return html;
     }
   }
+
+  WarcReader.REPLAY_CSP_META = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src blob: data:; style-src \'unsafe-inline\' blob:;">';
 
   return WarcReader;
 }));
