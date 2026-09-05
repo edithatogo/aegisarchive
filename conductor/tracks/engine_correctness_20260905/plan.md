@@ -246,7 +246,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 3 — Profile schema (`profiles/schema.json`)
 
-- [ ] **T6 Bounds, `additionalProperties`, honest enum, deprecated `concurrency`, `robots_policy`** *(AC6, AC7)*
+- [x] **T6 Bounds, `additionalProperties`, honest enum, deprecated `concurrency`, `robots_policy`** *(AC6, AC7)*
 
   **Files**: `profiles/schema.json`, `profiles/rapid_research.json` (one value). Do not touch other profiles or `web/index.html`.
 

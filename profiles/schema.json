@@ -61,10 +61,14 @@
         },
         "max_depth": {
           "type": "integer",
+          "minimum": 0,
+          "maximum": 50,
           "default": 5
         },
         "max_pages": {
           "type": "integer",
+          "minimum": 1,
+          "maximum": 100000,
           "default": 5000
         }
       },
@@ -78,31 +82,41 @@
       "properties": {
         "min_delay_ms": {
           "type": "integer",
+          "minimum": 250,
+          "maximum": 60000,
           "default": 1200
         },
         "max_delay_ms": {
           "type": "integer",
+          "minimum": 250,
+          "maximum": 120000,
           "default": 3500
         },
         "jitter_distribution": {
           "type": "string",
           "enum": [
             "gaussian",
-            "uniform",
-            "decorrelated"
+            "uniform"
           ],
           "default": "gaussian"
         },
         "max_requests_per_minute": {
           "type": "integer",
+          "minimum": 1,
+          "maximum": 300,
           "default": 30
         },
         "concurrency": {
           "type": "integer",
+          "maximum": 1,
+          "deprecated": true,
+          "description": "Deprecated and ignored: the engine is single-flight by design.",
           "default": 2
         },
         "burst_limit": {
           "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
           "default": 5
         },
         "respect_retry_after": {
@@ -115,11 +129,24 @@
         },
         "consecutive_error_tripwire": {
           "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
           "default": 3
         },
         "cooldown_seconds": {
           "type": "integer",
+          "minimum": 5,
+          "maximum": 3600,
           "default": 60
+        },
+        "robots_policy": {
+          "type": "string",
+          "enum": [
+            "respect",
+            "ignore_authorised"
+          ],
+          "default": "respect",
+          "description": "respect: fetch /robots.txt once per origin and honour Disallow; ignore_authorised: skip robots.txt only for targets you are explicitly authorised to archive (decision is written to the audit ledger)."
         }
       }
     },
@@ -183,5 +210,6 @@
     "profile_name",
     "target",
     "politeness"
-  ]
+  ],
+  "additionalProperties": false
 }

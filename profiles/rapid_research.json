@@ -30,11 +30,11 @@
     "max_pages": 10000
   },
   "politeness": {
-    "min_delay_ms": 200,
+    "min_delay_ms": 250,
     "max_delay_ms": 600,
     "jitter_distribution": "uniform",
     "max_requests_per_minute": 180,
-    "concurrency": 4,
+    "concurrency": 1,
     "burst_limit": 10,
     "respect_retry_after": true,
     "adaptive_ewma_backoff": true,
