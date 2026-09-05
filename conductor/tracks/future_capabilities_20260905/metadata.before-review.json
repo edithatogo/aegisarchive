@@ -1,9 +1,0 @@
-{
-  "track_id": "future_capabilities_20260905",
-  "type": "feature",
-  "status": "planned",
-  "created_at": "2026-09-05T04:40:00Z",
-  "updated_at": "2026-09-05T04:40:00Z",
-  "description": "Research-first track: one ADR spike per bleeding-edge candidate (WACZ export, CDXJ, .warc.gz via Compression Streams, service-worker replay, MCP 2025-06-18 with resources/annotations/outputSchema, agent skills folder, llms.txt, vendored in-browser text extraction and WebGPU classification, Prioritized Task Scheduling, PyPI Trusted Publishing, Sigstore-signed bundles, Scorecard >= 7). Each spike produces docs/adr/NNNN-<slug>.md with Context/Decision/Consequences and a go/no-go checklist; no implementation in this track.",
-  "evidence_schema": "1.0"
-}
