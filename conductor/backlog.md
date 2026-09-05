@@ -12,7 +12,7 @@ Task ids are the first implementable checkbox in each `plan.md` (`T1`, `W1`, `S1
 
 | priority | track_id | task | status | owner | blocked_by |
 | --- | --- | --- | --- | --- | --- |
-| P0 | engine_correctness_20260905 | T1 | open | - | - |
+| P0 | engine_correctness_20260905 | T1 | done | - | - |
 | P0 | warc_interop_20260905 | W1 | open | - | - |
 | P0 | web_console_security_20260905 | S1 | open | - | - |
 | P0 | cli_parity_20260905 | C1 | open | - | - |
