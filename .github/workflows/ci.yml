@@ -68,7 +68,7 @@ jobs:
       - name: Strict Abstraction & Leak Prevention Gate
         run: |
           echo "Auditing codebase for private or organization-specific strings..."
-          FORBIDDEN_PATTERN=$(echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfGdsY3xwc3Fz" | base64 -d 2>/dev/null || echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfGdsY3xwc3Fz" | base64 --decode)
+          FORBIDDEN_PATTERN=$(echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfHF1ZWVuc2xhbmR8aGVhbHRoXC5xbGR8Z2xjfHBzcXN8bnNxaHM=" | base64 -d 2>/dev/null || echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfHF1ZWVuc2xhbmR8aGVhbHRoXC5xbGR8Z2xjfHBzcXN8bnNxaHM=" | base64 --decode)
           MATCHES=$(grep -rnI -E "$FORBIDDEN_PATTERN" --exclude-dir=".git" . || true)
           if [ -n "$MATCHES" ]; then
             echo "ERROR: Forbidden private identifiers detected in codebase:"
