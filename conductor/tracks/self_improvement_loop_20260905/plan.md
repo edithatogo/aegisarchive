@@ -6,7 +6,7 @@ Implementers follow `conductor/implementation_contract.md`. Tasks are ordered; t
 
 ## Phase 1 — Audit scripts (stdlib only)
 
-- [ ] T1 Add the documentation-claims audit script. *(AC1, AC8)*
+- [x] T1 Add the documentation-claims audit script. *(AC1, AC8)* (8964d0a)
 
 **Files**: `scripts/claims_audit.py` (new)
 
@@ -167,7 +167,7 @@ If the mismatch count differs from 4 because a sibling track has already landed 
 
 **Do not**: import anything outside the standard library; modify README.md or any file under `web/`, `cli/`, `mcp/`; "fix" a claim by weakening its check.
 
-- [ ] T2 Add the Conductor track-health script. *(AC2, AC3, AC8)*
+- [x] T2 Add the Conductor track-health script. *(AC2, AC3, AC8)* (b009016)
 
 **Files**: `scripts/track_health.py` (new)
 
