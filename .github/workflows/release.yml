@@ -1,0 +1,25 @@
+name: Release artefacts
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Build source archive
+        run: git archive --format=tar.gz --prefix=aegisarchive-${GITHUB_REF_NAME}/ -o aegisarchive-${GITHUB_REF_NAME}.tar.gz HEAD
+      - name: Write SHA256SUMS
+        run: sha256sum aegisarchive-${GITHUB_REF_NAME}.tar.gz > SHA256SUMS
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${GITHUB_REF_NAME}" aegisarchive-${GITHUB_REF_NAME}.tar.gz SHA256SUMS --clobber
