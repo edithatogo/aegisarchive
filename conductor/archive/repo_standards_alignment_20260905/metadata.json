@@ -10,13 +10,13 @@
     {
       "id": "G1",
       "kind": "hosted_settings",
-      "status": "passed",
+      "status": "satisfied",
       "evidence": "ruleset 22326769 and topics verification"
     },
     {
       "id": "G2",
       "kind": "service_activation",
-      "status": "passed",
+      "status": "satisfied",
       "evidence": "Standards CI 33956410829 python-ci / test including Codecov"
     }
   ],
@@ -26,5 +26,6 @@
     "recorded_at": "2026-09-05T09:05:00Z",
     "revision": "b3819ce63d8b15ce66903cc9e65e9524414b23de",
     "report": "review.md"
-  }
+  },
+  "archived_at": "2026-09-05T09:10:00Z"
 }
