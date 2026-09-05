@@ -1,0 +1,23 @@
+# OS artifacts
+.DS_Store
+Thumbs.db
+._*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+env/
+
+# Crawl run outputs (keep git clean, user data stays local)
+archive/*.warc
+archive/*.cdx
+archive/audit_*.csv
+archive/self_reflection_*.md
+archive/incoming/
+
+# Temporary checkpoints
+*.checkpoint.json
+.tmp/

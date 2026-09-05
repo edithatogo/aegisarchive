@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AegisArchive — Server-Preserving Archival Engine</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="lib/minisearch.min.js"></script>
+  <script src="lib/warc_writer.js"></script>
+  <script src="lib/politeness_engine.js"></script>
+  <script src="lib/opfs_streamer.js"></script>
+  <script src="lib/self_reflection.js"></script>
+  <script src="lib/core_crawler.js"></script>
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header>
+      <div class="brand-wrapper">
+        <div class="brand-icon">🛡️</div>
+        <div class="brand-titles">
+          <h1>AegisArchive</h1>
+          <p>Server-Preserving Ethical Web Archiving &middot; ISO 28500 WARC/1.1 Engine</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="viewer.html" class="btn btn-secondary">📂 Offline WARC Viewer</a>
+        <button class="btn btn-secondary" onclick="openHelpModal()">📖 Guide &amp; Ethics</button>
+        <button class="btn btn-secondary" onclick="toggleTheme()" id="themeBtn">☀️ Light</button>
+      </div>
+    </header>
+
+    <!-- Profile Bar -->
+    <div class="profile-bar">
+      <div class="profile-select-group">
+        <label for="profileSelect">Active Profile:</label>
+        <select id="profileSelect" class="select-input" onchange="onProfileSelected()">
+          <option value="default_polite">Default Server-Preserving Preservation</option>
+          <option value="enterprise_intranet">Enterprise Intranet &amp; Portal Preservation</option>
+          <option value="rapid_research">Authorized High-Throughput Research</option>
+          <option value="custom">Load Custom Profile JSON...</option>
+        </select>
+        <input type="file" id="profileFileInput" style="display:none" accept=".json" onchange="handleCustomProfileUpload(event)">
+        <button class="btn btn-secondary" onclick="openProfileWizard()">⚙️ Configure Profile</button>
+      </div>
+      <div id="activeProfileDesc" style="font-size: 0.85rem; color: var(--text-secondary); max-width: 500px; text-align: right;">
+        Ethical preservation with human-cadence delays and dynamic EWMA backoff.
+      </div>
+    </div>
+
+    <!-- Live Telemetry Grid -->
+    <div class="telemetry-grid">
+      <div class="telemetry-card">
+        <div class="telemetry-val" id="telemetryCrawled">0</div>
+        <div class="telemetry-label">Pages Crawled</div>
+        <div class="telemetry-sub" id="telemetryCeiling">Max ceiling: 2,000</div>
+      </div>
+      <div class="telemetry-card">
+        <div class="telemetry-val" id="telemetryQueue">0</div>
+        <div class="telemetry-label">Queued URLs</div>
+        <div class="telemetry-sub">Breadth-First Priority Queue</div>
+      </div>
+      <div class="telemetry-card">
+        <div class="telemetry-val" id="telemetryDocs">0</div>
+        <div class="telemetry-label">Assets Captured</div>
+        <div class="telemetry-sub" id="telemetryDedup">Deduplication: Active</div>
+      </div>
+      <div class="telemetry-card">
+        <div class="telemetry-val" id="telemetryLatency">0 ms</div>
+        <div class="telemetry-label">EWMA Response Latency</div>
+        <div class="telemetry-sub" id="telemetryLatencySub">Baseline: Nominal</div>
+      </div>
+      <div class="telemetry-card">
+        <div style="margin-bottom: 8px;">
+          <span class="beacon-pill beacon-nominal" id="beaconStatus">
+            <span class="pulse-dot"></span>
+            <span id="beaconText">NOMINAL (SAFE)</span>
+          </span>
+        </div>
+        <div class="telemetry-label">Politeness &amp; Anti-DDoS</div>
+        <div class="telemetry-sub" id="beaconSub">Zero consecutive errors</div>
+      </div>
+    </div>
+
+    <!-- Controls Bar -->
+    <div class="controls-bar">
+      <div class="button-cluster">
+        <button class="btn btn-emerald" id="btnStart" onclick="startHarvest()">🚀 Start Harvest</button>
+        <button class="btn btn-warning" id="btnPause" onclick="togglePause()" disabled>⏸️ Pause</button>
+        <button class="btn btn-danger" id="btnStop" onclick="stopHarvest()" disabled>⏹️ Stop &amp; Finalize</button>
+      </div>
+      <div class="button-cluster">
+        <button class="btn btn-primary" id="btnExportWarc" onclick="exportWarc()" disabled>📦 Download WARC + CDX</button>
+        <button class="btn btn-secondary" id="btnExportCsv" onclick="exportAuditCsv()" disabled>📋 Export Audit CSV</button>
+        <button class="btn btn-secondary" id="btnReport" onclick="openReportModal()" disabled>📊 Diagnostic Report</button>
+      </div>
+    </div>
+
+    <!-- Main Split Layout -->
+    <div class="main-layout">
+      <!-- Activity Console -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Telemetry &amp; Audit Log</h2>
+          <span class="badge" id="logCountBadge">0 entries</span>
+        </div>
+        <div class="log-container" id="logContainer">
+          <div class="log-entry">
+            <span class="log-time">[System]</span>
+            <span class="log-msg">AegisArchive engine ready. Select a profile and click 'Start Harvest'.</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Assets & Documents Table -->
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Captured Assets</h2>
+          <span class="badge" id="docCountBadge">0 assets</span>
+        </div>
+        <div class="table-container">
+          <table id="docsTable">
+            <thead>
+              <tr>
+                <th>Asset Title / URI</th>
+                <th>Type</th>
+                <th>Size</th>
+                <th>SHA-256 Digest</th>
+              </tr>
+            </thead>
+            <tbody id="docsTableBody">
+              <tr>
+                <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 24px;">
+                  No assets captured yet. Harvested PDFs, documents, and records will appear here in real time.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Configuration Wizard Modal -->
+  <div class="modal-backdrop" id="profileWizardModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Configure Crawl Profile</h2>
+        <button class="close-btn" onclick="closeModal('profileWizardModal')">&times;</button>
+      </div>
+      <form id="profileForm" onsubmit="saveProfileWizard(event)">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 6px;">Profile Name:</label>
+            <input type="text" id="wizProfileName" class="text-input" style="width: 100%;" required>
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 6px;">Allowed Target Domains (comma separated):</label>
+            <input type="text" id="wizDomains" class="text-input" style="width: 100%;" placeholder="example.org, sub.example.org" required>
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 6px;">Tier 1 Core Seed URLs (one per line):</label>
+            <textarea id="wizSeeds" class="text-input" rows="3" style="width: 100%;" required></textarea>
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+            <div>
+              <label style="font-weight: 600; display: block; margin-bottom: 6px;">Min Delay (ms):</label>
+              <input type="number" id="wizMinDelay" class="text-input" style="width: 100%;" value="1200">
+            </div>
+            <div>
+              <label style="font-weight: 600; display: block; margin-bottom: 6px;">Max Delay (ms):</label>
+              <input type="number" id="wizMaxDelay" class="text-input" style="width: 100%;" value="3200">
+            </div>
+            <div>
+              <label style="font-weight: 600; display: block; margin-bottom: 6px;">Max Req / Min:</label>
+              <input type="number" id="wizMaxRpm" class="text-input" style="width: 100%;" value="25">
+            </div>
+          </div>
+          <div>
+            <label style="font-weight: 600; display: block; margin-bottom: 6px;">Blacklist Path Regex (Skip patterns):</label>
+            <input type="text" id="wizBlacklist" class="text-input" style="width: 100%;" value="/logout|/signin|/auth">
+          </div>
+          <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 12px;">
+            <button type="button" class="btn btn-secondary" onclick="closeModal('profileWizardModal')">Cancel</button>
+            <button type="submit" class="btn btn-primary">Apply Profile</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Diagnostic Report Modal -->
+  <div class="modal-backdrop" id="reportModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Self-Reflection &amp; Forensic Health Report</h2>
+        <button class="close-btn" onclick="closeModal('reportModal')">&times;</button>
+      </div>
+      <div id="reportMarkdownContainer" style="white-space: pre-wrap; font-family: var(--font-mono); font-size: 0.85rem; background: var(--bg-primary); padding: 16px; border-radius: var(--radius-sm); border: 1px solid var(--border-color); max-height: 500px; overflow-y: auto;">
+        No report generated yet.
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px;">
+        <button class="btn btn-secondary" onclick="downloadReportMd()">📥 Download Markdown Report</button>
+        <button class="btn btn-primary" onclick="closeModal('reportModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Guide & Help Modal -->
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>AegisArchive Guide &amp; Ethical Principles</h2>
+        <button class="close-btn" onclick="closeModal('helpModal')">&times;</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 16px; font-size: 0.9rem; line-height: 1.6;">
+        <h3 style="color: var(--accent-blue);">1. Server Preservation by Design</h3>
+        <p>AegisArchive enforces human-cadence browsing, decorrelated exponential backoff, and real-time latency monitoring. It automatically slows down when target servers experience load spikes, ensuring servers are protected against accidental denial-of-service (DDoS).</p>
+        
+        <h3 style="color: var(--accent-blue);">2. ISO 28500 WARC/1.1 Archival Standard</h3>
+        <p>All captured HTTP request and response records are serialized into standard WARC containers accompanied by 11-field CDX indexes. Content-addressable SHA-256 deduplication ensures identical styles, images, and documents write lightweight revisit records, reducing storage footprints by up to 70%.</p>
+
+        <h3 style="color: var(--accent-blue);">3. Replaying Captured Archives Offline</h3>
+        <p>You can verify and browse captured archives completely offline by clicking the <strong>Offline WARC Viewer</strong> button. It loads your <code>.warc</code> file locally inside an isolated, sandboxed viewer with zero internet required.</p>
+
+        <h3 style="color: var(--accent-blue);">4. Cross-Platform Standalone Execution</h3>
+        <p>AegisArchive runs on Windows, macOS, and Linux without administrator permissions or external package installations. Use <code>START_MAC.command</code>, <code>START_WINDOWS.cmd</code>, or <code>START_LINUX.sh</code> to launch anywhere.</p>
+      </div>
+      <div style="display: flex; justify-content: flex-end; margin-top: 20px;">
+        <button class="btn btn-primary" onclick="closeModal('helpModal')">Got It</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeProfile = null;
+    let crawler = null;
+    let finalResults = null;
+    let currentReportMd = "";
+
+    const BUILTIN_PROFILES = {
+      default_polite: {
+        profile_id: "default_polite",
+        profile_name: "Default Server-Preserving Preservation",
+        description: "Ethical preservation with human-cadence delays and dynamic EWMA backoff.",
+        target: {
+          allowed_domains: ["example.org"],
+          seed_urls: { tier_1_core: ["https://example.org/"] },
+          asset_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".zip"],
+          max_depth: 4,
+          max_pages: 2000
+        },
+        politeness: {
+          min_delay_ms: 1200,
+          max_delay_ms: 3200,
+          jitter_distribution: "gaussian",
+          max_requests_per_minute: 25,
+          burst_limit: 3,
+          respect_retry_after: true,
+          adaptive_ewma_backoff: true,
+          consecutive_error_tripwire: 3,
+          cooldown_seconds: 60
+        },
+        archival: {
+          operator: "AegisArchive Preservationist",
+          organization: "Public Digital Preservation",
+          warc_prefix: "aegis_preservation",
+          deduplicate_payloads: true,
+          generate_cdx: true
+        }
+      },
+      enterprise_intranet: {
+        profile_id: "enterprise_intranet",
+        profile_name: "Enterprise Intranet & Portal Preservation",
+        description: "Low-impact crawl profile designed for internal enterprise portals (SharePoint, Squiz, Confluence).",
+        target: {
+          allowed_domains: ["intranet.local"],
+          seed_urls: { tier_1_core: ["https://intranet.local/portal"] },
+          asset_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".zip"],
+          max_depth: 6,
+          max_pages: 5000
+        },
+        politeness: {
+          min_delay_ms: 1500,
+          max_delay_ms: 4000,
+          jitter_distribution: "gaussian",
+          max_requests_per_minute: 20,
+          burst_limit: 3,
+          respect_retry_after: true,
+          adaptive_ewma_backoff: true,
+          consecutive_error_tripwire: 3,
+          cooldown_seconds: 90
+        },
+        archival: {
+          operator: "Enterprise Records Officer",
+          organization: "Enterprise Records & Compliance",
+          warc_prefix: "enterprise_intranet",
+          deduplicate_payloads: true,
+          generate_cdx: true
+        }
+      },
+      rapid_research: {
+        profile_id: "rapid_research",
+        profile_name: "Authorized High-Throughput Research",
+        description: "Fast harvesting profile for authorized research servers or test mirrors.",
+        target: {
+          allowed_domains: ["localhost", "127.0.0.1"],
+          seed_urls: { tier_1_core: ["http://127.0.0.1:8000/"] },
+          asset_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".zip", ".png", ".jpg"],
+          max_depth: 8,
+          max_pages: 10000
+        },
+        politeness: {
+          min_delay_ms: 200,
+          max_delay_ms: 600,
+          jitter_distribution: "uniform",
+          max_requests_per_minute: 180,
+          burst_limit: 10,
+          respect_retry_after: true,
+          adaptive_ewma_backoff: true,
+          consecutive_error_tripwire: 5,
+          cooldown_seconds: 30
+        },
+        archival: {
+          operator: "Research Analyst",
+          organization: "Academic / Research Lab",
+          warc_prefix: "rapid_research",
+          deduplicate_payloads: true,
+          generate_cdx: true
+        }
+      }
+    };
+
+    function init() {
+      activeProfile = BUILTIN_PROFILES.default_polite;
+      updateProfileDisplay();
+    }
+
+    function updateProfileDisplay() {
+      if (!activeProfile) return;
+      document.getElementById('activeProfileDesc').textContent = activeProfile.description || activeProfile.profile_name;
+      document.getElementById('telemetryCeiling').textContent = `Max ceiling: ${(activeProfile.target.max_pages || 2000).toLocaleString()}`;
+    }
+
+    function onProfileSelected() {
+      const val = document.getElementById('profileSelect').value;
+      if (val === 'custom') {
+        document.getElementById('profileFileInput').click();
+      } else if (BUILTIN_PROFILES[val]) {
+        activeProfile = BUILTIN_PROFILES[val];
+        updateProfileDisplay();
+        log(`[Profile] Switched to '${activeProfile.profile_name}'.`);
+      }
+    }
+
+    function handleCustomProfileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const parsed = JSON.parse(e.target.result);
+          if (!parsed.target || !parsed.target.allowed_domains) {
+            alert("Invalid profile schema: missing 'target.allowed_domains'.");
+            return;
+          }
+          activeProfile = parsed;
+          updateProfileDisplay();
+          log(`[Profile] Loaded custom profile: ${parsed.profile_name || 'Custom'}`);
+        } catch (err) {
+          alert("Error parsing JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function openProfileWizard() {
+      if (!activeProfile) return;
+      document.getElementById('wizProfileName').value = activeProfile.profile_name || '';
+      document.getElementById('wizDomains').value = (activeProfile.target.allowed_domains || []).join(', ');
+      document.getElementById('wizSeeds').value = ((activeProfile.target.seed_urls && activeProfile.target.seed_urls.tier_1_core) || []).join('\n');
+      document.getElementById('wizMinDelay').value = activeProfile.politeness.min_delay_ms || 1200;
+      document.getElementById('wizMaxDelay').value = activeProfile.politeness.max_delay_ms || 3200;
+      document.getElementById('wizMaxRpm').value = activeProfile.politeness.max_requests_per_minute || 25;
+      document.getElementById('wizBlacklist').value = activeProfile.target.path_blacklist_regex || '';
+      document.getElementById('profileWizardModal').style.display = 'flex';
+    }
+
+    function saveProfileWizard(event) {
+      event.preventDefault();
+      const name = document.getElementById('wizProfileName').value.trim();
+      const domains = document.getElementById('wizDomains').value.split(',').map(s => s.trim()).filter(Boolean);
+      const seeds = document.getElementById('wizSeeds').value.split('\n').map(s => s.trim()).filter(Boolean);
+      const minDelay = parseInt(document.getElementById('wizMinDelay').value, 10);
+      const maxDelay = parseInt(document.getElementById('wizMaxDelay').value, 10);
+      const maxRpm = parseInt(document.getElementById('wizMaxRpm').value, 10);
+      const blacklist = document.getElementById('wizBlacklist').value.trim();
+
+      activeProfile = {
+        ...activeProfile,
+        profile_name: name,
+        target: {
+          ...activeProfile.target,
+          allowed_domains: domains,
+          seed_urls: { tier_1_core: seeds },
+          path_blacklist_regex: blacklist
+        },
+        politeness: {
+          ...activeProfile.politeness,
+          min_delay_ms: minDelay,
+          max_delay_ms: maxDelay,
+          max_requests_per_minute: maxRpm
+        }
+      };
+
+      updateProfileDisplay();
+      closeModal('profileWizardModal');
+      log(`[Profile] Configuration updated: '${name}' with ${domains.length} allowed domains.`);
+    }
+
+    function startHarvest() {
+      if (!activeProfile) return;
+      crawler = new CoreCrawler(activeProfile, {
+        onLog: (msg) => log(msg),
+        onProgress: (stats) => updateProgress(stats),
+        onStatusChange: (status) => updateStatus(status),
+        onDocumentFound: (doc) => addDocumentRow(doc),
+        onComplete: (results) => handleComplete(results)
+      });
+
+      document.getElementById('btnStart').disabled = true;
+      document.getElementById('btnPause').disabled = false;
+      document.getElementById('btnStop').disabled = false;
+      document.getElementById('btnExportWarc').disabled = true;
+      document.getElementById('btnExportCsv').disabled = true;
+      document.getElementById('btnReport').disabled = true;
+
+      crawler.start();
+    }
+
+    function togglePause() {
+      if (!crawler) return;
+      const btn = document.getElementById('btnPause');
+      if (crawler.isPaused) {
+        crawler.resume();
+        btn.textContent = '⏸️ Pause';
+        btn.className = 'btn btn-warning';
+      } else {
+        crawler.pause();
+        btn.textContent = '▶️ Resume';
+        btn.className = 'btn btn-emerald';
+      }
+    }
+
+    function stopHarvest() {
+      if (!crawler) return;
+      crawler.stop();
+      document.getElementById('btnPause').disabled = true;
+      document.getElementById('btnStop').disabled = true;
+    }
+
+    function updateProgress(stats) {
+      document.getElementById('telemetryCrawled').textContent = stats.visitedCount.toLocaleString();
+      document.getElementById('telemetryQueue').textContent = stats.queueLength.toLocaleString();
+      document.getElementById('telemetryDocs').textContent = stats.documentsFound.toLocaleString();
+      
+      const ewma = stats.telemetry.ewmaLatencyMs;
+      document.getElementById('telemetryLatency').textContent = `${ewma} ms`;
+      
+      const beacon = document.getElementById('beaconStatus');
+      const beaconText = document.getElementById('beaconText');
+      const beaconSub = document.getElementById('beaconSub');
+
+      if (stats.telemetry.circuitState === 'NOMINAL') {
+        beacon.className = 'beacon-pill beacon-nominal';
+        beaconText.textContent = 'NOMINAL (SAFE)';
+        beaconSub.textContent = `Tokens available: ${stats.telemetry.availableTokens}`;
+      } else if (stats.telemetry.circuitState === 'THROTTLED') {
+        beacon.className = 'beacon-pill beacon-throttled';
+        beaconText.textContent = 'THROTTLED (BACKOFF)';
+        beaconSub.textContent = `Consecutive errors: ${stats.telemetry.consecutiveErrors}`;
+      } else if (stats.telemetry.circuitState === 'TRIPPED') {
+        beacon.className = 'beacon-pill beacon-tripped';
+        beaconText.textContent = 'TRIPPED (COOLING)';
+        beaconSub.textContent = `Circuit breaker paused for cooldown`;
+      }
+    }
+
+    function updateStatus(status) {
+      if (status === 'STOPPED') {
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('btnPause').disabled = true;
+        document.getElementById('btnStop').disabled = true;
+        document.getElementById('btnExportWarc').disabled = false;
+        document.getElementById('btnExportCsv').disabled = false;
+        document.getElementById('btnReport').disabled = false;
+      }
+    }
+
+    function handleComplete(results) {
+      finalResults = results;
+      currentReportMd = SelfReflectionEngine.generateMarkdownReport(results.selfReflection, activeProfile);
+      log(`[AegisArchive] Archival session finalized. Output: ${results.warcStats.recordCount} WARC records (${(results.warcStats.totalBytes / 1024).toFixed(1)} KB).`);
+    }
+
+    function addDocumentRow(doc) {
+      const tbody = document.getElementById('docsTableBody');
+      if (tbody.children.length === 1 && tbody.children[0].children.length === 1) {
+        tbody.innerHTML = '';
+      }
+      const tr = document.createElement('tr');
+      const sizeKb = (doc.size / 1024).toFixed(1);
+      const shortHash = doc.hash ? doc.hash.slice(0, 12) + '...' : '-';
+      tr.innerHTML = `
+        <td><a href="${doc.url}" target="_blank" title="${doc.url}">${doc.title || doc.url}</a></td>
+        <td><span class="badge">${doc.mimeType || 'unknown'}</span></td>
+        <td>${sizeKb} KB</td>
+        <td><code style="font-family: var(--font-mono); font-size: 0.75rem;">${shortHash}</code></td>
+      `;
+      tbody.prepend(tr);
+      document.getElementById('docCountBadge').textContent = `${document.getElementById('telemetryDocs').textContent} assets`;
+    }
+
+    function log(msg) {
+      const container = document.getElementById('logContainer');
+      const entry = document.createElement('div');
+      entry.className = 'log-entry';
+      const time = new Date().toLocaleTimeString();
+      entry.innerHTML = `<span class="log-time">[${time}]</span><span class="log-msg">${escapeHtml(msg)}</span>`;
+      container.appendChild(entry);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function exportWarc() {
+      if (!finalResults) return;
+      const warcBlob = finalResults.warcBlob;
+      const cdxBlob = finalResults.cdxBlob;
+      const prefix = activeProfile.archival ? activeProfile.archival.warc_prefix : 'archive';
+      const dateStr = new Date().toISOString().slice(0, 10);
+
+      downloadBlob(warcBlob, `${prefix}_${dateStr}.warc`);
+      setTimeout(() => {
+        downloadBlob(cdxBlob, `${prefix}_${dateStr}.cdx`);
+      }, 500);
+    }
+
+    function exportAuditCsv() {
+      if (!finalResults || !finalResults.auditLedger) return;
+      let csv = 'Timestamp,Status,LatencyMs,SizeBytes,MimeType,Digest,IsRevisit,URI\n';
+      for (const a of finalResults.auditLedger) {
+        csv += `"${a.timestamp}",${a.status},${a.latency_ms},${a.size_bytes},"${a.mimeType}","${a.digest || ''}",${Boolean(a.isRevisit)},"${a.url}"\n`;
+      }
+      const blob = new Blob([csv], { type: 'text/csv' });
+      downloadBlob(blob, `aegis_audit_${new Date().toISOString().slice(0, 10)}.csv`);
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function openReportModal() {
+      document.getElementById('reportMarkdownContainer').textContent = currentReportMd || "No report available.";
+      document.getElementById('reportModal').style.display = 'flex';
+    }
+
+    function downloadReportMd() {
+      if (!currentReportMd) return;
+      const blob = new Blob([currentReportMd], { type: 'text/markdown' });
+      downloadBlob(blob, `aegis_report_${new Date().toISOString().slice(0, 10)}.md`);
+    }
+
+    function openHelpModal() {
+      document.getElementById('helpModal').style.display = 'flex';
+    }
+
+    function closeModal(id) {
+      document.getElementById(id).style.display = 'none';
+    }
+
+    function toggleTheme() {
+      const current = document.documentElement.getAttribute('data-theme');
+      const next = current === 'dark' ? 'light' : 'dark';
+      document.documentElement.setAttribute('data-theme', next);
+      document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️ Light' : '🌙 Dark';
+    }
+
+    window.onload = init;
+  </script>
+</body>
+</html>

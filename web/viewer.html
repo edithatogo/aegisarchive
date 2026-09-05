@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AegisArchive — In-Browser WARC Replay Viewer</title>
+  <link rel="stylesheet" href="css/style.css">
+  <script src="lib/warc_reader.js"></script>
+  <style>
+    .viewer-layout {
+      display: grid;
+      grid-template-columns: 360px 1fr;
+      gap: 16px;
+      height: calc(100vh - 120px);
+    }
+    .sidebar {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .sidebar-header {
+      padding: 14px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .url-list {
+      flex: 1;
+      overflow-y: auto;
+      list-style: none;
+    }
+    .url-item {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 0.8rem;
+    }
+    .url-item:hover, .url-item.active {
+      background-color: var(--border-color);
+    }
+    .url-item .url-link {
+      color: var(--text-primary);
+      word-break: break-all;
+      font-weight: 500;
+    }
+    .url-item .url-meta {
+      display: flex;
+      gap: 8px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .main-view {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .view-toolbar {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-secondary);
+      font-size: 0.85rem;
+    }
+    .view-frame {
+      flex: 1;
+      border: none;
+      background: white;
+      width: 100%;
+      height: 100%;
+    }
+    .empty-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      padding: 40px;
+      text-align: center;
+      color: var(--text-muted);
+    }
+    .drop-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: 40px 24px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: rgba(255, 255, 255, 0.02);
+      max-width: 480px;
+      width: 100%;
+    }
+    .drop-zone:hover {
+      border-color: var(--accent-blue);
+      background: rgba(56, 189, 248, 0.05);
+    }
+  </style>
+</head>
+<body>
+  <div class="container" style="max-width: 1600px; padding: 16px 24px;">
+    <!-- Header -->
+    <header style="margin-bottom: 16px; padding-bottom: 12px;">
+      <div class="brand-wrapper">
+        <div class="brand-icon" style="background: linear-gradient(135deg, #059669, #10b981);">📂</div>
+        <div class="brand-titles">
+          <h1>AegisArchive Replay Viewer</h1>
+          <p>Zero-Dependency Offline WARC/1.1 &amp; CDX Playback Console</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="index.html" class="btn btn-secondary">&larr; Return to Harvester</a>
+        <button class="btn btn-primary" onclick="document.getElementById('warcFileInput').click()">📁 Open .WARC File</button>
+        <input type="file" id="warcFileInput" style="display:none;" accept=".warc,.warc.gz" onchange="handleWarcFileSelect(event)">
+      </div>
+    </header>
+
+    <!-- Viewer Layout -->
+    <div class="viewer-layout" id="viewerLayout">
+      <!-- Sidebar -->
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <input type="text" id="urlFilterInput" class="text-input" placeholder="Filter captured URLs..." oninput="filterUrls()">
+          <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+            <span id="recordCountLabel">0 records loaded</span>
+            <span id="filterCountLabel"></span>
+          </div>
+        </div>
+        <ul class="url-list" id="urlList">
+          <li style="padding: 24px 16px; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+            No WARC loaded yet. Select or drop a <code>.warc</code> file to inspect.
+          </li>
+        </ul>
+      </div>
+
+      <!-- Main Replay Area -->
+      <div class="main-view" id="mainView">
+        <div class="empty-state" id="emptyState">
+          <div class="drop-zone" onclick="document.getElementById('warcFileInput').click()" ondragover="event.preventDefault()" ondrop="handleWarcDrop(event)">
+            <div style="font-size: 3rem; margin-bottom: 12px;">🛡️</div>
+            <h3 style="color: var(--text-primary); margin-bottom: 8px;">Drag and Drop WARC File Here</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary);">Select any ISO 28500 <code>.warc</code> file generated by AegisArchive or other standard tools.</p>
+          </div>
+        </div>
+        <div id="activeReplayContainer" style="display: none; height: 100%; flex-direction: column;">
+          <div class="view-toolbar">
+            <div style="display: flex; align-items: center; gap: 10px; overflow: hidden;">
+              <span class="badge" id="activeStatusBadge">200 OK</span>
+              <span class="badge" id="activeMimeBadge">text/html</span>
+              <span id="activeUrlDisplay" style="font-family: var(--font-mono); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;"></span>
+            </div>
+            <div>
+              <button class="btn btn-secondary" onclick="openCurrentInNewTab()" style="padding: 4px 10px; font-size: 0.75rem;">↗️ Open In Tab</button>
+            </div>
+          </div>
+          <iframe id="replayFrame" class="view-frame" sandbox="allow-same-origin allow-scripts"></iframe>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const reader = new WarcReader();
+    let currentUrls = [];
+    let activeUrl = null;
+
+    function handleWarcFileSelect(event) {
+      const file = event.target.files[0];
+      if (file) loadWarcFile(file);
+    }
+
+    function handleWarcDrop(event) {
+      event.preventDefault();
+      const file = event.dataTransfer.files[0];
+      if (file) loadWarcFile(file);
+    }
+
+    async function loadWarcFile(file) {
+      document.getElementById('emptyState').innerHTML = `
+        <div class="pulse-dot" style="width: 24px; height: 24px; color: var(--accent-blue);"></div>
+        <p style="color: var(--text-primary); margin-top: 16px;">Parsing ISO 28500 records from ${file.name}...</p>
+      `;
+
+      try {
+        const buffer = await file.arrayBuffer();
+        const result = await reader.loadWarcBuffer(buffer);
+        currentUrls = result.urls;
+
+        document.getElementById('emptyState').style.display = 'none';
+        document.getElementById('activeReplayContainer').style.display = 'flex';
+        document.getElementById('recordCountLabel').textContent = `${result.totalRecords} records loaded`;
+
+        renderUrlList(currentUrls);
+
+        // Auto-select first HTML record
+        const firstHtml = currentUrls.find(u => {
+          const rec = reader.getRecord(u);
+          return rec && rec.mimeType.includes('html');
+        }) || currentUrls[0];
+
+        if (firstHtml) selectUrl(firstHtml);
+
+      } catch (err) {
+        alert("Error loading WARC file: " + err.message);
+        document.getElementById('emptyState').style.display = 'flex';
+        document.getElementById('activeReplayContainer').style.display = 'none';
+      }
+    }
+
+    function renderUrlList(urls) {
+      const listEl = document.getElementById('urlList');
+      listEl.innerHTML = '';
+
+      if (urls.length === 0) {
+        listEl.innerHTML = '<li style="padding: 16px; text-align: center; color: var(--text-muted);">No matching URLs.</li>';
+        return;
+      }
+
+      for (const url of urls) {
+        const rec = reader.getRecord(url);
+        const li = document.createElement('li');
+        li.className = 'url-item' + (url === activeUrl ? ' active' : '');
+        li.onclick = () => selectUrl(url);
+
+        const status = rec ? rec.status : 200;
+        const mime = rec ? rec.mimeType : 'unknown';
+        const sizeKb = rec ? (rec.bodyBytes.length / 1024).toFixed(1) : '0';
+
+        li.innerHTML = `
+          <span class="url-link" title="${url}">${url}</span>
+          <div class="url-meta">
+            <span class="badge">${status}</span>
+            <span>${mime}</span>
+            <span>${sizeKb} KB</span>
+          </div>
+        `;
+        listEl.appendChild(li);
+      }
+    }
+
+    function filterUrls() {
+      const q = document.getElementById('urlFilterInput').value.toLowerCase().trim();
+      const filtered = currentUrls.filter(u => u.toLowerCase().includes(q));
+      document.getElementById('filterCountLabel').textContent = q ? `${filtered.length} matches` : '';
+      renderUrlList(filtered);
+    }
+
+    function selectUrl(url) {
+      activeUrl = url;
+      const rec = reader.getRecord(url);
+      if (!rec) return;
+
+      // Update sidebar active classes
+      const items = document.querySelectorAll('.url-item');
+      items.forEach(el => el.classList.remove('active'));
+
+      document.getElementById('activeUrlDisplay').textContent = url;
+      document.getElementById('activeStatusBadge').textContent = `${rec.status}`;
+      document.getElementById('activeMimeBadge').textContent = rec.mimeType;
+
+      const frame = document.getElementById('replayFrame');
+
+      if (rec.mimeType.includes('html')) {
+        const renderedHtml = reader.renderPage(url);
+        frame.srcdoc = renderedHtml;
+      } else {
+        // Binary or image file: create Blob URL
+        const blob = new Blob([rec.bodyBytes], { type: rec.mimeType });
+        const blobUrl = URL.createObjectURL(blob);
+        frame.src = blobUrl;
+      }
+    }
+
+    function openCurrentInNewTab() {
+      if (!activeUrl) return;
+      const rec = reader.getRecord(activeUrl);
+      if (!rec) return;
+      const blob = new Blob([rec.bodyBytes], { type: rec.mimeType });
+      const blobUrl = URL.createObjectURL(blob);
+      window.open(blobUrl, '_blank');
+    }
+  </script>
+</body>
+</html>

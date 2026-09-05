@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AegisArchive Profile",
+  "type": "object",
+  "properties": {
+    "profile_id": {
+      "type": "string"
+    },
+    "profile_name": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "target": {
+      "type": "object",
+      "properties": {
+        "allowed_domains": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "seed_urls": {
+          "type": "object",
+          "properties": {
+            "tier_1_core": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tier_2_breadth": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "tier_3_discovery": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          },
+          "required": [
+            "tier_1_core"
+          ]
+        },
+        "path_whitelist_regex": {
+          "type": "string"
+        },
+        "path_blacklist_regex": {
+          "type": "string"
+        },
+        "asset_extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_depth": {
+          "type": "integer",
+          "default": 5
+        },
+        "max_pages": {
+          "type": "integer",
+          "default": 5000
+        }
+      },
+      "required": [
+        "allowed_domains",
+        "seed_urls"
+      ]
+    },
+    "politeness": {
+      "type": "object",
+      "properties": {
+        "min_delay_ms": {
+          "type": "integer",
+          "default": 1200
+        },
+        "max_delay_ms": {
+          "type": "integer",
+          "default": 3500
+        },
+        "jitter_distribution": {
+          "type": "string",
+          "enum": [
+            "gaussian",
+            "uniform",
+            "decorrelated"
+          ],
+          "default": "gaussian"
+        },
+        "max_requests_per_minute": {
+          "type": "integer",
+          "default": 30
+        },
+        "concurrency": {
+          "type": "integer",
+          "default": 2
+        },
+        "burst_limit": {
+          "type": "integer",
+          "default": 5
+        },
+        "respect_retry_after": {
+          "type": "boolean",
+          "default": true
+        },
+        "adaptive_ewma_backoff": {
+          "type": "boolean",
+          "default": true
+        },
+        "consecutive_error_tripwire": {
+          "type": "integer",
+          "default": 3
+        },
+        "cooldown_seconds": {
+          "type": "integer",
+          "default": 60
+        }
+      }
+    },
+    "archival": {
+      "type": "object",
+      "properties": {
+        "operator": {
+          "type": "string",
+          "default": "AegisArchive Operator"
+        },
+        "organization": {
+          "type": "string",
+          "default": "Digital Preservation Research"
+        },
+        "warc_prefix": {
+          "type": "string",
+          "default": "aegis_archive"
+        },
+        "deduplicate_payloads": {
+          "type": "boolean",
+          "default": true
+        },
+        "generate_cdx": {
+          "type": "boolean",
+          "default": true
+        },
+        "enable_opfs_streaming": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "taxonomy": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "keywords": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": [
+          "code",
+          "label",
+          "keywords"
+        ]
+      }
+    }
+  },
+  "required": [
+    "profile_id",
+    "profile_name",
+    "target",
+    "politeness"
+  ]
+}

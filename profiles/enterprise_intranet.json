@@ -1,0 +1,89 @@
+{
+  "profile_id": "enterprise_intranet",
+  "profile_name": "Enterprise Intranet & Portal Preservation",
+  "description": "Low-impact crawl profile designed for internal enterprise portals (SharePoint, Squiz, Confluence).",
+  "target": {
+    "allowed_domains": [
+      "intranet.local"
+    ],
+    "seed_urls": {
+      "tier_1_core": [
+        "https://intranet.local/portal"
+      ],
+      "tier_2_breadth": [
+        "https://intranet.local/documents",
+        "https://intranet.local/policies"
+      ],
+      "tier_3_discovery": [
+        "https://intranet.local/"
+      ]
+    },
+    "path_whitelist_regex": "",
+    "path_blacklist_regex": "/calendar/|/staff-directory|/events/|/search/",
+    "asset_extensions": [
+      ".pdf",
+      ".docx",
+      ".xlsx",
+      ".pptx",
+      ".csv",
+      ".zip"
+    ],
+    "max_depth": 6,
+    "max_pages": 5000
+  },
+  "politeness": {
+    "min_delay_ms": 1500,
+    "max_delay_ms": 4000,
+    "jitter_distribution": "gaussian",
+    "max_requests_per_minute": 20,
+    "concurrency": 1,
+    "burst_limit": 3,
+    "respect_retry_after": true,
+    "adaptive_ewma_backoff": true,
+    "consecutive_error_tripwire": 3,
+    "cooldown_seconds": 90
+  },
+  "archival": {
+    "operator": "Enterprise Records Officer",
+    "organization": "Enterprise Records & Compliance",
+    "warc_prefix": "enterprise_intranet",
+    "deduplicate_payloads": true,
+    "generate_cdx": true,
+    "enable_opfs_streaming": true
+  },
+  "taxonomy": [
+    {
+      "code": "GOV",
+      "label": "Corporate Governance",
+      "keywords": [
+        "governance",
+        "board",
+        "committee",
+        "charter",
+        "delegation"
+      ]
+    },
+    {
+      "code": "OPS",
+      "label": "Operational Protocols",
+      "keywords": [
+        "procedure",
+        "sop",
+        "protocol",
+        "guideline",
+        "workflow"
+      ]
+    },
+    {
+      "code": "AUD",
+      "label": "Risk & Quality Audits",
+      "keywords": [
+        "audit",
+        "risk",
+        "compliance",
+        "incident",
+        "quality"
+      ]
+    }
+  ]
+}

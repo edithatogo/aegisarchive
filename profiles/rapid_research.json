@@ -1,0 +1,65 @@
+{
+  "profile_id": "rapid_research",
+  "profile_name": "Authorized High-Throughput Research",
+  "description": "Fast harvesting profile for authorized research servers, local staging environments, or test mirrors.",
+  "target": {
+    "allowed_domains": [
+      "localhost",
+      "127.0.0.1"
+    ],
+    "seed_urls": {
+      "tier_1_core": [
+        "http://127.0.0.1:8000/"
+      ],
+      "tier_2_breadth": [],
+      "tier_3_discovery": []
+    },
+    "path_whitelist_regex": "",
+    "path_blacklist_regex": "",
+    "asset_extensions": [
+      ".pdf",
+      ".docx",
+      ".xlsx",
+      ".pptx",
+      ".csv",
+      ".zip",
+      ".png",
+      ".jpg"
+    ],
+    "max_depth": 8,
+    "max_pages": 10000
+  },
+  "politeness": {
+    "min_delay_ms": 200,
+    "max_delay_ms": 600,
+    "jitter_distribution": "uniform",
+    "max_requests_per_minute": 180,
+    "concurrency": 4,
+    "burst_limit": 10,
+    "respect_retry_after": true,
+    "adaptive_ewma_backoff": true,
+    "consecutive_error_tripwire": 5,
+    "cooldown_seconds": 30
+  },
+  "archival": {
+    "operator": "Research Analyst",
+    "organization": "Academic / Research Lab",
+    "warc_prefix": "rapid_research",
+    "deduplicate_payloads": true,
+    "generate_cdx": true,
+    "enable_opfs_streaming": true
+  },
+  "taxonomy": [
+    {
+      "code": "RES",
+      "label": "Research Output",
+      "keywords": [
+        "dataset",
+        "paper",
+        "study",
+        "methodology",
+        "results"
+      ]
+    }
+  ]
+}
