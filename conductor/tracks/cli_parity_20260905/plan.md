@@ -467,7 +467,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
 ## Phase 4 — Tests
 
-- [ ] **C6 Tests to add (stdlib only)** *(AC5, AC6; regression for AC1–AC4)*
+- [x] **C6 Tests to add (stdlib only)** *(AC5, AC6; regression for AC1–AC4)*
 
   **Files** (create): `tests/test_cli.py`, `tests/test_politeness.py`, `tests/test_cli_parity.py`. Create `tests/` if absent (other tracks may already have created it; never delete their files).
 
