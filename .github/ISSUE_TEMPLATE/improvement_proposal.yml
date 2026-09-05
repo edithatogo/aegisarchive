@@ -1,0 +1,62 @@
+name: Improvement proposal
+description: Propose a backlog item. Fields map 1:1 to the columns of conductor/backlog.md.
+title: "[PROPOSAL] "
+labels: ["proposal"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals are appended under `## Proposed` in `conductor/backlog.md` by a maintainer. Read `conductor/implementation_contract.md` section 7 first. Do not include private hostnames, organisation names, or credentials.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: priority
+      description: P0 is highest.
+      options:
+        - P0
+        - P1
+        - P2
+        - P3
+      default: 2
+    validations:
+      required: true
+  - type: input
+    id: track_id
+    attributes:
+      label: track_id
+      description: Existing track directory name under conductor/tracks/, or `new` if no track fits.
+      placeholder: warc_interop_20260905
+    validations:
+      required: true
+  - type: textarea
+    id: task
+    attributes:
+      label: task
+      description: One short imperative sentence, plus the evidence (file, line, failing command output) that motivates it.
+    validations:
+      required: true
+  - type: dropdown
+    id: status
+    attributes:
+      label: status
+      options:
+        - open
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: owner
+    attributes:
+      label: owner
+      description: GitHub handle of who intends to implement it, or `-`.
+      placeholder: "-"
+    validations:
+      required: true
+  - type: input
+    id: blocked_by
+    attributes:
+      label: blocked_by
+      description: Comma-separated `track_id/T<n>` references that must land first, or `-`.
+      placeholder: "-"
+    validations:
+      required: true

@@ -1,10 +1,14 @@
 {
   "track_id": "self_improvement_loop_20260905",
   "type": "chore",
-  "status": "in_progress",
+  "status": "completed",
   "created_at": "2026-09-05T04:40:00Z",
-  "updated_at": "2026-09-05T07:50:07Z",
+  "updated_at": "2026-09-05T08:20:00Z",
   "description": "Weekly automated loop that audits documentation claims against code (scripts/claims_audit.py), audits Conductor track hygiene (scripts/track_health.py), commits audits/latest/self-improvement.md and upserts one self-improvement issue; adds the improvement-proposal issue form, the AGENTS.md Improvement Protocol section, and conductor/lessons.md maintenance rules.",
   "evidence_schema": "1.0",
-  "legacy_evidence": "evidence.legacy.jsonl"
+  "legacy_evidence": "evidence.legacy.jsonl",
+  "review": {
+    "status": "pending",
+    "recorded_at": "2026-09-05T08:20:00Z"
+  }
 }

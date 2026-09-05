@@ -355,7 +355,7 @@ TMP=$(mktemp -d) && cp -R conductor "$TMP/" && mkdir -p "$TMP/scripts" && cp scr
 
 ## Phase 2 — Scheduled loop
 
-- [ ] T3 Add the weekly self-improvement workflow. *(AC4, AC5, AC8)*
+- [x] T3 Add the weekly self-improvement workflow. *(AC4, AC5, AC8)*
 
 **Files**: `.github/workflows/self-improvement.yml` (new)
 
@@ -493,7 +493,7 @@ After merge (integrator, not the implementer): trigger `workflow_dispatch` once;
 
 **Do not**: add third-party actions beyond `actions/checkout` and `actions/setup-python`; give the job more permissions than `contents: write` and `issues: write`; run fuzzers or Scorecard here (owned by other tracks).
 
-- [ ] T4 Add the improvement-proposal issue form. *(AC6, AC8)*
+- [x] T4 Add the improvement-proposal issue form. *(AC6, AC8)*
 
 **Files**: `.github/ISSUE_TEMPLATE/improvement_proposal.yml` (new)
 
@@ -583,7 +583,7 @@ EOF
 
 ## Phase 3 — Governance wiring
 
-- [ ] T5 Add the "Improvement Protocol" section to `AGENTS.md` (additive). *(AC7, AC8)*
+- [x] T5 Add the "Improvement Protocol" section to `AGENTS.md` (additive). *(AC7, AC8)*
 
 **Files**: `AGENTS.md` (edit, append only)
 
@@ -631,7 +631,7 @@ grep -c 'conductor/backlog.md' AGENTS.md                         # expected: >= 
 
 **Do not**: reorder, reword, or reformat existing sections; add vendor or product names.
 
-- [ ] T6 Add maintenance rules to `conductor/lessons.md`. *(AC2, AC8)*
+- [x] T6 Add maintenance rules to `conductor/lessons.md`. *(AC2, AC8)*
 
 **Files**: `conductor/lessons.md` (edit, insert only)
 
@@ -667,7 +667,7 @@ python3 scripts/track_health.py | grep -c 'completed without an entry'   # expec
 
 ## Phase 4 — Completion
 
-- [ ] T7 Final validation and completion per implementation contract step 5. *(AC1–AC8)*
+- [x] T7 Final validation and completion per implementation contract step 5. *(AC1–AC8)*
 
 **Files**: `conductor/tracks/self_improvement_loop_20260905/plan.md`, `metadata.json`, `evidence.jsonl`, `index.md`; `conductor/lessons.md` (one appended entry); `conductor/tracks.md` (this track's entry only)
 

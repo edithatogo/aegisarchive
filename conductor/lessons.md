@@ -12,6 +12,14 @@ Entry format (four fields, in this order):
 
 Keep entries generic: no organisation names, hostnames, credentials, or personal blame. Reference commits by short SHA when useful. The weekly self-improvement report (`audits/latest/self-improvement.md`) lists tracks completed without a lesson, so an entry here is part of "done".
 
+Maintenance rules:
+
+1. Append only; entries are never edited or removed. Corrections are new entries beginning "Supersedes <date> — <track_id>:​".
+2. The heading must be exactly `## <YYYY-MM-DD> — <track_id>` so `scripts/track_health.py` can match completed tracks to lessons; use `repo` as the id only for repository-wide observations not tied to a track.
+3. One entry per completed track is mandatory (implementation contract step 5). `scripts/track_health.py` reports completed tracks without an entry as a finding.
+4. Planners read this file before writing a new `spec.md` and cite the entry they are acting on in the spec's "Authoritative inputs".
+5. Entries are short: two bullets, under 120 words. Link evidence by path or short SHA instead of pasting logs.
+
 ---
 
 ## 2026-09-05 — repo
@@ -72,3 +80,7 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 ## 2026-09-05 — ci_cd_repo_hardening
 - **Surprise**: original completion prose did not include a review receipt.
 - **Change for the next planner**: retain source-to-test coverage and a separate archive decision; see this track review.md.
+
+## 2026-09-05 — self_improvement_loop_20260905
+- **Surprise**: The governance protocol was partly seeded before its scheduled workflow and issue form, so the track could appear active while its audit loop was absent.
+- **Change for the next planner**: Treat scheduled automation, issue intake, governance text, and track-health evidence as one acceptance slice.
