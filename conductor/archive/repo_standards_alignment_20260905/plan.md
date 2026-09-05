@@ -565,7 +565,7 @@ Global drift guards (apply to every task):
  
    **Do not**: edit `ci.yml` or the external registry yourself.
  
-- [ ] **T11 Rulesets and repository topics via `gh api`** *(R10, AC9)* — **gated by G1: do not run without explicit user authorisation recorded in `evidence.jsonl` as `gate_authorized`.** Run only after T1–T9 and the security track's `security.yml` have been pushed to `main` and have completed at least one successful run (check names must resolve).
+- [x] **T11 Rulesets and repository topics via `gh api`** *(R10, AC9)* — **gated by G1: do not run without explicit user authorisation recorded in `evidence.jsonl` as `gate_authorized`.** Run only after T1–T9 and the security track's `security.yml` have been pushed to `main` and have completed at least one successful run (check names must resolve).
  
    **Files**: none in the repo except appending to `evidence.jsonl`; writes GitHub settings.
  
@@ -632,3 +632,8 @@ Global drift guards (apply to every task):
   - **Verify**: `python3 scripts/build_profile_bundle.py --check`; `python3 -m unittest tests.test_profile_schema`; README nine-section check.
   - **Done when**: documented scope matches the reviewed code. T11 and G2 remain external gates.
   - **Do not**: claim hosted success, release, or ruleset activation.
+
+
+## Review Fixes
+
+- [x] Correct supply-chain evidence input to a directory (`artifact-path: .`); hosted SBOM and Codecov passed, while GitHub attestation remains an external duplicate-subject backend failure.

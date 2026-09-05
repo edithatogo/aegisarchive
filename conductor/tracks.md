@@ -62,9 +62,9 @@
   *Link: [./archive/cli_parity_20260905/](./archive/cli_parity_20260905/)*
   *Case-insensitive headers, query-string fidelity, stdlib politeness port, set-based queue, shared loopback fixture.*
 
-- [~] **Track: Repository Standards Alignment**
-  *Status: In Progress — acceptance gate pending*
-  *Link: [./tracks/repo_standards_alignment_20260905/](./tracks/repo_standards_alignment_20260905/)*
+- [x] **Track: Repository Standards Alignment**
+  *Status: Completed — external attestation backend boundary recorded*
+  *Link: [./archive/repo_standards_alignment_20260905/index.md](./archive/repo_standards_alignment_20260905/index.md)*
   *Renovate, CITATION.cff, CalVer changelog, security-insights, Scorecard/zizmor copies, thin standards CI, pyproject with zero runtime deps, README nine-section contract.*
 
 - [x] **Track: Security Gates & Fuzzing**
