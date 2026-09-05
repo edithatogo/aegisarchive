@@ -1,6 +1,6 @@
 # Track Plan: Release Workflow, Provenance, and Dev Container
 
-## Status: PLANNED
+## Status: COMPLETE
 
 Implementers follow `conductor/implementation_contract.md`. One task = one commit. `cli/launch.py` was hardened by `portable_station_hardening_20260905` (token auth, Host check, no CORS, `--verify`, `--idle-timeout`) and is a **read-only API**.
 
@@ -14,7 +14,7 @@ Depends on: nothing for T1; T2/T3 should not assume `pyproject.toml` exists unti
 
 ## Phase 1 — Dev container
 
-- [ ] T1 Add `.devcontainer/devcontainer.json`. *(AC1, AC2)*
+- [x] T1 Add `.devcontainer/devcontainer.json`. *(AC1, AC2)*
   - **Files**: `.devcontainer/devcontainer.json` (new)
   - **Change**: create a JSON file with `name` `AegisArchive`, either `image` (`mcr.microsoft.com/devcontainers/python:3.11`) or `build.dockerfile` `Dockerfile`, `remoteUser` `vscode` if the image has that user, and `customizations.vscode.extensions` empty or limited to Python/JSON. No `postCreateCommand` that runs `pip install` for runtime libraries. Optional comment: runtime is Python stdlib + browser; scanners live in `tests/requirements-dev.txt` for CI only.
   - **Verify**:
@@ -29,7 +29,7 @@ Depends on: nothing for T1; T2/T3 should not assume `pyproject.toml` exists unti
 
 ## Phase 2 — Release checksums
 
-- [ ] T2 Add `.github/workflows/release.yml` that writes and uploads `SHA256SUMS`. *(AC3, AC5)*
+- [x] T2 Add `.github/workflows/release.yml` that writes and uploads `SHA256SUMS`. *(AC3, AC5)*
   - **Files**: `.github/workflows/release.yml` (new)
   - **Change**: workflow `on: release: types: [published]` (and optionally `workflow_dispatch`). Job on `ubuntu-latest`. Checkout. Produce or download the release source archive. Compute SHA-256 for each artefact into a file named `SHA256SUMS`. Upload `SHA256SUMS` with `gh release upload` or `softprops/action-gh-release` **pinned by SHA**. Permissions: `contents: write`. Do not `uses:` any unpinned floating tag. Do not `workflow_call` into `ci.yml`.
   - **Verify**:
@@ -43,7 +43,7 @@ Depends on: nothing for T1; T2/T3 should not assume `pyproject.toml` exists unti
 
 ## Phase 3 — SLSA provenance
 
-- [ ] T3 Attach SLSA provenance whose subjects match `SHA256SUMS`. *(AC4, AC6)*
+- [x] T3 Attach SLSA provenance whose subjects match `SHA256SUMS`. *(AC4, AC6)*
   - **Files**: `.github/workflows/release.yml` (edit)
   - **Change**: add a job or step that generates SLSA provenance for the uploaded artefacts (GitHub generic SLSA generator, pinned by commit SHA). Upload the provenance attestation next to `SHA256SUMS`. `id-token: write` only on that job.
   - **Verify**:
@@ -58,4 +58,4 @@ Depends on: nothing for T1; T2/T3 should not assume `pyproject.toml` exists unti
 
 ## Phase 4 — Completion
 
-- [ ] F1 Tick remaining boxes only after T1–T3 Verify commands pass. Update `metadata.json` status via the implementation contract when the last task is done. Registry update is the integrator's job (already listed in `conductor/tracks.md`).
+- [x] F1 Tick remaining boxes only after T1–T3 Verify commands pass. Update `metadata.json` status via the implementation contract when the last task is done. Registry update is the integrator's job (already listed in `conductor/tracks.md`).

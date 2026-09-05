@@ -1,9 +1,9 @@
 {
   "track_id": "release_and_packaging_20260905",
   "type": "chore",
-  "status": "new",
+  "status": "completed",
   "created_at": "2026-09-05T07:50:07Z",
-  "updated_at": "2026-09-05T07:50:07Z",
+  "updated_at": "2026-09-05T12:29:54Z",
   "description": "Planned packaging and release artefacts: VS Code/Codespaces .devcontainer with Python 3 stdlib-only runtime, GitHub release.yml that attaches SHA256SUMS for tagged archives, and SLSA provenance for the release artefacts. Does not rewrite README, CONTRIBUTING, or pyproject.toml (owned by sibling tracks).",
   "evidence_schema": "1.0",
   "legacy_evidence": "evidence.legacy.jsonl"
