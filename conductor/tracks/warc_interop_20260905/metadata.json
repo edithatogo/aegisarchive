@@ -1,9 +1,9 @@
 {
   "track_id": "warc_interop_20260905",
   "type": "fix",
-  "status": "planned",
+  "status": "in_progress",
   "created_at": "2026-09-05T04:35:00Z",
-  "updated_at": "2026-09-05T04:35:00Z",
+  "updated_at": "2026-09-05T05:52:00Z",
   "description": "WARC/CDX interoperability and integrity fixes across web/lib/warc_writer.js, web/lib/warc_reader.js, cli/aegis_cli.py, cli/warc_verify.py and mcp/server.py: strip encoding/framing headers and rewrite Content-Length to the stored payload, emit the CDX record-length field S (11 fields) and fix reader/MCP indices, throw instead of mislabelled FNV fallback digests, add WARC-Refers-To on revisit records, resolve revisit records in the reader, implement warc_verify --cdx and .warc.gz input, and add synthesised request records with WARC-Concurrent-To; plus stdlib-only tests.",
   "evidence_schema": "1.0"
 }
