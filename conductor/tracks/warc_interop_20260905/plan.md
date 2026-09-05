@@ -11,7 +11,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 ## Phase 2 — Writers
 
-- [ ] **W1 Strip hop-by-hop/encoding headers, rewrite Content-Length** *(AC1)*
+- [x] **W1 Strip hop-by-hop/encoding headers, rewrite Content-Length** *(AC1)*
 
   **Files**: `web/lib/warc_writer.js`, `cli/aegis_cli.py`.
 
@@ -82,7 +82,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
   **Do not**: change WARC-level `Content-Length` computation (it already uses the stored bytes); do not lowercase or re-case header names; do not touch `warc_reader.js`.
 
-- [ ] **W2 CDX record length field `S`** *(AC2)*
+- [x] **W2 CDX record length field `S`** *(AC2)*
 
   **Files**: `web/lib/warc_writer.js`, `cli/aegis_cli.py`, `web/lib/warc_reader.js`, `mcp/server.py`.
 
@@ -156,7 +156,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
   **Do not**: change the CDX header string; do not reorder other fields; do not add SURT changes.
 
-- [ ] **W3 Fail closed when WebCrypto is missing** *(AC3)*
+- [x] **W3 Fail closed when WebCrypto is missing** *(AC3)*
 
   **Files**: `web/lib/warc_writer.js` only.
 
@@ -192,7 +192,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
   **Do not**: add a JS SHA-256 implementation; do not change `generateUUID`'s fallback.
 
-- [ ] **W4 `WARC-Refers-To` on revisit records** *(AC4)*
+- [x] **W4 `WARC-Refers-To` on revisit records** *(AC4)*
 
   **Files**: `web/lib/warc_writer.js`, `cli/aegis_cli.py`.
 

@@ -45,7 +45,7 @@ def search_cdx(query, cdx_path):
             if line.startswith(" CDX"):
                 continue
             parts = line.strip().split()
-            if len(parts) >= 10:
+            if len(parts) >= 11:
                 url = parts[2]
                 mime = parts[3]
                 status = parts[4]
@@ -54,8 +54,9 @@ def search_cdx(query, cdx_path):
                         "url": url,
                         "mime": mime,
                         "status": status,
-                        "offset": parts[8],
-                        "filename": parts[9]
+                        "length": parts[8],
+                        "offset": parts[9],
+                        "filename": parts[10]
                     })
     return {"matches": matches, "total_matches": len(matches)}
 

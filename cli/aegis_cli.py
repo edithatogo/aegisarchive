@@ -88,9 +88,12 @@ class PythonWarcWriter:
         digest = hashlib.sha256(body_bytes).hexdigest()
         is_revisit = (digest in self.payload_map and len(body_bytes) > 512)
 
+        omit = {"content-encoding", "transfer-encoding", "content-length"}
         http_header_lines = [f"HTTP/1.1 {status} Response"]
         for k, v in headers_dict.items():
-            http_header_lines.append(f"{k}: {v}")
+            if k.lower() not in omit:
+                http_header_lines.append(f"{k}: {v}")
+        http_header_lines.append(f"Content-Length: {len(body_bytes)}")
         http_headers_block = ("\r\n".join(http_header_lines) + "\r\n\r\n").encode('utf-8')
 
         rec_offset = self.current_offset
@@ -103,6 +106,7 @@ class PythonWarcWriter:
                 f"WARC-Target-URI: {url}\r\n"
                 f"WARC-Date: {warc_date}\r\n"
                 f"WARC-Record-ID: {rec_id}\r\n"
+                f"WARC-Refers-To: {orig['record_id']}\r\n"
                 f"WARC-Refers-To-Target-URI: {orig['url']}\r\n"
                 f"WARC-Refers-To-Date: {orig['date']}\r\n"
                 f"WARC-Profile: http://netpreserve.org/warc/1.1/revisit/identical-payload-digest\r\n"
@@ -124,7 +128,7 @@ class PythonWarcWriter:
                 f"Content-Length: {payload_len}\r\n\r\n"
             ).encode('utf-8')
             full_block = warc_headers + http_headers_block + body_bytes + b"\r\n\r\n"
-            self.payload_map[digest] = {"url": url, "date": warc_date}
+            self.payload_map[digest] = {"url": url, "date": warc_date, "record_id": rec_id}
 
         self.file.write(full_block)
         self.current_offset += len(full_block)
@@ -132,7 +136,7 @@ class PythonWarcWriter:
         # Write CDX
         surt = to_surt(url)
         mime = headers_dict.get('Content-Type', 'application/octet-stream').split(';')[0].strip()
-        cdx_line = f"{surt} {cdx_date} {url} {mime} {status} {digest} - - {rec_offset} {os.path.basename(self.filepath)}\n"
+        cdx_line = f"{surt} {cdx_date} {url} {mime} {status} {digest} - - {len(full_block)} {rec_offset} {os.path.basename(self.filepath)}\n"
         self.cdx_file.write(cdx_line)
 
         return {"digest": digest, "is_revisit": is_revisit}

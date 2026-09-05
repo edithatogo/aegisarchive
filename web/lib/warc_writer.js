@@ -56,13 +56,8 @@
       const hashArray = Array.from(new Uint8Array(hashBuffer));
       return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
     }
-    // Fallback: fast FNV-1a pseudo-digest if WebCrypto is absent (rare in modern browsers)
-    let h1 = 0x811c9dc5;
-    for (let i = 0; i < uint8Array.length; i++) {
-      h1 ^= uint8Array[i];
-      h1 = Math.imul(h1, 0x01000193);
-    }
-    return (h1 >>> 0).toString(16).padStart(64, '0');
+    // No silent downgrade: a non-SHA-256 value labelled "sha256:" is a false integrity claim (Dc).
+    throw new Error('WebCrypto SHA-256 is unavailable; refusing to write an unverifiable digest');
   }
 
   class WarcWriter {
@@ -140,16 +135,18 @@
       const existing = this.deduplicate ? this.payloadMap.get(payloadDigest) : null;
       const isRevisit = Boolean(existing && payloadUint8Array.length > 512);
 
-      // Reconstruct HTTP response header block
+      // Reconstruct HTTP response header block. The stored body is the *decoded* payload, so
+      // encoding/framing headers from the wire must not be copied (Da).
+      const OMIT_HEADERS = new Set(['content-encoding', 'transfer-encoding', 'content-length']);
       let httpHeaderBlock = `HTTP/1.1 ${status} ${statusText}\r\n`;
       if (response.headers && typeof response.headers.forEach === 'function') {
         response.headers.forEach((val, key) => {
-          httpHeaderBlock += `${key}: ${val}\r\n`;
+          if (!OMIT_HEADERS.has(String(key).toLowerCase())) httpHeaderBlock += `${key}: ${val}\r\n`;
         });
       } else {
         httpHeaderBlock += `Content-Type: ${contentType}\r\n`;
-        httpHeaderBlock += `Content-Length: ${payloadUint8Array.length}\r\n`;
       }
+      httpHeaderBlock += `Content-Length: ${payloadUint8Array.length}\r\n`;
       httpHeaderBlock += `\r\n`;
 
       const httpHeaderBytes = new TextEncoder().encode(httpHeaderBlock);
@@ -165,6 +162,7 @@
           `WARC-Target-URI: ${url}`,
           `WARC-Date: ${warcDate}`,
           `WARC-Record-ID: ${recordId}`,
+          `WARC-Refers-To: ${existing.recordId}`,
           `WARC-Refers-To-Target-URI: ${existing.url}`,
           `WARC-Refers-To-Date: ${existing.date}`,
           `WARC-Profile: http://netpreserve.org/warc/1.1/revisit/identical-payload-digest`,
@@ -216,7 +214,7 @@
       const cleanMime = (contentType.split(';')[0] || 'application/octet-stream').trim();
       const redirect = '-';
       const robotFlags = '-';
-      const cdxLine = `${surt} ${cdxDate} ${url} ${cleanMime} ${status} ${payloadDigest} ${redirect} ${robotFlags} ${recordOffset} ${this.filename}`;
+      const cdxLine = `${surt} ${cdxDate} ${url} ${cleanMime} ${status} ${payloadDigest} ${redirect} ${robotFlags} ${recordBytes.length} ${recordOffset} ${this.filename}`;
       this.cdxLines.push(cdxLine);
 
       return {
@@ -251,5 +249,6 @@
     }
   }
 
+  WarcWriter.sha256Hex = sha256Hex;
   return WarcWriter;
 }));

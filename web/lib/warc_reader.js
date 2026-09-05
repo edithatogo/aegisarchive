@@ -33,7 +33,7 @@
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('CDX') || trimmed.startsWith(' ')) continue;
         const parts = trimmed.split(/\s+/);
-        if (parts.length >= 10) {
+        if (parts.length >= 11) {
           entries.push({
             surt: parts[0],
             timestamp: parts[1],
@@ -41,8 +41,9 @@
             mimeType: parts[3],
             status: parseInt(parts[4], 10),
             digest: parts[5],
-            offset: parseInt(parts[8], 10),
-            filename: parts[9]
+            length: parseInt(parts[8], 10),
+            offset: parseInt(parts[9], 10),
+            filename: parts[10]
           });
         }
       }
