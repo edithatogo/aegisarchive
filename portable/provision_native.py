@@ -82,6 +82,10 @@ def asset_record(identifier, directory, entrypoint, license_file, license_id, so
     archive.parent.mkdir(exist_ok=True)
     with tarfile.open(archive, 'w', dereference=True) as bundle:
         for item in sorted(directory.rglob('*')):
+            if not item.resolve(strict=True).is_relative_to(directory.resolve()):
+                raise ValueError('Native asset link escapes source: '+str(item))
+            if item.is_symlink() and item.is_dir():
+                raise ValueError('Native directory link must be materialized before packaging')
             if item.is_file() and not any(p.startswith('._') or p == '__pycache__' for p in item.relative_to(directory).parts):
                 info = bundle.gettarinfo(str(item), item.relative_to(directory).as_posix())
                 info.uid = info.gid = 0
@@ -204,7 +208,7 @@ def retain_linux_libraries(root, receipts):
 
 def qualify(bundle, receipt, work, system):
     python=bundle/'runtime/python'/('python.exe' if system=='Windows' else 'bin/python3')
-    command=[str(python),'-I','-B',str(bundle/'app/portable/native_qualification.py'),str(bundle),str(receipt)]
+    command=[str(python),'-I','-B','-X','utf8',str(bundle/'app/portable/native_qualification.py'),str(bundle),str(receipt)]
     env=dict(os.environ)
     for key in tuple(env):
         if key.startswith('PYTHON'):env.pop(key)

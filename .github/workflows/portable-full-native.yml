@@ -36,3 +36,4 @@ jobs:
             ${{ runner.temp }}/aegis-full-native/speech/*.log
           if-no-files-found: warn
           retention-days: 1
+          compression-level: 0
