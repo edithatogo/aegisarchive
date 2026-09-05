@@ -1,7 +1,7 @@
 {
   "profile_id": "enterprise_intranet",
   "profile_name": "Enterprise Intranet & Portal Preservation",
-  "description": "Low-impact crawl profile designed for internal enterprise portals (SharePoint, Squiz, Confluence).",
+  "description": "Low-impact crawl profile designed for internal enterprise portals (commercial CMS and collaboration platforms).",
   "target": {
     "allowed_domains": [
       "intranet.local"

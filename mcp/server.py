@@ -2,7 +2,7 @@
 """
 AegisArchive - Model Context Protocol (MCP) Server
 Zero external dependencies (Python 3 standard library only).
-Allows Claude Desktop, Cursor, Antigravity, and AI agents to invoke AegisArchive tools.
+Allows MCP-compatible AI agents and IDEs to invoke AegisArchive tools.
 
 Licensed under the Apache License, Version 2.0.
 """

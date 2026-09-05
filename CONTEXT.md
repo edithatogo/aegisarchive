@@ -8,7 +8,7 @@ AegisArchive provides an enterprise-grade, zero-install, server-preserving web a
   * `index.html`: Main harvesting console, live telemetry dashboard, and profile editor.
   * `viewer.html`: In-browser offline WARC replay viewer.
   * `lib/core_crawler.js`: Multi-tier priority BFS queue, URL canonicalization, and crawler trap detection.
-  * `lib/politeness_engine.js`: Token bucket rate limiter, AWS decorrelated full jitter, EWMA latency tracking, and circuit breaker.
+  * `lib/politeness_engine.js`: Token bucket rate limiter, decorrelated full-jitter exponential back-off, EWMA latency tracking, and circuit breaker.
   * `lib/warc_writer.js`: ISO 28500 WARC/1.1 and CDX-11 serializer with SHA-256 revisit deduplication.
   * `lib/warc_reader.js`: In-browser WARC parser and link rewriter for replay viewer.
   * `lib/opfs_streamer.js`: Origin Private File System disk streaming engine.

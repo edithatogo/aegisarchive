@@ -21,5 +21,5 @@ A clear and concise description of what you expected to happen.
 
 **Environment (please complete the following information):**
  - OS: [e.g. macOS Sonoma, Windows 11, Ubuntu 24.04]
- - Browser: [e.g. Chrome, Edge, Safari, Firefox]
+ - Browser: [e.g. browser name and version]
  - Python Version: [e.g. Python 3.11.8 or Embedded]

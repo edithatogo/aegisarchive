@@ -1,4 +1,4 @@
-# GitHub Copilot & Cursor Rules for AegisArchive
+# AI Coding Agent Rules for AegisArchive
 
 - Always preserve the zero-install property. Do not import external packages into `cli/` or `web/`.
 - All web frontend code must be compatible with vanilla JavaScript (ES6+), HTML5, and CSS3 without bundling steps (`webpack`, `vite`, `npm`).

@@ -3,7 +3,7 @@
  * 
  * Capabilities:
  * - Token-Bucket & Leaky-Bucket Rate Limiting with Host Isolation
- * - AWS Decorrelated Full Jitter Exponential Back-Off
+ * - Decorrelated Full Jitter Exponential Back-Off
  * - Real-Time EWMA Latency Dynamic Adaptation
  * - Autonomous Circuit Breaker (Nominal -> Throttled -> Tripped -> Half-Open)
  * - RFC 9110 / RFC 7231 Compliant Retry-After Header Handling (Delta & Date)
@@ -111,7 +111,7 @@
     }
 
     /**
-     * Decorrelated Full Jitter back-off calculation (AWS standard).
+     * Decorrelated Full Jitter back-off calculation (decorrelated jitter scheme).
      * Prevents thundering-herd retry storms against recovering servers.
      */
     calculateDecorrelatedBackoff() {

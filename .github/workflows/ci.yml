@@ -68,7 +68,7 @@ jobs:
       - name: Strict Abstraction & Leak Prevention Gate
         run: |
           echo "Auditing codebase for private or organization-specific strings..."
-          FORBIDDEN_PATTERN=$(echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfHF1ZWVuc2xhbmR8aGVhbHRoXC5xbGR8Z2xjfHBzcXN8bnNxaHM=" | base64 -d 2>/dev/null || echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfHF1ZWVuc2xhbmR8aGVhbHRoXC5xbGR8Z2xjfHBzcXN8bnNxaHM=" | base64 --decode)
+          FORBIDDEN_PATTERN=$(echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfHF1ZWVuc2xhbmR8aGVhbHRoXC5xbGR8Z2xjfHBzcXN8bnNxaHN8XGIoc3F1aXp8c2hhcmVwb2ludHxjb25mbHVlbmNlfGh0dHJhY2t8d2F5YmFja3xwb3J0YWJsZWFwcHN8bWluZ2l0fGNtZGVyfG9wZW5haXxhbnRocm9waWN8YW50aWdyYXZpdHl8Y2xhdWRlfGF3cylcYg==" | base64 -d 2>/dev/null || echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfHF1ZWVuc2xhbmR8aGVhbHRoXC5xbGR8Z2xjfHBzcXN8bnNxaHN8XGIoc3F1aXp8c2hhcmVwb2ludHxjb25mbHVlbmNlfGh0dHJhY2t8d2F5YmFja3xwb3J0YWJsZWFwcHN8bWluZ2l0fGNtZGVyfG9wZW5haXxhbnRocm9waWN8YW50aWdyYXZpdHl8Y2xhdWRlfGF3cylcYg==" | base64 --decode)
           MATCHES=$(grep -rnI -E "$FORBIDDEN_PATTERN" --exclude-dir=".git" . || true)
           if [ -n "$MATCHES" ]; then
             echo "ERROR: Forbidden private identifiers detected in codebase:"
