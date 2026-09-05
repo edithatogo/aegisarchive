@@ -79,11 +79,30 @@ class PythonWarcWriter:
         self.file.write(block)
         self.current_offset += len(block)
 
-    def write_response(self, url, status, headers_dict, body_bytes):
+    def _write_request(self, url, request_headers, concurrent_to, warc_date):
+        rec_id = f"<urn:uuid:{uuid.uuid4()}>"
+        u = urllib.parse.urlparse(url)
+        path = (u.path or "/") + (f"?{u.query}" if u.query else "")
+        lines = [f"GET {path} HTTP/1.1", f"Host: {u.netloc}"] + [f"{k}: {v}" for k, v in request_headers.items()]
+        body = ("\r\n".join(lines) + "\r\n\r\n").encode("utf-8")
+        headers = (
+            f"WARC/1.1\r\nWARC-Type: request\r\nWARC-Target-URI: {url}\r\nWARC-Date: {warc_date}\r\n"
+            f"WARC-Record-ID: {rec_id}\r\nWARC-Concurrent-To: {concurrent_to}\r\n"
+            f"Content-Type: application/http; msgtype=request\r\nContent-Length: {len(body)}\r\n\r\n"
+        ).encode("utf-8")
+        block = headers + body + b"\r\n\r\n"
+        self.file.write(block)
+        self.current_offset += len(block)
+        return rec_id
+
+    def write_response(self, url, status, headers_dict, body_bytes, request_headers=None):
         rec_id = f"<urn:uuid:{uuid.uuid4()}>"
         now = datetime.now(timezone.utc)
         warc_date = format_warc_date(now)
         cdx_date = format_cdx_date(now)
+
+        req_id = self._write_request(url, request_headers, rec_id, warc_date) if request_headers is not None else None
+        concurrent = f"WARC-Concurrent-To: {req_id}\r\n" if req_id else ""
 
         digest = hashlib.sha256(body_bytes).hexdigest()
         is_revisit = (digest in self.payload_map and len(body_bytes) > 512)
@@ -106,6 +125,7 @@ class PythonWarcWriter:
                 f"WARC-Target-URI: {url}\r\n"
                 f"WARC-Date: {warc_date}\r\n"
                 f"WARC-Record-ID: {rec_id}\r\n"
+                f"{concurrent}"
                 f"WARC-Refers-To: {orig['record_id']}\r\n"
                 f"WARC-Refers-To-Target-URI: {orig['url']}\r\n"
                 f"WARC-Refers-To-Date: {orig['date']}\r\n"
@@ -123,6 +143,7 @@ class PythonWarcWriter:
                 f"WARC-Target-URI: {url}\r\n"
                 f"WARC-Date: {warc_date}\r\n"
                 f"WARC-Record-ID: {rec_id}\r\n"
+                f"{concurrent}"
                 f"WARC-Payload-Digest: sha256:{digest}\r\n"
                 f"Content-Type: application/http; msgtype=response\r\n"
                 f"Content-Length: {payload_len}\r\n\r\n"
@@ -200,7 +221,7 @@ def main():
                 body = resp.read()
                 headers = dict(resp.headers)
                 status = resp.status
-                writer.write_response(url, status, headers, body)
+                writer.write_response(url, status, headers, body, request_headers=dict(req.header_items()))
                 print(f"[{status}] {url} ({len(body)} bytes, {elapsed_ms} ms)")
 
                 # Extract links if HTML and within depth

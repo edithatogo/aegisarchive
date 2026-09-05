@@ -27,6 +27,11 @@
     '_ga', '_gl', 'msclkid', 'mc_cid', 'mc_eid'
   ]);
 
+  const REQUEST_HEADERS = {
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8',
+    'X-Preservation-Agent': 'AegisArchive/1.0'
+  };
+
   class CoreCrawler {
     constructor(profile = {}, callbacks = {}) {
       this.profile = profile;
@@ -247,10 +252,7 @@
       try {
         const resp = await fetch(url, {
           method: 'GET',
-          headers: {
-            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8',
-            'X-Preservation-Agent': 'AegisArchive/1.0'
-          },
+          headers: REQUEST_HEADERS,
           cache: 'no-store'
         });
 
@@ -283,7 +285,7 @@
         const uint8 = new Uint8Array(arrayBuffer);
 
         // Append to WARC / CDX writer (with automatic SHA-256 deduplication revisit records)
-        const warcResult = await this.warc.addResponseRecord(url, resp, uint8);
+        const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: { method: 'GET', headers: REQUEST_HEADERS } });
 
         this.auditLedger.push({
           url,

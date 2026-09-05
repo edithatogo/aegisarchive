@@ -284,7 +284,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 ## Phase 4 — Verifier and request records
 
-- [ ] **W6 Request records with `WARC-Concurrent-To`** *(AC7)*
+- [x] **W6 Request records with `WARC-Concurrent-To`** *(AC7)*
 
   **Files**: `web/lib/warc_writer.js`, `web/lib/core_crawler.js`, `cli/aegis_cli.py`. Requires W2 (offset semantics) and W4.
 
@@ -378,7 +378,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
   **Do not**: write CDX lines for request records; do not record cookies or authorization headers (none are sent by either client; keep it that way); do not change the response `WARC-Record-ID`.
 
-- [ ] **W7a Verifier: `.warc.gz` input, record spans, request count** *(AC6, part 1)*
+- [x] **W7a Verifier: `.warc.gz` input, record spans, request count** *(AC6, part 1)*
 
   **Files**: `cli/warc_verify.py` only.
 
@@ -424,7 +424,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
   **Do not**: decompress to disk; do not change the digest check; do not implement CDX checking yet (W7b).
 
-- [ ] **W7b Verifier: implement `--cdx`** *(AC6, part 2)*
+- [x] **W7b Verifier: implement `--cdx`** *(AC6, part 2)*
 
   **Files**: `cli/warc_verify.py` only. Requires W7a and W2 (11-field CDX).
 

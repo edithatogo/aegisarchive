@@ -117,11 +117,35 @@
       this.currentOffset += fullRecord.length;
     }
 
+    /** Writes a synthesised WARC request record (Dg); returns its record id. */
+    addRequestRecord(url, request, concurrentToId, warcDate) {
+      const recordId = `<urn:uuid:${generateUUID()}>`;
+      const u = new URL(url);
+      let block = `${(request.method || 'GET').toUpperCase()} ${u.pathname}${u.search} HTTP/1.1\r\nHost: ${u.host}\r\n`;
+      for (const [k, v] of Object.entries(request.headers || {})) block += `${k}: ${v}\r\n`;
+      block += '\r\n';
+      const bodyBytes = new TextEncoder().encode(block);
+      const headerBytes = new TextEncoder().encode([
+        'WARC/1.1', 'WARC-Type: request', `WARC-Target-URI: ${url}`, `WARC-Date: ${warcDate}`,
+        `WARC-Record-ID: ${recordId}`, `WARC-Concurrent-To: ${concurrentToId}`,
+        'Content-Type: application/http; msgtype=request', `Content-Length: ${bodyBytes.length}`
+      ].join('\r\n') + '\r\n\r\n');
+      const trailing = new TextEncoder().encode('\r\n\r\n');
+      const rec = new Uint8Array(headerBytes.length + bodyBytes.length + trailing.length);
+      rec.set(headerBytes, 0); rec.set(bodyBytes, headerBytes.length); rec.set(trailing, headerBytes.length + bodyBytes.length);
+      this.records.push(rec);
+      this.currentOffset += rec.length;
+      return recordId;
+    }
+
     async addResponseRecord(url, response, payloadUint8Array, options = {}) {
       const recordId = `<urn:uuid:${generateUUID()}>`;
       const dateObj = new Date();
       const warcDate = formatWarcDate(dateObj);
       const cdxDate = formatCdxDate(dateObj);
+
+      const requestRecordId = options.request ? this.addRequestRecord(url, options.request, recordId, warcDate) : null;
+      const concurrentLine = requestRecordId ? [`WARC-Concurrent-To: ${requestRecordId}`] : [];
 
       const status = response.status || 200;
       const statusText = response.statusText || (status === 200 ? 'OK' : 'Response');
@@ -162,6 +186,7 @@
           `WARC-Target-URI: ${url}`,
           `WARC-Date: ${warcDate}`,
           `WARC-Record-ID: ${recordId}`,
+          ...concurrentLine,
           `WARC-Refers-To: ${existing.recordId}`,
           `WARC-Refers-To-Target-URI: ${existing.url}`,
           `WARC-Refers-To-Date: ${existing.date}`,
@@ -187,6 +212,7 @@
           `WARC-Target-URI: ${url}`,
           `WARC-Date: ${warcDate}`,
           `WARC-Record-ID: ${recordId}`,
+          ...concurrentLine,
           `WARC-Payload-Digest: ${formattedDigest}`,
           `Content-Type: application/http; msgtype=response`,
           `Content-Length: ${httpPayloadLength}`
