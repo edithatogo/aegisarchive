@@ -223,7 +223,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 ## Phase 3 — Reader
 
-- [ ] **W5 Resolve revisit records in `WarcReader`** *(AC5)*
+- [x] **W5 Resolve revisit records in `WarcReader`** *(AC5)*
 
   **Files**: `web/lib/warc_reader.js` only. Requires W4 (for `WARC-Refers-To`, used only as a comment reference; resolution uses `WARC-Refers-To-Target-URI` and digest).
 

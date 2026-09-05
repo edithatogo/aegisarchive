@@ -19,6 +19,7 @@
   class WarcReader {
     constructor() {
       this.recordsByUrl = new Map(); // normalizedUrl -> { url, status, headers, bodyBytes, mimeType }
+      this.recordsByDigest = new Map(); // WARC-Payload-Digest -> record
       this.warcInfo = null;
       this.urlList = [];
     }
@@ -98,8 +99,28 @@
             };
 
             this.recordsByUrl.set(this.normalizeUrl(targetUri), record);
+            record.isRevisit = false;
+            if (warcHeaders['warc-payload-digest']) this.recordsByDigest.set(warcHeaders['warc-payload-digest'], record);
             this.urlList.push(targetUri);
           }
+        } else if (recordType === 'revisit' && targetUri) {
+          const http = this.parseHttpBlock(uint8, contentStart, recordEnd, textDecoder);
+          const refUri = warcHeaders['warc-refers-to-target-uri'];
+          const referred = (refUri && this.recordsByUrl.get(this.normalizeUrl(refUri)))
+            || this.recordsByDigest.get(warcHeaders['warc-payload-digest']) || null;
+          const headers = http ? http.headers : {};
+          const contentType = headers['content-type'] || (referred ? referred.mimeType : 'application/octet-stream');
+          this.recordsByUrl.set(this.normalizeUrl(targetUri), {
+            url: targetUri,
+            status: http ? http.status : 200,
+            headers,
+            bodyBytes: referred ? referred.bodyBytes : new Uint8Array(0),
+            mimeType: contentType.split(';')[0].trim().toLowerCase(),
+            isRevisit: true,
+            refersTo: referred ? referred.url : (refUri || null),
+            unresolved: !referred
+          });
+          this.urlList.push(targetUri);
         }
 
         // Advance to next record (skip trailing \r\n\r\n)
@@ -158,6 +179,19 @@
         }
       }
       return headers;
+    }
+
+    /** Parses the HTTP header block at contentStart; returns { status, headers, bodyStart } or null. */
+    parseHttpBlock(uint8, contentStart, recordEnd, textDecoder) {
+      const httpHeaderEnd = this.findSequence(uint8, [13, 10, 13, 10], contentStart);
+      if (httpHeaderEnd === -1 || httpHeaderEnd > recordEnd) return null;
+      const httpHeaderStr = textDecoder.decode(uint8.subarray(contentStart, httpHeaderEnd));
+      const statusMatch = (httpHeaderStr.split('\r\n')[0] || '').match(/HTTP\/\S+\s+(\d+)/);
+      return {
+        status: statusMatch ? parseInt(statusMatch[1], 10) : 200,
+        headers: this.parseHeaders(httpHeaderStr),
+        bodyStart: httpHeaderEnd + 4
+      };
     }
 
     /**
