@@ -44,22 +44,22 @@
 
 - [x] **Track: Politeness Engine & Crawler Correctness**
   *Status: Completed* | *Archived*
-  *Link: [./archive/engine_correctness_20260905/](./archive/engine_correctness_20260905/)*
+  *Link: [./archive/engine_correctness_20260905/index.md](./archive/engine_correctness_20260905/index.md)*
   *EWMA baseline warm-up, 404-safe breaker, retry budget, abortable waits, cache no-store, schema bounds, robots policy, requisite extraction, canonicalization fidelity.*
 
 - [x] **Track: WARC/CDX Interoperability & Integrity**
   *Status: Completed* | *Archived*
-  *Link: [./archive/warc_interop_20260905/](./archive/warc_interop_20260905/)*
+  *Link: [./archive/warc_interop_20260905/index.md](./archive/warc_interop_20260905/index.md)*
   *Decoded-payload header hygiene, CDX `S` field, fail-closed digests, WARC-Refers-To, request records, reader revisit resolution, verifier CDX offset and `.warc.gz`.*
 
 - [x] **Track: Web Console Security & Persistence Claims**
   *Status: Completed* | *Archived*
-  *Link: [./archive/web_console_security_20260905/](./archive/web_console_security_20260905/)*
+  *Link: [./archive/web_console_security_20260905/index.md](./archive/web_console_security_20260905/index.md)*
   *Sandbox and CSP, blob replay, output encoding, generated profile bundle, OPFS/checkpoint honesty, `?profile=` consumer in `index.html` only.*
 
 - [x] **Track: Headless CLI Parity with the Browser Engine**
   *Status: Completed* | *Archived*
-  *Link: [./archive/cli_parity_20260905/](./archive/cli_parity_20260905/)*
+  *Link: [./archive/cli_parity_20260905/index.md](./archive/cli_parity_20260905/index.md)*
   *Case-insensitive headers, query-string fidelity, stdlib politeness port, set-based queue, shared loopback fixture.*
 
 - [x] **Track: Repository Standards Alignment**
@@ -79,12 +79,12 @@
 
 - [x] **Track: Contributor Experience**
   *Status: Archived*
-  *Link: [./archive/contributor_experience_20260905/](./archive/contributor_experience_20260905/)*
+  *Link: [./archive/contributor_experience_20260905/index.md](./archive/contributor_experience_20260905/index.md)*
   *Five-minute CONTRIBUTING setup, QUICKSTART, SUPPORT, good-first-issue seeds. Does not rewrite README or add `release.yml`.*
 
 - [x] **Track: Release Workflow, Provenance, and Dev Container**
   *Status: Archived*
-  *Link: [./archive/release_and_packaging_20260905/](./archive/release_and_packaging_20260905/)*
+  *Link: [./archive/release_and_packaging_20260905/index.md](./archive/release_and_packaging_20260905/index.md)*
   *`.devcontainer`, `release.yml` with SHA256SUMS and SLSA provenance. Does not own README, CONTRIBUTING, or pyproject.toml.*
 
 - [x] **Track: Future Capabilities (Research-First)**

@@ -1,6 +1,6 @@
 # Track Plan: Self-Improving System Loop
 
-## Status: IN PROGRESS
+## Status: COMPLETED (archived; completion review not recorded — see review.md)
 
 Implementers follow `conductor/implementation_contract.md`. Tasks are ordered; take the first unchecked one. Every task lists **Files / Change / Verify / Done when / Do not**. Files quoted in full are to be created byte-for-byte as shown.
 
