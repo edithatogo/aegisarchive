@@ -52,4 +52,4 @@ jobs:
       attestations: write
     uses: edithatogo/repository-standards/.github/workflows/supply-chain-evidence.yml@ad67bedaa0c4d0769bd54fd76354bac65b25b88c # main 2026-09-05
     with:
-        artifact-path: .
+        artifact-path: pyproject.toml
