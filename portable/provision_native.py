@@ -176,7 +176,7 @@ def retain_linux_libraries(root, receipts):
                 if source.read(4)==b'\x7fELF':original.append(path)
     copied=set()
     for elf in original:
-        queue=[elf];visited=set()
+        queue=[elf];visited=set();destinations={elf}
         while queue:
             current=queue.pop()
             if current in visited:continue
@@ -190,8 +190,9 @@ def retain_linux_libraries(root, receipts):
                 if not target.exists():
                     shutil.copyfile(source,target);target.chmod(0o755)
                     copied.add(str(source))
-                queue.append(target)
-        for current in visited:
+                queue.append(source)
+                destinations.add(target)
+        for current in destinations:
             subprocess.run(['patchelf','--set-rpath','$ORIGIN',str(current)],check=True)
     notices=root/'dependency-licenses';notices.mkdir(exist_ok=True)
     for package in ('gcc-14-base','gcc-13-base','libstdc++6','libgomp1','zlib1g'):
@@ -277,6 +278,7 @@ def retain_runtime_payload(bundle, output, model_lock):
         'The retained native-qualification.json applies to the original complete assembled bytes. The final complete manifest validates the reconstructed bytes. Runtime payload retention is one day; download promptly.\n')
     (output/'restore_models.py').write_text("""import argparse, hashlib, json, shutil, sys
 from pathlib import Path
+sys.dont_write_bytecode=True
 p=argparse.ArgumentParser();p.add_argument('--package',type=Path,required=True);p.add_argument('--models',type=Path,required=True);a=p.parse_args()
 root=a.package.resolve();cache=a.models.resolve()
 def sha(path):
@@ -319,6 +321,10 @@ def main():
     python_url=f'https://github.com/astral-sh/python-build-standalone/releases/download/{RELEASE}/cpython-{VERSION}%2B{RELEASE}-{target}-install_only.tar.gz'
     archive=fetch(python_url,work/'downloads/python.tar.gz',sha,receipts)
     unpack(archive,work/'python-raw');normalize(work/'python-raw/python',work/'python')
+    terminfo=work/'python/share/terminfo'
+    if terminfo.exists():
+        shutil.rmtree(terminfo)
+        (work/'python/PRUNED.txt').write_text('Optional share/terminfo database omitted: upstream case-distinct terminal aliases conflict with cross-platform package path rules. Required CLI, SQLite, SSL, inference and speech functions do not use curses; console is built without readline.\n')
     python=work/'python'/('python.exe' if system=='Windows' else 'bin/python3')
     for name,sha in PYTHON_LICENSES.items():
         fetch('https://raw.githubusercontent.com/astral-sh/python-build-standalone/4bb01f09aaf362c71e891be4a41cb6d6ddf830b3/'+name,work/'python/licenses'/name,sha,receipts)
@@ -341,6 +347,7 @@ def main():
     add('console',console,console_entry,console_license,'GPL-3.0-or-later',WIN_GIT_URL if system=='Windows' else BASH_URL)
     speech_provision(work,python,jobs=2)
     speech=work/'speech'
+    if system=='Linux':retain_linux_libraries(speech,receipts)
     add('whisper',speech,'whisper-cli'+suffix,'WHISPER-LICENSE','MIT','https://github.com/ggml-org/whisper.cpp')
     add('piper',speech,'piper_entry.py','PIPER-COPYING','GPL-3.0','https://pypi.org/project/piper-tts/1.8.0/',interpreter='python')
     for identifier,filename in [('piper_model','en_US-ljspeech-medium.onnx'),('piper_config','en_US-ljspeech-medium.onnx.json')]:
