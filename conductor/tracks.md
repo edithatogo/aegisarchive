@@ -59,7 +59,7 @@
 
 - [x] **Track: Headless CLI Parity with the Browser Engine**
   *Status: Completed*
-  *Link: [./tracks/cli_parity_20260905/](./tracks/cli_parity_20260905/)*
+  *Link: [./archive/cli_parity_20260905/](./archive/cli_parity_20260905/)*
   *Case-insensitive headers, query-string fidelity, stdlib politeness port, set-based queue, shared loopback fixture.*
 
 - [~] **Track: Repository Standards Alignment**

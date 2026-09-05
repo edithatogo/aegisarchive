@@ -12,3 +12,5 @@ Brings `cli/aegis_cli.py` to parity with the browser crawler: case-insensitive r
 - [Historical evidence](./evidence.legacy.jsonl)
 
 - [Post-implementation Review](./review.md)
+
+Archived 2026-09-05T07:59:43Z after the recorded post-implementation review passed.
