@@ -88,3 +88,7 @@ Maintenance rules:
 ## 2026-09-05 — release_and_packaging_20260905
 - **Surprise**: Release provenance needs its subject digest computed from the exact uploaded archive.
 - **Change for the next planner**: Generate checksums and provenance from the same release asset in one workflow before upload.
+
+## 2026-09-05 — future_capabilities_20260905
+- **Surprise**: Research-first ADR plans contain intentional checklist boxes that track health counts unless closeout marks the completed research outputs explicitly.
+- **Change for the next planner**: Tick the plan acceptance boxes only after validating every ADR and record a retrospective review receipt alongside the archive.
