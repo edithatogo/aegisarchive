@@ -28,8 +28,17 @@
   - **Do not**: add core runtime dependencies or claim mocked adapters establish native compatibility.
 
 - [ ] T3 Acquire and verify native runtime/model assets and exercise the complete offline package.
-  - **Files**: local package output, asset provenance and validation receipts; `portable/native_platform_probe.py`, `portable/native_qualification.py`, `portable/gguf_embeddings.py`, `.github/workflows/portable-native.yml`, packaging and native regression tests.
+  - **Files**: local package output, asset provenance and validation receipts; `portable/native_platform_probe.py`, `portable/native_qualification.py`, `portable/gguf_embeddings.py`, `.github/workflows/portable-native.yml`, `portable/provision_models.py`, `portable/model-lock.json`, `portable/provision_speech.py`, `portable/provision_native.py`, `.github/workflows/portable-full-native.yml`, packaging and native regression tests and documentation.
   - **Change**: source and checksum each runtime/model, retain licences, execute inference, transcription, synthesis, embedding and graph retrieval; validate target OS launch.
   - **Verify**: real native smoke commands recorded in review.md.
   - **Done when**: all original roadmap objectives have direct execution evidence.
   - **Do not**: archive while native acceptance is incomplete.
+
+## Review fixes
+
+- [~] T4 Close native qualification findings and preserve direct execution evidence.
+  - **Files**: `portable/intelligence.py`, `portable/native_qualification.py`, `portable/test_intelligence.py`, `tests/test_portable_packaging.py`, native provisioning/workflow files and this track's evidence/review records.
+  - **Change**: invalidate graph edges when source text changes, normalize extreme vectors safely, require semantic-only retrieval and functional Git/console checks, verify immutable files after execution, and test relocated bundled launchers.
+  - **Verify**: `python3 -m unittest tests.test_portable_packaging portable.test_intelligence`; `python3 scripts/gate.py test`; full native qualification receipts on each target OS.
+  - **Done when**: review findings are fixed and all required native receipts pass.
+  - **Do not**: replace native execution evidence with adapter test results or archive with an incomplete platform matrix.

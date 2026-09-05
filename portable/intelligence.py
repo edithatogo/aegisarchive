@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import sqlite3
@@ -25,7 +26,9 @@ def run_tool(executable, arguments, *, text=None, timeout=300):
     executable = _file(executable)
     return subprocess.run([str(executable), *map(str, arguments)], input=text,
                           text=True, capture_output=True, timeout=timeout,
-                          check=True).stdout
+                          check=True, env={**os.environ,
+                          "PYTHONDONTWRITEBYTECODE": "1",
+                          "PYTHONNOUSERSITE": "1"}).stdout
 
 
 class LocalTools:
@@ -66,7 +69,7 @@ class LocalTools:
         if not 1 <= max_tokens <= 32768:
             raise ValueError("max_tokens must be between 1 and 32768")
         return run_tool(self.asset("llama"), ["-m", self.asset(tier),
-                        "-p", prompt, "-n", max_tokens, "--no-display-prompt",
+                        "-p", prompt, "-n", max_tokens, "-c", 2048, "--no-display-prompt",
                         "--offline", "--single-turn", "--simple-io"])
 
     def transcribe(self, audio):
@@ -77,7 +80,11 @@ class LocalTools:
         output = Path(output).resolve()
         if output.exists():
             raise ValueError("Refusing to overwrite existing audio")
-        run_tool(self.asset("piper"), ["--model", self.asset("piper_model"),
+        piper = self.asset("piper")
+        executable, prefix = piper, []
+        if piper.suffix == ".py":
+            executable, prefix = self.asset("python"), ["-I", "-B", piper]
+        run_tool(executable, [*prefix, "--model", self.asset("piper_model"),
                  "--config", self.asset("piper_config"), "--output_file", output], text=text)
         if not output.is_file() or output.stat().st_size < 44:
             raise ValueError("Piper did not produce a WAV file")
@@ -109,10 +116,12 @@ def _vector(value):
     if not value or any(isinstance(x, bool) or not isinstance(x, (float, int))
                         or not math.isfinite(x) for x in value):
         raise ValueError("Embedding must contain finite numbers")
-    norm = math.sqrt(sum(x*x for x in value))
-    if norm == 0:
+    scale = max(abs(x) for x in value)
+    if scale == 0:
         raise ValueError("Embedding must have nonzero norm")
-    return [x/norm for x in value]
+    scaled = [x / scale for x in value]
+    norm = math.sqrt(sum(x*x for x in scaled))
+    return [x/norm for x in scaled]
 
 
 class Memory:
@@ -137,6 +146,9 @@ class Memory:
         if vector and existing and len(vector) != len(json.loads(existing[0])):
             raise ValueError("Embedding dimension mismatch")
         with self.db:
+            previous = self.db.execute("SELECT text FROM documents WHERE id=?", (identifier,)).fetchone()
+            if previous and previous[0] != text:
+                self.db.execute("DELETE FROM edges WHERE document=?", (identifier,))
             self.db.execute("INSERT INTO documents VALUES(?,?,?) ON CONFLICT(id) DO UPDATE SET text=excluded.text, embedding=excluded.embedding",
                             (identifier, text, json.dumps(vector) if vector else None))
 

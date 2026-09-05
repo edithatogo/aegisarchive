@@ -109,20 +109,54 @@ def main():
                 memory = Memory(data / 'memory.sqlite')
                 try:
                     memory.put('water', 'The archive preserves water reports.', vector)
-                    memory.put('trees', 'The forest contains trees.', encoder.encode('The forest contains trees.'))
+                    forest = encoder.encode('The forest contains trees.')
+                    if sum((a-b)**2 for a,b in zip(vector, forest)) < 0.01:
+                        raise ValueError('Unrelated texts must have distinct embeddings')
+                    memory.put('trees', 'The forest contains trees.', forest)
                     memory.relate('archive', 'preserves', 'water reports', 'water')
                     results = memory.search('water reports', encoder.encode('water reports', query=True))
+                    semantic = memory.search('', encoder.encode('potable supply monitoring', query=True))
                     graph = memory.neighbors('archive')
-                    if results[0]['id'] != 'water' or graph[0]['document'] != 'water':
+                    if results[0]['id'] != 'water' or semantic[0]['id'] != 'water' or graph[0]['document'] != 'water':
                         raise ValueError('Retrieval or source graph mismatch')
-                    return {'dimensions': len(vector), 'results': results, 'graph': graph}
+                    return {'dimensions': len(vector), 'results': results, 'semantic_only': semantic, 'graph': graph}
                 finally:
                     memory.close()
         record('embeddings_hybrid_graph', retrieval)
-        record('git', lambda: subprocess.check_output([str(tools.asset('git')), '--version'], text=True))
-        record('console', lambda: subprocess.check_output([str(tools.asset('console')), '--version'], text=True))
+        def git_check():
+            workspace = data / 'git-test'
+            workspace.mkdir()
+            executable = str(tools.asset('git'))
+            environment = {**os.environ, 'GIT_CONFIG_NOSYSTEM': '1',
+                           'GIT_CONFIG_GLOBAL': os.devnull}
+            def git(*args):
+                return subprocess.check_output([executable, *args], cwd=workspace,
+                    env=environment, text=True, stderr=subprocess.STDOUT, timeout=60)
+            git('init')
+            (workspace / 'evidence.txt').write_text('Offline portable evidence.\n')
+            git('add', 'evidence.txt')
+            git('-c', 'user.name=Portable Test', '-c', 'user.email=portable@example.invalid',
+                '-c', 'commit.gpgsign=false', 'commit', '-m', 'offline evidence')
+            git('fsck', '--full')
+            if git('show', 'HEAD:evidence.txt') != 'Offline portable evidence.\n':
+                raise ValueError('Git commit readback mismatch')
+            return {'version': git('--version'), 'commit': git('rev-parse', 'HEAD').strip()}
+        record('git', git_check)
+        def console_check():
+            output = subprocess.check_output([str(tools.asset('console')), '--noprofile',
+                '--norc', '-c', 'printf "%s" "$1"', 'portable', 'ARCHIVE'],
+                text=True, timeout=60)
+            if output != 'ARCHIVE':
+                raise ValueError('Console execution mismatch')
+            return output
+        record('console', console_check)
         launcher = 'START_WINDOWS.cmd' if os.name == 'nt' else ('START_MAC.command' if sys.platform == 'darwin' else 'START_LINUX.sh')
-        record('relocated_launcher', lambda: subprocess.check_output([str(bundle / launcher), '--help'], text=True, timeout=60))
+        launcher_command = [str(bundle / launcher), '--help']
+        if os.name == 'nt':
+            launcher_command = [str(Path(os.environ['SystemRoot']) / 'System32/cmd.exe'),
+                                '/d', '/c', 'call', *launcher_command]
+        record('relocated_launcher', lambda: subprocess.check_output(launcher_command, text=True, timeout=60))
+        record('integrity_after', lambda: {'immutable_files': len(verify(bundle)['files'])})
         report['status'] = 'passed'
     except Exception:
         report['status'] = 'failed'

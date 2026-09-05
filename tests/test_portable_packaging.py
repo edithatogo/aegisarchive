@@ -1,7 +1,9 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -36,6 +38,31 @@ class PackagingTests(unittest.TestCase):
         (self.destination / 'data/session.json').write_text('{}')
         self.assertEqual(verify(self.destination), manifest)
         self.assertEqual((self.destination / 'licenses/fixture.txt').read_text(), 'Fixture licence')
+
+    @unittest.skipIf(os.name == 'nt', 'POSIX shell launcher')
+    def test_relocated_launcher_uses_explicit_interpreter_and_literal_arguments(self):
+        archive = self.root / 'python.tar'
+        with tarfile.open(archive, 'w') as output:
+            for name, content, mode in (
+                ('bin/python', b'#!/bin/sh\nprintf "%s\\n" "$PWD" "$@"\n', 0o755),
+                ('LICENSE', b'Fixture licence', 0o644),
+            ):
+                info = tarfile.TarInfo(name)
+                info.size, info.mode = len(content), mode
+                output.addfile(info, io.BytesIO(content))
+        asset = dict(id='python', platform='test-only', archive=str(archive),
+                     sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
+                     source_url='https://example.org/fixture', license='fixture-only',
+                     license_file='LICENSE', entrypoint='bin/python')
+        assemble(self.source, self.destination, [asset])
+        relocated = self.root / 'relocated bundle with spaces'
+        self.destination.rename(relocated)
+        literal = '$(touch should-not-exist); "literal"'
+        output = subprocess.check_output([str(relocated / 'START_LINUX.sh'), literal],
+                                         text=True, env={'PATH': '/usr/bin:/bin'})
+        self.assertEqual(output.splitlines(), [str(relocated / 'app'), '-I', '-B',
+                                               'cli/launch.py', literal])
+        verify(relocated)
 
     def test_tamper_and_extra_file_fail(self):
         assemble(self.source, self.destination)

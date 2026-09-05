@@ -47,25 +47,46 @@ are trusted programs; the adapter is not an OS network sandbox. For strict air-g
 validation, disable networking at the OS and exercise each operation with provisioned
 assets. Unit tests cover adapter plumbing, not native model quality or portability.
 
-For embeddings, install `requirements-embeddings.txt` into a separate environment
-and provision a complete local `bge-small-en-v1.5` model directory. `BGEEmbedder`
-loads with `local_files_only=True` and remote code disabled. It prefixes queries
-according to BGE's retrieval convention; document embeddings receive no prefix.
+The native bundle uses `GGUFEmbedder` with `llama_server` and the pinned BGE GGUF
+asset `bge`; no sentence-transformers installation is required. The managed server
+binds only to loopback and is stopped on context-manager exit. Strict offline
+qualification permits loopback IPC while denying external traffic.
 
 ```python
-from portable.intelligence import BGEEmbedder, Memory
-encoder = BGEEmbedder('/path/to/local/bge-small-en-v1.5')
-memory = Memory('/path/to/data/memory.sqlite')
-memory.put('doc-1', 'A committee published a water report.',
-           encoder.encode('A committee published a water report.'))
-memory.relate('committee', 'published', 'water report', 'doc-1')
-print(memory.search('water report', encoder.encode('water report', query=True)))
-print(memory.neighbors('committee'))
-memory.close()
+from portable.gguf_embeddings import GGUFEmbedder
+from portable.intelligence import Memory
+with GGUFEmbedder('/path/to/manifest.json') as encoder:
+    memory = Memory('/path/to/data/memory.sqlite')
+    try:
+        memory.put('doc-1', 'A committee published a water report.',
+                   encoder.encode('A committee published a water report.'))
+        memory.relate('committee', 'published', 'water report', 'doc-1')
+        print(memory.search('water report', encoder.encode('water report', query=True)))
+        print(memory.neighbors('committee'))
+    finally:
+        memory.close()
 ```
 
+The alternative `BGEEmbedder` adapter remains available for separately provisioned
+sentence-transformers environments; it loads local files with remote code disabled.
+
+Provision the locked model set with `python3 portable/provision_models.py --output
+/path/to/models`. Subsequent `--offline` runs verify the cache without downloading.
+`model-lock.json` records exact revisions, source URLs, SHA-256 values, licences,
+model cards, sizes and estimated RAM. Online acquisition is separate from offline
+execution. Native runtime and voice provisioning use the same pinned-input approach.
+
+The selected tiers are Qwen2.5 1.5B Instruct Q4_K_M (Scout), Qwen3 4B Q4_K_M
+(General), and Qwen3 8B Q4_K_M (Deep). Their model files occupy approximately
+1.12, 2.50 and 5.03 GB; recommended memory budgets are 4, 8 and 12 GiB respectively
+at the adapter's 2,048-token context. These are planning estimates, not peak-memory
+measurements. The five model files total 8.76 GB before voice and native runtimes.
+Piper uses the LJSpeech medium English voice; its runtime includes native ONNX and
+phonemization dependencies. The selected macOS wheels require macOS 14 or later.
+
 SQLite preserves document text, normalized embeddings, and graph edges with foreign
-keys to source documents. Search combines BM25 and cosine-ranked vectors using
+keys to source documents. Replacing source text invalidates its graph edges; callers
+must re-establish relationships against the revised text. Search combines BM25 and cosine-ranked vectors using
 reciprocal rank fusion. Without embeddings it performs BM25 search. This small
 local store scans documents in memory; large collections need a separately measured
 indexing design. It does not infer facts or graph edges: callers must supply sourced

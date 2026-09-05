@@ -129,7 +129,7 @@ def assemble(source, destination, assets=()):
                 raise ValueError('application source symlink forbidden')
             if path.is_dir():
                 shutil.copytree(path, root / 'app' / name,
-                                ignore=shutil.ignore_patterns('__pycache__', '*.pyc'))
+                                ignore=shutil.ignore_patterns('__pycache__', '*.pyc', '._*', '.DS_Store'))
             else:
                 shutil.copy2(path, root / 'app' / name)
         if not (root / 'app' / 'cli' / 'launch.py').is_file():

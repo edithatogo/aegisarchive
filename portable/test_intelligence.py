@@ -6,7 +6,8 @@ import sqlite3
 import sys
 import tempfile
 import unittest
-from portable.intelligence import LocalTools, Memory, run_tool
+from unittest.mock import patch
+from portable.intelligence import LocalTools, Memory, run_tool, _vector
 
 
 class MemoryTests(unittest.TestCase):
@@ -30,10 +31,13 @@ class MemoryTests(unittest.TestCase):
         self.memory.close()
         self.memory = Memory(self.path)
         self.assertEqual(self.memory.neighbors("report")[0]["document"], "a")
-        self.memory.put("a", "revised water report", [1, 0])
+        self.memory.put("a", "committee water water report", [0.8, 0.2])
         self.assertEqual(len(self.memory.neighbors("committee")), 1)
+        self.memory.put("a", "revised water report", [1, 0])
+        self.assertEqual(self.memory.neighbors("committee"), [])
 
     def test_invalid_vectors_and_source(self):
+        self.assertAlmostEqual(sum(x*x for x in _vector([1.7e308, 1.7e308])), 1)
         for bad in ([0, 0], [float("nan")], [float("inf")], [], [True]):
             with self.assertRaises(ValueError):
                 self.memory.put("bad", "bad", bad)
@@ -47,6 +51,25 @@ class MemoryTests(unittest.TestCase):
 
 
 class ToolTests(unittest.TestCase):
+    def test_piper_script_uses_verified_python_in_isolated_mode(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            assets = {}
+            for name, filename in [('python', 'python'), ('piper', 'piper_entry.py'),
+                                   ('piper_model', 'voice'), ('piper_config', 'config')]:
+                path = root / filename
+                path.write_text(name)
+                assets[name] = {'path': filename,
+                                'sha256': hashlib.sha256(path.read_bytes()).hexdigest()}
+            manifest = root / 'manifest.json'
+            manifest.write_text(json.dumps({'assets': assets}))
+            target = root / 'output.wav'
+            with patch('portable.intelligence.run_tool',
+                       side_effect=lambda *a, **k: target.write_bytes(b'0' * 44)) as run:
+                LocalTools(manifest).speak('archive', target)
+            self.assertEqual(run.call_args.args[0], root / 'python')
+            self.assertEqual(run.call_args.args[1][:3], ['-I', '-B', root / 'piper_entry.py'])
+
     def test_real_subprocess_literal_argument_and_error(self):
         literal = '$(touch should-not-exist); "quoted"'
         self.assertEqual(run_tool(sys.executable, ["-c", "import sys;print(sys.argv[1],end='')", literal]), literal)
