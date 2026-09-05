@@ -533,7 +533,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 6 — Tests
 
-- [ ] **S8 Tests to add (stdlib only)** *(AC8; regression for AC1–AC7)*
+- [x] **S8 Tests to add (stdlib only)** *(AC8; regression for AC1–AC7)*
 
   **Files** (create): `tests/js/warc_reader_render.test.js`, `tests/js/warc_writer_streamer.test.js`, `tests/js/core_crawler_checkpoint.test.js`, `tests/test_web_console_static.py`. Run `mkdir -p tests/js` first if absent (other tracks may already have created it; never delete their files).
 
