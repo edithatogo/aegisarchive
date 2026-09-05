@@ -21,8 +21,8 @@
 
 ## Phase 3 — Cross-repository coordination (external gate G2)
 
-- [ ] C1 Handshake note delivered to the companion program's active conductor track listing delegated items: root launcher delegation, agent tool-argument guards and id-only staging, dynamic staging dates, encrypted-media guidance. Owner: parallel agent / user decision.
-- [ ] C2 Verify delegated items appear as planned tasks in the companion conductor; record evidence reference.
+- [x] C1 Handshake note delivered to the companion program's active conductor track listing delegated items: root launcher delegation, agent tool-argument guards and id-only staging, dynamic staging dates, inference endpoint authentication, bundle integrity manifest, encrypted-media guidance. *(delivered: companion commit `1837bb7`, file `conductor/tracks/intranet_acquisition_toolkit_20260904/handshake_portable_station_hardening_20260905.md`)*
+- [ ] C2 Verify delegated items appear as planned tasks in the companion conductor; record evidence reference. *(pending the parallel agent's next planning cycle; handshake note requests registration and linkage)*
 
 ## Phase 4 — Completion
 
