@@ -1,0 +1,11 @@
+# gitleaks configuration: default rules plus repository allowlist.
+title = "AegisArchive gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Synthetic test fixtures are not secrets"
+paths = [
+  '''tests/fixtures/.*''',
+]

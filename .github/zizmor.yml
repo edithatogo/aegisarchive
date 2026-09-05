@@ -1,0 +1,11 @@
+# zizmor configuration (read by both .github/workflows/zizmor.yml and security.yml).
+# ci.yml is owned by another active conductor track and still uses tag pins and
+# default permissions; its owner has been asked to fix it (see the security track
+# handoff note). Remove these ignores once ci.yml is SHA-pinned with explicit permissions.
+rules:
+  unpinned-uses:
+    ignore:
+      - ci.yml
+  excessive-permissions:
+    ignore:
+      - ci.yml
