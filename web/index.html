@@ -6,6 +6,7 @@
   <title>AegisArchive — Server-Preserving Archival Engine</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="lib/minisearch.min.js"></script>
+  <script src="profiles.bundle.js"></script>
   <script src="lib/warc_writer.js"></script>
   <script src="lib/politeness_engine.js"></script>
   <script src="lib/opfs_streamer.js"></script>
@@ -35,9 +36,6 @@
       <div class="profile-select-group">
         <label for="profileSelect">Active Profile:</label>
         <select id="profileSelect" class="select-input" onchange="onProfileSelected()">
-          <option value="default_polite">Default Server-Preserving Preservation</option>
-          <option value="enterprise_intranet">Enterprise Intranet &amp; Portal Preservation</option>
-          <option value="rapid_research">Authorized High-Throughput Research</option>
           <option value="custom">Load Custom Profile JSON...</option>
         </select>
         <input type="file" id="profileFileInput" style="display:none" accept=".json" onchange="handleCustomProfileUpload(event)">
@@ -238,101 +236,20 @@
     let finalResults = null;
     let currentReportMd = "";
 
-    const BUILTIN_PROFILES = {
-      default_polite: {
-        profile_id: "default_polite",
-        profile_name: "Default Server-Preserving Preservation",
-        description: "Ethical preservation with human-cadence delays and dynamic EWMA backoff.",
-        target: {
-          allowed_domains: ["example.org"],
-          seed_urls: { tier_1_core: ["https://example.org/"] },
-          asset_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".zip"],
-          max_depth: 4,
-          max_pages: 2000
-        },
-        politeness: {
-          min_delay_ms: 1200,
-          max_delay_ms: 3200,
-          jitter_distribution: "gaussian",
-          max_requests_per_minute: 25,
-          burst_limit: 3,
-          respect_retry_after: true,
-          adaptive_ewma_backoff: true,
-          consecutive_error_tripwire: 3,
-          cooldown_seconds: 60
-        },
-        archival: {
-          operator: "AegisArchive Preservationist",
-          organization: "Public Digital Preservation",
-          warc_prefix: "aegis_preservation",
-          deduplicate_payloads: true,
-          generate_cdx: true
-        }
-      },
-      enterprise_intranet: {
-        profile_id: "enterprise_intranet",
-        profile_name: "Enterprise Intranet & Portal Preservation",
-        description: "Low-impact crawl profile designed for internal enterprise portals (commercial CMS and collaboration platforms).",
-        target: {
-          allowed_domains: ["intranet.local"],
-          seed_urls: { tier_1_core: ["https://intranet.local/portal"] },
-          asset_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".zip"],
-          max_depth: 6,
-          max_pages: 5000
-        },
-        politeness: {
-          min_delay_ms: 1500,
-          max_delay_ms: 4000,
-          jitter_distribution: "gaussian",
-          max_requests_per_minute: 20,
-          burst_limit: 3,
-          respect_retry_after: true,
-          adaptive_ewma_backoff: true,
-          consecutive_error_tripwire: 3,
-          cooldown_seconds: 90
-        },
-        archival: {
-          operator: "Enterprise Records Officer",
-          organization: "Enterprise Records & Compliance",
-          warc_prefix: "enterprise_intranet",
-          deduplicate_payloads: true,
-          generate_cdx: true
-        }
-      },
-      rapid_research: {
-        profile_id: "rapid_research",
-        profile_name: "Authorized High-Throughput Research",
-        description: "Fast harvesting profile for authorized research servers or test mirrors.",
-        target: {
-          allowed_domains: ["localhost", "127.0.0.1"],
-          seed_urls: { tier_1_core: ["http://127.0.0.1:8000/"] },
-          asset_extensions: [".pdf", ".docx", ".xlsx", ".pptx", ".csv", ".zip", ".png", ".jpg"],
-          max_depth: 8,
-          max_pages: 10000
-        },
-        politeness: {
-          min_delay_ms: 200,
-          max_delay_ms: 600,
-          jitter_distribution: "uniform",
-          max_requests_per_minute: 180,
-          burst_limit: 10,
-          respect_retry_after: true,
-          adaptive_ewma_backoff: true,
-          consecutive_error_tripwire: 5,
-          cooldown_seconds: 30
-        },
-        archival: {
-          operator: "Research Analyst",
-          organization: "Academic / Research Lab",
-          warc_prefix: "rapid_research",
-          deduplicate_payloads: true,
-          generate_cdx: true
-        }
-      }
-    };
+    // Built-in profiles come from the generated bundle (single source of truth: profiles/*.json) (V4).
+    const BUILTIN_PROFILES = (typeof AEGIS_BUNDLED_PROFILES !== 'undefined') ? AEGIS_BUNDLED_PROFILES : {};
 
     function init() {
-      activeProfile = BUILTIN_PROFILES.default_polite;
+      const select = document.getElementById('profileSelect');
+      const customOpt = select.querySelector('option[value="custom"]');
+      for (const [id, p] of Object.entries(BUILTIN_PROFILES)) {
+        const opt = document.createElement('option');
+        opt.value = id;
+        opt.textContent = p.profile_name || id;
+        select.insertBefore(opt, customOpt);
+      }
+      activeProfile = BUILTIN_PROFILES.default_polite || Object.values(BUILTIN_PROFILES)[0] || null;
+      if (activeProfile) select.value = activeProfile.profile_id;
       updateProfileDisplay();
     }
 

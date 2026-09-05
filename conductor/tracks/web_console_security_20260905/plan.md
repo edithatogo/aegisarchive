@@ -200,7 +200,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 4 — Single profile source
 
-- [ ] **S4 Generate `web/profiles.bundle.js` from `profiles/*.json`** *(AC4)*
+- [x] **S4 Generate `web/profiles.bundle.js` from `profiles/*.json`** *(AC4)*
 
   **Files** (create): `scripts/build_profile_bundle.py`, `web/profiles.bundle.js` (generated). **Modify**: `web/index.html`. Do not edit `profiles/*.json`.
 
