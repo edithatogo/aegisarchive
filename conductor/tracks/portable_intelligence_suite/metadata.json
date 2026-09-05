@@ -3,8 +3,16 @@
   "type": "feature",
   "status": "in_progress",
   "created_at": "2026-09-05T07:50:07Z",
-  "updated_at": "2026-09-05T12:39:42Z",
+  "updated_at": "2026-09-05T13:57:40Z",
   "description": "Portable Platform Compatibility & Offline Intelligence Suite",
   "metadata_origin": "Reconstructed during retrospective review; original plan retained in Git history.",
-  "evidence_schema": "1.0"
+  "evidence_schema": "1.0",
+  "gates": [
+    {
+      "id": "full-native-platforms",
+      "kind": "native_acceptance",
+      "status": "pending",
+      "evidence": "native-evidence/darwin-full-native.json; full hosted matrix 33970018032 pending"
+    }
+  ]
 }

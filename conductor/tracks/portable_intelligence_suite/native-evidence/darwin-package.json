@@ -1,0 +1,162 @@
+{
+  "platform": "darwin-arm64",
+  "minimum_os": "macOS 14 (Piper wheel baseline); executed on macOS 26.6.2",
+  "bundle_path": "/Users/doughnut/.codex/artifacts/aegisarchive-20260905/AegisArchive macOS ARM64",
+  "manifest_sha256": "3f35c62d706d317011512333b2415df21127c5b91aedd43aec48600ad463d85f",
+  "immutable_files": 9516,
+  "immutable_bytes": 9518169205,
+  "assets": [
+    {
+      "id": "python",
+      "platform": "darwin-arm64",
+      "sha256": "76414e973e9969596e59c4894ffaf2235ad1e1904b52ed4fa0f758581f296b0c",
+      "source_url": "https://github.com/astral-sh/python-build-standalone/releases/tag/20260901",
+      "license": "Python-2.0 and component notices",
+      "license_file": "python/lib/python3.12/LICENSE.txt",
+      "entrypoint": "python/bin/python3"
+    },
+    {
+      "id": "git",
+      "platform": "darwin-arm64",
+      "sha256": "cbfdbf2bee27d525dec2906405b1d777786e8139c9330a311497f96851d1bb72",
+      "source_url": "https://github.com/git/git/archive/refs/tags/v2.55.0.tar.gz",
+      "license": "GPL-2.0",
+      "license_file": "git/COPYING",
+      "entrypoint": "git/bin/git"
+    },
+    {
+      "id": "console",
+      "platform": "darwin-arm64",
+      "sha256": "7b9933cdef6b10a488bbff9a0ad1e6dabc1c49264dcdabd7af9bd06abd44f805",
+      "source_url": "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz",
+      "license": "GPL-3.0",
+      "license_file": "console/COPYING",
+      "entrypoint": "console/bin/bash"
+    },
+    {
+      "id": "llama",
+      "platform": "darwin-arm64",
+      "sha256": "3e3a51a6ee7f1419214c2beed6e6cd575ccb0f121bb64f0cdf668033c0b753dc",
+      "source_url": "https://github.com/ggml-org/llama.cpp/releases/download/b10819/llama-b10819-bin-macos-arm64.tar.gz",
+      "license": "MIT",
+      "license_file": "llama-b10819/LICENSE",
+      "entrypoint": "llama-b10819/llama-cli"
+    },
+    {
+      "id": "llama_server",
+      "platform": "darwin-arm64",
+      "sha256": "3e3a51a6ee7f1419214c2beed6e6cd575ccb0f121bb64f0cdf668033c0b753dc",
+      "source_url": "https://github.com/ggml-org/llama.cpp/releases/download/b10819/llama-b10819-bin-macos-arm64.tar.gz",
+      "license": "MIT",
+      "license_file": "llama-b10819/LICENSE",
+      "entrypoint": "llama-b10819/llama-server"
+    },
+    {
+      "id": "piper",
+      "platform": "darwin-arm64",
+      "sha256": "3c5dedba5c34b9177ce8d80a3b06ab821f62b8704a17f560d3f3441b9477edd7",
+      "source_url": "https://github.com/OHF-Voice/piper1-gpl",
+      "license": "GPL-3.0",
+      "license_file": "speech/PIPER-COPYING",
+      "entrypoint": "speech/bin/piper"
+    },
+    {
+      "id": "whisper",
+      "platform": "darwin-arm64",
+      "sha256": "3c5dedba5c34b9177ce8d80a3b06ab821f62b8704a17f560d3f3441b9477edd7",
+      "source_url": "https://github.com/ggml-org/whisper.cpp",
+      "license": "MIT",
+      "license_file": "speech/WHISPER-LICENSE",
+      "entrypoint": "speech/bin/whisper-cli"
+    },
+    {
+      "id": "whisper_model",
+      "platform": "darwin-arm64",
+      "sha256": "7cebb19109af4ccf02b3efaf262404a55adbfeb6858ab9880df14d2ccd5e6ca3",
+      "source_url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.en.bin",
+      "license": "mit",
+      "license_file": "whisper_model/LICENSE",
+      "entrypoint": "whisper_model/ggml-tiny.en.bin"
+    },
+    {
+      "id": "general",
+      "platform": "darwin-arm64",
+      "sha256": "03c926ea2af2b1c3606ff597abf2ccce6353493e1f14c442e8f1429d35c9c87c",
+      "source_url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
+      "license": "apache-2.0",
+      "license_file": "general/LICENSE",
+      "entrypoint": "general/Qwen3-4B-Q4_K_M.gguf"
+    },
+    {
+      "id": "scout",
+      "platform": "darwin-arm64",
+      "sha256": "426d5d4b2762521930859d1328b8957f70871d07c958776e3e1c7a3fba3f217d",
+      "source_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "license": "apache-2.0",
+      "license_file": "scout/LICENSE",
+      "entrypoint": "scout/qwen2.5-1.5b-instruct-q4_k_m.gguf"
+    },
+    {
+      "id": "deep",
+      "platform": "darwin-arm64",
+      "sha256": "67fecb2cfda96bc8e43d9d8accbbf3bdb59d629b6e06b0de9f20a6cf49bfc87c",
+      "source_url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf",
+      "license": "apache-2.0",
+      "license_file": "deep/LICENSE",
+      "entrypoint": "deep/Qwen3-8B-Q4_K_M.gguf"
+    },
+    {
+      "id": "bge",
+      "platform": "darwin-arm64",
+      "sha256": "8a70a168a0e89fbd50a713b29024b0029793458053243079cd03159c018f71b9",
+      "source_url": "https://huggingface.co/ggml-org/bge-small-en-v1.5-Q8_0-GGUF/resolve/f2068edd9b54f2a369549ccc71f70ed273a2a801/bge-small-en-v1.5-q8_0.gguf",
+      "license": "MIT",
+      "license_file": "bge/LICENSE",
+      "entrypoint": "bge/bge-small-en-v1.5-q8_0.gguf"
+    },
+    {
+      "id": "piper_model",
+      "platform": "darwin-arm64",
+      "sha256": "dc43498417404adfcb52d61f4985f1c12149d115c4f2a991173c6fe993ad3b56",
+      "source_url": "https://huggingface.co/rhasspy/piper-voices/tree/1162a9173d0ce503555aed757976b7a9912eae4c",
+      "license": "MIT model repository; dataset public domain",
+      "license_file": "voice/LICENSE",
+      "entrypoint": "voice/voice.onnx"
+    },
+    {
+      "id": "piper_config",
+      "platform": "darwin-arm64",
+      "sha256": "dc43498417404adfcb52d61f4985f1c12149d115c4f2a991173c6fe993ad3b56",
+      "source_url": "https://huggingface.co/rhasspy/piper-voices/tree/1162a9173d0ce503555aed757976b7a9912eae4c",
+      "license": "MIT model repository; dataset public domain",
+      "license_file": "voice/LICENSE",
+      "entrypoint": "voice/voice.onnx.json"
+    }
+  ],
+  "model_lock": "portable/model-lock.json",
+  "runtime_versions": {
+    "python": "3.12.14",
+    "piper_python": "3.12.13",
+    "git": "2.55.0",
+    "console": "GNU Bash 5.3",
+    "llama": "b10819 / 6a1a922d2",
+    "whisper_revision": "52a939a2a762224e255d366c1182b2af4dd1a032",
+    "piper": "1.8.0"
+  },
+  "memory_requirements": {
+    "scout_gib_estimate": 4,
+    "general_gib_estimate": 8,
+    "deep_gib_estimate": 12,
+    "embedding_gib_estimate": 1,
+    "transcription_gib_estimate": 1,
+    "voice_gib_estimate": 0.5,
+    "basis": "One model at a time. LLM context 2048 tokens. Planning estimates; not peak RSS measurements.",
+    "qualification_host_ram_gib": 32
+  },
+  "os_dependencies": [
+    "macOS system frameworks and /usr/lib libraries",
+    "/bin/sh and /usr/bin/dirname for POSIX launcher/wrapper"
+  ],
+  "network_policy": "offline-macos.sb; inherited deny network with loopback-only IPC",
+  "recovery_note": "DM ExFAT volume unmounted during first acceptance run and failed normal/read-only mount. Complete package preserved on internal APFS; final receipt uses durable internal output."
+}

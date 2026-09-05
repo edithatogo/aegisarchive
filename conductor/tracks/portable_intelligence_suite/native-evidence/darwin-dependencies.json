@@ -1,0 +1,21 @@
+{
+  "native_files_inspected": 354,
+  "undeclared_absolute_load_dependencies_or_rpaths": [],
+  "nonloading_build_install_ids": [
+    {
+      "file": "/Users/doughnut/.codex/artifacts/aegisarchive-20260905/AegisArchive macOS ARM64/runtime/piper/speech/python/runtime/lib/libpython3.12.dylib",
+      "install_id": "/tmp/aegisarchive-speech-python/cpython-3.12.13-macos-aarch64-none/lib/libpython3.12.dylib"
+    },
+    {
+      "file": "/Users/doughnut/.codex/artifacts/aegisarchive-20260905/AegisArchive macOS ARM64/runtime/whisper/speech/python/runtime/lib/libpython3.12.dylib",
+      "install_id": "/tmp/aegisarchive-speech-python/cpython-3.12.13-macos-aarch64-none/lib/libpython3.12.dylib"
+    }
+  ],
+  "rpaths": [
+    "@executable_path/../lib",
+    "@loader_path",
+    "@loader_path/../.."
+  ],
+  "method": "otool -l load and rpath commands; LC_ID_DYLIB is an identifier rather than a loaded dependency",
+  "status": "passed"
+}
