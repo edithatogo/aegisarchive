@@ -1,0 +1,27 @@
+# Lessons Ledger
+
+Append-only. One entry per completed track (required by `conductor/implementation_contract.md` step 5), plus any entry a planner or reviewer considers worth keeping. Never edit or delete earlier entries; if a lesson turns out to be wrong, add a new entry that supersedes it and says so.
+
+Entry format (four fields, in this order):
+
+```markdown
+## <YYYY-MM-DD> — <track_id or "repo">
+- **Surprise**: what happened that the plan did not anticipate.
+- **Change for the next planner**: a concrete rule, check, or task shape that would have prevented it.
+```
+
+Keep entries generic: no organisation names, hostnames, credentials, or personal blame. Reference commits by short SHA when useful. The weekly self-improvement report (`audits/latest/self-improvement.md`) lists tracks completed without a lesson, so an entry here is part of "done".
+
+---
+
+## 2026-09-05 — repo
+- **Surprise**: Documentation described capabilities before the code existed. The README's architecture diagram and text advertised OPFS streaming, IndexedDB state persistence, and full request/response capture, yet at the time of writing `web/` contains no `new OpfsStreamer`, no `indexedDB` usage, and no `WARC-Type: request` record. The gap survived several commits because nothing mapped prose claims to code symbols.
+- **Change for the next planner**: every capability claim in user-facing docs must have a row in `scripts/claims_audit.py` (claim -> mechanical check). A track that adds a feature adds the row in the same commit; a track that adds prose without code is a documentation defect, not progress.
+
+## 2026-09-05 — portable_station_hardening_20260905
+- **Surprise**: The same data was defined twice and drifted. Profile presets exist as JSON under `profiles/` and again as an inline `BUILTIN_PROFILES` object in `web/index.html`; the two copies were edited independently and no longer agree. Similarly, three launchers (macOS, Windows, Linux) duplicated logic that then needed manual syncing during the hardening track (commit `23da749`).
+- **Change for the next planner**: when a plan introduces a second copy of any definition, the plan must include either a generation step (single source, generated artifact committed) or a conformance test that diffs the copies. "Keep them in sync" as a prose instruction is not a task.
+
+## 2026-09-05 — repo
+- **Surprise**: The CDX header declares 11 fields (` CDX N b a m s k r M S V g`) while both writers emit 10 values per line (the `S` length field is missing) in `web/lib/warc_writer.js` and `cli/aegis_cli.py`. The verifier never compared header arity to row arity, so the mismatch was invisible to CI for the whole project history.
+- **Change for the next planner**: any format the project claims to conform to (WARC/1.1, CDX-11, MCP protocol version) needs a conformance test that exercises the writer and checks structural invariants, not just `--help` and `py_compile`. Acceptance criteria should name the invariant ("every CDX data row has exactly as many fields as the header").
