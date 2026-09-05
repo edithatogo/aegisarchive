@@ -25,7 +25,7 @@ def run_tool(executable, arguments, *, text=None, timeout=300):
     """Execute an explicit local binary without a shell and with a deadline."""
     executable = _file(executable)
     return subprocess.run([str(executable), *map(str, arguments)], input=text,
-                          text=True, capture_output=True, timeout=timeout,
+                          text=True, encoding="utf-8", capture_output=True, timeout=timeout,
                           check=True, env={**os.environ,
                           "PYTHONDONTWRITEBYTECODE": "1",
                           "PYTHONNOUSERSITE": "1"}).stdout
@@ -69,7 +69,10 @@ class LocalTools:
         if not 1 <= max_tokens <= 32768:
             raise ValueError("max_tokens must be between 1 and 32768")
         return run_tool(self.asset("llama"), ["-m", self.asset(tier),
-                        "-p", prompt, "-n", max_tokens, "-c", 2048, "--no-display-prompt",
+                        "-p", prompt, "-n", max_tokens, "-c", 2048, "-ngl", 0,
+                        "--device", "none",
+                        "--no-repack", "--flash-attn", "off", "-t", 2, "-tb", 2,
+                        "--temp", 0, "--seed", 42, "--no-display-prompt",
                         "--offline", "--single-turn", "--simple-io"])
 
     def transcribe(self, audio):

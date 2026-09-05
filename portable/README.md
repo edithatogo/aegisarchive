@@ -79,7 +79,10 @@ execution. Native runtime and voice provisioning use the same pinned-input appro
 The selected tiers are Qwen2.5 1.5B Instruct Q4_K_M (Scout), Qwen3 4B Q4_K_M
 (General), and Qwen3 8B Q4_K_M (Deep). Their model files occupy approximately
 1.12, 2.50 and 5.03 GB; recommended memory budgets are 4, 8 and 12 GiB respectively
-at the adapter's 2,048-token context. These are planning estimates, not peak-memory
+at the adapter's 2,048-token context. The portable baseline selects CPU execution
+explicitly with two CPU threads and deterministic sampling, so inference does not
+require a GPU. Repacking and flash attention are disabled for a reproducible
+baseline across the qualified hosts. These are planning estimates, not peak-memory
 measurements. The five model files total 8.76 GB before voice and native runtimes.
 Piper uses the LJSpeech medium English voice; its runtime includes native ONNX and
 phonemization dependencies. The selected macOS wheels require macOS 14 or later.

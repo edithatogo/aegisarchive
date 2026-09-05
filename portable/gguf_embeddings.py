@@ -25,7 +25,8 @@ class GGUFEmbedder:
         self.log = tempfile.TemporaryFile()
         self.process = subprocess.Popen([str(executable), '-m', str(model),
             '--embedding', '--pooling', 'cls', '--host', '127.0.0.1',
-            '--port', str(self.port), '--offline', '-c', '512', '-ngl', '0'],
+            '--port', str(self.port), '--offline', '-c', '512', '-ngl', '0',
+            '--device', 'none', '--no-repack'],
             stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log)
         deadline = time.monotonic() + startup_timeout
         try:

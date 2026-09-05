@@ -8,7 +8,7 @@
       "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
       "parameters_billions": 0.039,
       "recommended_ram_gib": 1,
-      "ram_basis": "Engineering estimate for one model at a time, 2048 token context; actual native validation required.",
+      "ram_basis": "Engineering allowance for short mono 16kHz audio; actual memory depends on input duration and runtime.",
       "license": "mit",
       "disk_gib": 0.072,
       "files": [
@@ -20,9 +20,10 @@
         },
         {
           "path": "transcription/LICENSE",
-          "url": "https://raw.githubusercontent.com/openai/whisper/31243bad24cc746f07d4c8bfdd2d974872cb1803/LICENSE",
+          "url": "https://huggingface.co/oxide-lab/whisper-small-GGUF/resolve/67b1bf8be07d7a0b836fbf1ecd354b19383ac288/LICENSE",
           "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
-          "size_bytes": 1063
+          "size_bytes": 1063,
+          "provenance_note": "Complete upstream licence retained through a pinned downstream model distribution; exact byte size and SHA-256 independently matched the canonical licence."
         },
         {
           "path": "transcription/README.md",
@@ -128,7 +129,7 @@
       "revision": "f2068edd9b54f2a369549ccc71f70ed273a2a801",
       "parameters_billions": 0.033,
       "recommended_ram_gib": 1,
-      "ram_basis": "Engineering estimate; native validation required.",
+      "ram_basis": "Engineering allowance for one BGE-small query/document with a 512-token context; actual native qualification is separate.",
       "license": "MIT",
       "disk_gib": 0.034,
       "files": [

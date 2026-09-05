@@ -190,18 +190,19 @@ def provision(destination, python, cmake="cmake", jobs=2):
                 raise ValueError("Piper COPYING missing from wheels")
             copying = candidates[0]
         shutil.copyfile(copying, speech / "PIPER-COPYING")
+        entry = speech / "piper_entry.py"
+        entry.write_text("import os, runpy, sys\nfrom pathlib import Path\n"
+                         "sys.dont_write_bytecode = True\n"
+                         "if os.name == 'nt': _dll_directory = os.add_dll_directory(str(Path(sys.executable).resolve().parent))\n"
+                         "sys.path.insert(0, str(Path(__file__).resolve().parent / 'piper-site'))\n"
+                         "runpy.run_module('piper', run_name='__main__')\n", encoding="utf-8")
+        run([python, "-X", "utf8", "-I", "-B", entry, "--help"], speech / "pip.log")
         for filename, expected in VOICE_FILES.items():
             url = f"https://huggingface.co/rhasspy/piper-voices/resolve/{VOICE_REVISION}/en/en_US/ljspeech/medium/{filename}"
             provenance["downloads"].append(download(url, speech / filename, expected))
     provenance["downloads"].append(download(
         f"https://api.github.com/repos/OHF-Voice/piper1-gpl/tarball/{PIPER_REVISION}",
         speech / "piper-source.tar.gz", PIPER_SOURCE_SHA256))
-    entry = speech / "piper_entry.py"
-    entry.write_text("import os, runpy, sys\nfrom pathlib import Path\n"
-                     "sys.dont_write_bytecode = True\n"
-                     "if os.name == 'nt': os.add_dll_directory(str(Path(sys.executable).resolve().parent))\n"
-                     "sys.path.insert(0, str(Path(__file__).resolve().parent / 'piper-site'))\n"
-                     "runpy.run_module('piper', run_name='__main__')\n", encoding="utf-8")
     paths = {"whisper": speech / name, "piper": entry,
              "piper_model": speech / "en_US-ljspeech-medium.onnx",
              "piper_config": speech / "en_US-ljspeech-medium.onnx.json"}

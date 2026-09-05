@@ -61,6 +61,14 @@ def main():
             report['checks'][name] = {'status': 'passed', 'result': result}
         except Exception as error:
             report['checks'][name] = {'status': 'failed', 'error': str(error)}
+            if isinstance(error, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
+                for field in ('stdout', 'stderr'):
+                    value = getattr(error, field, None)
+                    if isinstance(value, bytes):
+                        value = value.decode('utf-8', errors='replace')
+                    if value:
+                        report['checks'][name][field] = value[-6000:]
+                report['checks'][name]['returncode'] = getattr(error, 'returncode', None)
             raise
         finally:
             report['checks'][name]['seconds'] = time.monotonic() - started
