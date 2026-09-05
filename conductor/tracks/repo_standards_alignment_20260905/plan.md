@@ -291,7 +291,7 @@ Global drift guards (apply to every task):
 
 ## Phase 4 — Packaging and thin standards CI
 
-- [ ] **T7 `pyproject.toml`, package markers, test scaffold, dev requirements** *(R6, R8, AC6, AC7)*
+- [x] **T7 `pyproject.toml`, package markers, test scaffold, dev requirements** *(R6, R8, AC6, AC7)* (de4e132)
 
   **Files**: create `pyproject.toml`, `cli/__init__.py` (empty), `tests/__init__.py` (empty), `tests/test_smoke.py`, `tests/requirements-dev.txt`. `mcp/__init__.py` already exists — leave it.
 
@@ -431,7 +431,7 @@ Global drift guards (apply to every task):
 
   **Do not**: add `[project.optional-dependencies]`; rename folders; add `pytest`; put `coverage` anywhere except `tests/requirements-dev.txt`; edit `mcp/__init__.py`. Known/accepted: the wheel also ships `cli/test_station_hardening.py` and `cli/launch.py` as modules (harmless; excluding single modules via package-dir is not supported); `aegisarchive-mcp` looks for `profiles/` relative to the source tree, so an installed copy lists zero profiles unless run from a checkout (document in README T9).
 
-- [ ] **T8 Thin standards CI caller** *(R7, AC7)*
+- [x] **T8 Thin standards CI caller** *(R7, AC7)* (7f688d4)
 
   **Files**: create `.github/workflows/standards-ci.yml`.
 
