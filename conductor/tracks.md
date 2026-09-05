@@ -82,9 +82,9 @@
   *Link: [./tracks/contributor_experience_20260905/](./tracks/contributor_experience_20260905/)*
   *Five-minute CONTRIBUTING setup, QUICKSTART, SUPPORT, good-first-issue seeds. Does not rewrite README or add `release.yml`.*
 
-- [ ] **Track: Release Workflow, Provenance, and Dev Container**
-  *Status: Planned*
-  *Link: [./tracks/release_and_packaging_20260905/](./tracks/release_and_packaging_20260905/)*
+- [x] **Track: Release Workflow, Provenance, and Dev Container**
+  *Status: Archived*
+  *Link: [./archive/release_and_packaging_20260905/](./archive/release_and_packaging_20260905/)*
   *`.devcontainer`, `release.yml` with SHA256SUMS and SLSA provenance. Does not own README, CONTRIBUTING, or pyproject.toml.*
 
 - [x] **Track: Future Capabilities (Research-First)**
