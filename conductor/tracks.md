@@ -12,7 +12,7 @@
 
 - [x] **Track: In-Browser Sandboxed WARC Replay Viewer**
   *Status: Completed*
-  *Link: [./tracks/in_browser_replay_viewer/index.md](./tracks/in_browser_replay_viewer/index.md)*
+  *Link: [./archive/in_browser_replay_viewer/index.md](./archive/in_browser_replay_viewer/index.md)*
   *Offline browsing of captured archives directly in browser iframe.*
 
 - [x] **Track: Cross-Platform Native Launchers & Multi-OS Hardening**
