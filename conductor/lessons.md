@@ -25,3 +25,8 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 ## 2026-09-05 — repo
 - **Surprise**: The CDX header declares 11 fields (` CDX N b a m s k r M S V g`) while both writers emit 10 values per line (the `S` length field is missing) in `web/lib/warc_writer.js` and `cli/aegis_cli.py`. The verifier never compared header arity to row arity, so the mismatch was invisible to CI for the whole project history.
 - **Change for the next planner**: any format the project claims to conform to (WARC/1.1, CDX-11, MCP protocol version) needs a conformance test that exercises the writer and checks structural invariants, not just `--help` and `py_compile`. Acceptance criteria should name the invariant ("every CDX data row has exactly as many fields as the header").
+
+## 2026-09-05 — engine_correctness_20260905
+- **Surprise**: Failure classifications (404 tripping the circuit breaker) and single-flight assumptions were conflated with concurrency settings in profiles (`concurrency: 4` in `rapid_research.json` while the engine operated strictly single-flight). Furthermore, tracking parameter scrubbing was overly aggressive (stripping standard navigational queries like `ref` and `source`).
+- **Change for the next planner**: profile schema properties must reflect actual runtime mechanics (mark unused/misleading options deprecated or bound them with strict constraints), and web crawler tests must assert preservation of critical routing queries and requisite tags rather than relying on happy-path smoke runs.
+

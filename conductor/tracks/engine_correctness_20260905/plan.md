@@ -1,6 +1,6 @@
 # Track Plan: Politeness Engine & Crawler Correctness
 
-## Status: PLANNED
+## Status: COMPLETED (2026-09-05 — Politeness Engine & Crawler Correctness)
 
 Conventions for every task below: paths are relative to the repository root; line numbers refer to the files as of commit `3f00f46` (re-locate by the quoted snippet if lines have shifted); "Verify" commands run from the repository root with Node >= 18 and Python >= 3.9; a task is complete only when every "Done when" item is true. Never edit files outside the task's **Files** list. Never create files whose names start with `._`. Never add dependencies (no `npm install`, no `pip install`). Do not commit or push unless the operator explicitly asks.
 
@@ -517,5 +517,5 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 6 — Completion
 
-- [ ] **F1** Final validation: all Verify commands of T1–T10; `python3 -m py_compile cli/*.py mcp/server.py`; leak-prevention gate (`grep -rnI -E` pattern from `.github/workflows/ci.yml`) clean. Append a `checkpoint_validated` line to `evidence.jsonl`.
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`) and hand the registry update (G2) to the integrator.
+- [x] **F1** Final validation: all Verify commands of T1–T10; `python3 -m py_compile cli/*.py mcp/server.py`; leak-prevention gate (`grep -rnI -E` pattern from `.github/workflows/ci.yml`) clean. Append a `checkpoint_validated` line to `evidence.jsonl`.
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`) and hand the registry update (G2) to the integrator.
