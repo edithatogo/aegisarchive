@@ -43,6 +43,73 @@ def matches(path: Path, entry: dict) -> bool:
             and digest(path) == entry["sha256"])
 
 
+def source_inventory(lock: dict) -> dict:
+    """Licence and source pins only. Presence of this record is not native inference."""
+    models = []
+    for model in lock["models"]:
+        models.append({
+            "role": model["role"],
+            "repo": model.get("repo"),
+            "revision": model.get("revision"),
+            "license": model.get("license"),
+            "parameters_billions": model.get("parameters_billions"),
+            "files": [{key: entry[key] for key in ("path", "url", "sha256", "size_bytes")}
+                      for entry in model["files"]],
+        })
+    return {"schema_version": 1, "kind": "licence_source_inventory",
+            "inference_claimed": False, "models": models}
+
+
+def audit_cache(lock: dict, root: Path, selected: set) -> dict:
+    """Offline SHA-256 audit. Missing or mismatched files fail closed; no inference."""
+    files = []
+    complete = True
+    root = Path(root)
+    for model in lock["models"]:
+        if model["role"] not in selected:
+            continue
+        for entry in model["files"]:
+            destination = root / entry["path"]
+            record = {key: entry[key] for key in ("path", "url", "sha256", "size_bytes")}
+            if destination.is_symlink():
+                record["status"] = "symlink_rejected"
+                complete = False
+            elif destination.is_file():
+                if destination.stat().st_size != entry["size_bytes"]:
+                    record["status"] = "size_mismatch"
+                    complete = False
+                elif digest(destination) != entry["sha256"]:
+                    record["status"] = "digest_mismatch"
+                    complete = False
+                else:
+                    record["status"] = "verified"
+            else:
+                record["status"] = "missing"
+                complete = False
+            files.append(record)
+    return {"schema_version": 1, "kind": "model_cache_audit", "complete": complete,
+            "inference_claimed": False, "files": files}
+
+
+def write_json(path: Path, payload: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                     prefix="." + path.name + "-", delete=False) as stream:
+        temporary = Path(stream.name)
+        try:
+            stream.write(json.dumps(payload, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        except BaseException:
+            stream.close()
+            temporary.unlink()
+            raise
+    try:
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def load_lock(path: Path) -> dict:
     lock = json.loads(path.read_text(encoding="utf-8"))
     if lock.get("schema_version") != 1 or not lock.get("models"):
@@ -157,21 +224,43 @@ def fetch(entry: dict, destination: Path, *, offline: bool = False,
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--lock", type=Path, default=Path(__file__).with_name("model-lock.json"))
-    parser.add_argument("--output", type=Path, required=True, help="Model directory; assets use role/filename layout")
+    parser.add_argument("--output", type=Path, help="Model directory or inventory JSON path")
     parser.add_argument("--roles", nargs="+", help="Optional subset of model roles")
     parser.add_argument("--offline", action="store_true", help="Verify cached files without network access")
+    parser.add_argument("--inventory", action="store_true",
+                        help="Write licence/source inventory; does not download or infer")
+    parser.add_argument("--audit", action="store_true",
+                        help="Offline SHA-256 audit; exit 1 unless every selected file verifies")
     parser.add_argument("--attempts", type=int, default=6)
     args = parser.parse_args(argv)
     if args.attempts < 1:
         parser.error("--attempts must be positive")
+    if args.output is None:
+        parser.error("--output is required")
     lock = load_lock(args.lock)
     available = {model["role"] for model in lock["models"]}
     selected = set(args.roles or available)
     if not selected <= available:
         parser.error("Unknown role(s): " + ", ".join(sorted(selected - available)))
+    if args.inventory:
+        payload = source_inventory(lock)
+        payload["lock_sha256"] = digest(args.lock)
+        write_json(args.output.resolve(), payload)
+        print(json.dumps({"inventory": str(args.output.resolve()), "models": len(payload["models"]),
+                          "inference_claimed": False}))
+        return 0
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=True)
-    receipt = {"schema_version": 1, "lock_sha256": digest(args.lock), "files": []}
+    if args.audit:
+        receipt = audit_cache(lock, root, selected)
+        receipt["lock_sha256"] = digest(args.lock)
+        receipt["verified_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
+        write_json(root / "model-audit.json", receipt)
+        print(json.dumps({"complete": receipt["complete"], "inference_claimed": False,
+                          "files": len(receipt["files"])}), flush=True)
+        return 0 if receipt["complete"] else 1
+    receipt = {"schema_version": 1, "lock_sha256": digest(args.lock), "files": [],
+               "inference_claimed": False}
     for model in lock["models"]:
         if model["role"] not in selected:
             continue
@@ -183,21 +272,7 @@ def main(argv=None) -> int:
             receipt["files"].append({**entry, "status": result})
             print(f"{result}: {entry['path']}", flush=True)
     receipt["verified_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=root,
-                                     prefix=".model-receipt-", delete=False) as stream:
-        temporary = Path(stream.name)
-        try:
-            stream.write(json.dumps(receipt, indent=2) + "\n")
-            stream.flush()
-            os.fsync(stream.fileno())
-        except BaseException:
-            stream.close()
-            temporary.unlink()
-            raise
-    try:
-        os.replace(temporary, root / "model-receipt.json")
-    finally:
-        temporary.unlink(missing_ok=True)
+    write_json(root / "model-receipt.json", receipt)
     return 0
 
 

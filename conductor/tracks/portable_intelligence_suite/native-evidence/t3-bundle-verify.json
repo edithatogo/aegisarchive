@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "kind": "native_bundle_receipt",
+  "bundle": "/Users/doughnut/.codex/artifacts/aegisarchive-20260905/AegisArchive macOS ARM64",
+  "inference_claimed": false,
+  "smoke": "not_run",
+  "status": "failed",
+  "error": "package integrity mismatch",
+  "gap": "Assembled Darwin package has 531 extra files vs manifest, including interpreter bytecode caches. Immutable pinned file digests still match; packaging.verify fail-closed. Complete-package smoke was not claimed.",
+  "extra_files": 531
+}

@@ -21,9 +21,12 @@ import zipfile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from portable.native_platform_probe import ASSETS, RELEASE, VERSION
-from portable.packaging import assemble, digest
-from portable.provision_models import main as models_main, load_lock
-from portable.provision_speech import provision as speech_provision, normalize
+from portable.packaging import assemble, digest, verify as verify_package
+from portable.provision_models import (
+    main as models_main, load_lock, source_inventory as model_source_inventory, write_json)
+from portable.provision_speech import (
+    provision as speech_provision, normalize, WHISPER_REVISION, WHISPER_SOURCE_SHA256,
+    PIPER_REVISION, PIPER_SOURCE_SHA256, VOICE_REVISION, VOICE_FILES, WHEEL_PINS)
 
 LLAMA = {
     'Darwin': ('llama-b10819-bin-macos-arm64.tar.gz', '8933e736495eadfef0731ae32054acfaa75699bf4a6ccba77cd8475db085ec66'),
@@ -308,11 +311,102 @@ print('Complete package verified:',len(verify(root)['files']))
 """)
 
 
+def source_inventory():
+    lock = load_lock(Path(__file__).with_name('model-lock.json'))
+    return {
+        'schema_version': 1,
+        'kind': 'native_source_inventory',
+        'inference_claimed': False,
+        'python': {'release': RELEASE, 'version': VERSION,
+                   'assets': {system + '/' + machine: {'target': target, 'sha256': sha}
+                              for (system, machine), (target, sha) in ASSETS.items()}},
+        'llama': {system: {'archive': name, 'sha256': sha} for system, (name, sha) in LLAMA.items()},
+        'git': {'url': GIT_URL, 'sha256': GIT_SHA, 'license': 'GPL-2.0-only'},
+        'bash': {'url': BASH_URL, 'sha256': BASH_SHA, 'license': 'GPL-3.0-or-later'},
+        'win_git': {'url': WIN_GIT_URL, 'sha256': WIN_GIT_SHA, 'license': 'GPL-2.0-only'},
+        'speech': {
+            'whisper_revision': WHISPER_REVISION, 'whisper_source_sha256': WHISPER_SOURCE_SHA256,
+            'piper_revision': PIPER_REVISION, 'piper_source_sha256': PIPER_SOURCE_SHA256,
+            'voice_revision': VOICE_REVISION, 'voice_files': VOICE_FILES,
+            'wheel_packages': {name: record['version'] for name, record in WHEEL_PINS.items()},
+            'licences': {'whisper': 'MIT', 'piper': 'GPL-3.0', 'voice_repository': 'MIT',
+                         'voice_dataset': 'public domain'},
+        },
+        'models': model_source_inventory(lock),
+    }
+
+
+def verify_or_smoke(bundle, receipt, *, smoke=False):
+    """Integrity/licence check, then optional native qualification. Never invent inference."""
+    bundle = Path(bundle)
+    receipt = Path(receipt)
+    report = {'schema_version': 1, 'kind': 'native_bundle_receipt', 'bundle': str(bundle),
+              'inference_claimed': False, 'smoke': 'not_run', 'status': 'blocked'}
+    if not bundle.is_dir() or not (bundle / 'manifest.json').is_file():
+        report['error'] = 'Bundle missing or incomplete; native inference was not executed'
+        write_json(receipt, report)
+        return 1
+    try:
+        manifest = verify_package(bundle)
+    except (OSError, ValueError, KeyError) as error:
+        report['status'] = 'failed'
+        report['error'] = str(error)
+        write_json(receipt, report)
+        return 1
+    report['status'] = 'verified'
+    report['immutable_files'] = len(manifest['files'])
+    report['assets'] = [{'id': asset['id'], 'source_url': asset.get('source_url'),
+                         'license': asset.get('license')} for asset in manifest.get('assets', [])]
+    if not smoke:
+        write_json(receipt, report)
+        return 0
+    python = bundle / 'runtime' / 'python' / ('python.exe' if os.name == 'nt' else 'bin/python3')
+    if not python.is_file():
+        nested = list((bundle / 'runtime' / 'python').rglob('python3' if os.name != 'nt' else 'python.exe'))
+        python = nested[0] if len(nested) == 1 else python
+    if not python.is_file():
+        report['error'] = 'Bundled interpreter missing; native inference was not executed'
+        write_json(receipt, report)
+        return 1
+    qualification = receipt.with_name(receipt.stem + '-qualification.json')
+    script = Path(__file__).with_name('native_qualification.py')
+    completed = subprocess.run([str(python), '-I', '-B', '-X', 'utf8', str(script),
+                                str(bundle), str(qualification)], timeout=3000)
+    payload = json.loads(qualification.read_text()) if qualification.is_file() else {}
+    report['smoke'] = payload.get('status', 'failed')
+    report['qualification_receipt'] = qualification.name
+    report['checks'] = {name: item.get('status') for name, item in payload.get('checks', {}).items()}
+    report['inference_claimed'] = (
+        payload.get('status') == 'passed'
+        and all(payload.get('checks', {}).get(tier, {}).get('status') == 'passed'
+                for tier in ('scout', 'general', 'deep')))
+    report['status'] = 'passed' if completed.returncode == 0 and payload.get('status') == 'passed' else 'failed'
+    if report['status'] != 'passed':
+        report['inference_claimed'] = False
+    write_json(receipt, report)
+    return 0 if report['status'] == 'passed' else 1
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--work',type=Path,required=True)
-    parser.add_argument('--output',type=Path,required=True)
+    parser.add_argument('--work',type=Path)
+    parser.add_argument('--output',type=Path)
+    parser.add_argument('--inventory',type=Path,help='Write licence/source inventory JSON')
+    parser.add_argument('--verify-bundle',type=Path,help='Fail-closed package integrity check')
+    parser.add_argument('--smoke-bundle',type=Path,help='Verify then run native qualification')
+    parser.add_argument('--receipt',type=Path,help='Receipt path for verify/smoke modes')
     args=parser.parse_args()
+    if args.inventory:
+        write_json(args.inventory.resolve(), source_inventory())
+        print(json.dumps({'inventory': str(args.inventory.resolve()), 'inference_claimed': False}))
+        return
+    if args.verify_bundle or args.smoke_bundle:
+        bundle = args.smoke_bundle or args.verify_bundle
+        receipt = args.receipt or Path('native-bundle-receipt.json')
+        raise SystemExit(verify_or_smoke(bundle, receipt, smoke=bool(args.smoke_bundle)))
+    if args.work is None or args.output is None:
+        parser.error('--work and --output are required unless --inventory, --verify-bundle, or --smoke-bundle is set')
+
     work=args.work.resolve();work.mkdir(parents=True,exist_ok=True)
     if (work/'provisioning.json').exists():raise ValueError('Use a fresh native provisioning directory')
     output=args.output.resolve();output.mkdir(parents=True,exist_ok=True)

@@ -52,3 +52,8 @@ publish its digest or signature through an independently trusted channel.
 A package with no assets is an application-only package. Passing its integrity
 check does not prove native platform compatibility, model quality, offline
 engine execution, or that the portable suite acceptance criteria are complete.
+
+`provision_native.py --inventory` records pinned runtimes, models, licences and
+source URLs. `--verify-bundle` fail-closes on missing or mutated files.
+`--smoke-bundle` may claim inference only from a real native qualification
+receipt; it never records a passed model run for a missing package.

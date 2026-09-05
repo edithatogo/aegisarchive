@@ -19,6 +19,17 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Write pinned licence and source inventory
+        shell: bash
+        run: python portable/provision_native.py --inventory artifacts/native-source-inventory.json
+      - name: Fail-closed audit of an empty model cache
+        shell: bash
+        run: |
+          if python portable/provision_models.py --audit --output artifacts/empty-model-cache; then
+            echo "empty cache must not verify" >&2
+            exit 1
+          fi
+          python -c "import json; r=json.load(open('artifacts/empty-model-cache/model-audit.json')); assert r['complete'] is False and r['inference_claimed'] is False"
       - name: Provision pinned Python and probe relocated offline CLI
         shell: bash
         run: python portable/native_platform_probe.py --output artifacts/platform-probe.json

@@ -1,0 +1,229 @@
+{
+  "schema_version": 1,
+  "kind": "native_source_inventory",
+  "inference_claimed": false,
+  "python": {
+    "release": "20260901",
+    "version": "3.12.14",
+    "assets": {
+      "Darwin/arm64": {
+        "target": "aarch64-apple-darwin",
+        "sha256": "3ee3ee547cedfeb7c2b16b2b7156039f7b470bb8f857e226fd3d2eb11db83c76"
+      },
+      "Darwin/x86_64": {
+        "target": "x86_64-apple-darwin",
+        "sha256": "2e31b23f3f1319f707d0e620b48847a0046577541d357276821f9f1b5492e0ba"
+      },
+      "Linux/x86_64": {
+        "target": "x86_64-unknown-linux-gnu",
+        "sha256": "936c246dfdbbfa7cb22dd01814a21f582a892689fae96b06071a5e433baffa22"
+      },
+      "Linux/aarch64": {
+        "target": "aarch64-unknown-linux-gnu",
+        "sha256": "b61b856c3e1a4fc65b8f6e6b0495ef975dd0924f90c59f3ea61b38a079173b84"
+      },
+      "Windows/AMD64": {
+        "target": "x86_64-pc-windows-msvc",
+        "sha256": "e90c1b6419da3bd812dd73bb3de40287a21abf153438147639ec5e20375ea93f"
+      }
+    }
+  },
+  "llama": {
+    "Darwin": {
+      "archive": "llama-b10819-bin-macos-arm64.tar.gz",
+      "sha256": "8933e736495eadfef0731ae32054acfaa75699bf4a6ccba77cd8475db085ec66"
+    },
+    "Linux": {
+      "archive": "llama-b10819-bin-ubuntu-x64.tar.gz",
+      "sha256": "bff96585dfa126d2bc915367b3735982a5e67ddf887138a7c6e9d7cc9b438146"
+    },
+    "Windows": {
+      "archive": "llama-b10819-bin-win-cpu-x64.zip",
+      "sha256": "4599e502b374196d24600ea9b03c842a448c853116a15b55e8ba502bdc727b3f"
+    }
+  },
+  "git": {
+    "url": "https://github.com/git/git/archive/refs/tags/v2.55.0.tar.gz",
+    "sha256": "72923418db7b26dfddc21e2268660c5118e560bdfaa09b4489b67b38e9b69c49",
+    "license": "GPL-2.0-only"
+  },
+  "bash": {
+    "url": "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz",
+    "sha256": "0d5cd86965f869a26cf64f4b71be7b96f90a3ba8b3d74e27e8e9d9d5550f31ba",
+    "license": "GPL-3.0-or-later"
+  },
+  "win_git": {
+    "url": "https://github.com/git-for-windows/git/releases/download/v2.55.0.windows.5/PortableGit-2.55.0.5-64-bit.7z.exe",
+    "sha256": "5aa8a20f6e9abb2c755f0e73c91c687701a46b309ad84a0ca6509380fa4ae290",
+    "license": "GPL-2.0-only"
+  },
+  "speech": {
+    "whisper_revision": "52a939a2a762224e255d366c1182b2af4dd1a032",
+    "whisper_source_sha256": "691dfebd9965295c88d7a041d83aae4160977da489cdfc10c082eb2fd1ca8c7d",
+    "piper_revision": "639388b6317fc4731e91d53da42aea68fd4166ff",
+    "piper_source_sha256": "ffdd256e955e9606fbc8bff36a8830d259c69960958c46178a1ecc10a5901370",
+    "voice_revision": "1162a9173d0ce503555aed757976b7a9912eae4c",
+    "voice_files": {
+      "en_US-ljspeech-medium.onnx": "6f52a751e2349abe7a76735eb09dc1875298c77ea2342ffd2fef79ff81b87f22",
+      "en_US-ljspeech-medium.onnx.json": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
+      "MODEL_CARD": "fbee1529c89d36b3fe76d7e9f3f832dce17f44900a52d76a9bda735654766b4d"
+    },
+    "wheel_packages": {
+      "piper-tts": "1.8.0",
+      "flatbuffers": "25.12.19",
+      "numpy": "2.5.2",
+      "onnxruntime": "1.29.0",
+      "packaging": "26.3",
+      "pathvalidate": "3.3.1",
+      "protobuf": "7.36.1"
+    },
+    "licences": {
+      "whisper": "MIT",
+      "piper": "GPL-3.0",
+      "voice_repository": "MIT",
+      "voice_dataset": "public domain"
+    }
+  },
+  "models": {
+    "schema_version": 1,
+    "kind": "licence_source_inventory",
+    "inference_claimed": false,
+    "models": [
+      {
+        "role": "transcription",
+        "repo": "ggerganov/whisper.cpp",
+        "revision": "5359861c739e955e79d9a303bcbc70fb988958b1",
+        "license": "mit",
+        "parameters_billions": 0.039,
+        "files": [
+          {
+            "path": "transcription/ggml-tiny.en.bin",
+            "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.en.bin",
+            "sha256": "921e4cf8686fdd993dcd081a5da5b6c365bfde1162e72b08d75ac75289920b1f",
+            "size_bytes": 77704715
+          },
+          {
+            "path": "transcription/LICENSE",
+            "url": "https://huggingface.co/oxide-lab/whisper-small-GGUF/resolve/67b1bf8be07d7a0b836fbf1ecd354b19383ac288/LICENSE",
+            "sha256": "b5d65a59060e68c4ff940e1eddfa6f94b2d68fdf58ed7f4dd57721c997e35e9d",
+            "size_bytes": 1063
+          },
+          {
+            "path": "transcription/README.md",
+            "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/README.md",
+            "sha256": "21fd967098804f33fc84e803fb0e5ab7666d71801f4027cf28a65e7af09c1758",
+            "size_bytes": 3196
+          }
+        ]
+      },
+      {
+        "role": "general",
+        "repo": "Qwen/Qwen3-4B-GGUF",
+        "revision": "bc640142c66e1fdd12af0bd68f40445458f3869b",
+        "license": "apache-2.0",
+        "parameters_billions": 4,
+        "files": [
+          {
+            "path": "general/Qwen3-4B-Q4_K_M.gguf",
+            "url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
+            "sha256": "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5",
+            "size_bytes": 2497280256
+          },
+          {
+            "path": "general/LICENSE",
+            "url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/LICENSE",
+            "sha256": "5de36594c10839788a8c589443a8ef9d8b8d17c65a1b5807206ae037fc36c6bd",
+            "size_bytes": 11544
+          },
+          {
+            "path": "general/README.md",
+            "url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/README.md",
+            "sha256": "f7b7cbdbeab2a25b55e92cf160c035287374253b13af7ea2d5178847f6f8537e",
+            "size_bytes": 7576
+          }
+        ]
+      },
+      {
+        "role": "scout",
+        "repo": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
+        "revision": "91cad51170dc346986eccefdc2dd33a9da36ead9",
+        "license": "apache-2.0",
+        "parameters_billions": 1.54,
+        "files": [
+          {
+            "path": "scout/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+            "sha256": "6a1a2eb6d15622bf3c96857206351ba97e1af16c30d7a74ee38970e434e9407e",
+            "size_bytes": 1117320736
+          },
+          {
+            "path": "scout/LICENSE",
+            "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/LICENSE",
+            "sha256": "832dd9e00a68dd83b3c3fb9f5588dad7dcf337a0db50f7d9483f310cd292e92e",
+            "size_bytes": 11343
+          },
+          {
+            "path": "scout/README.md",
+            "url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/README.md",
+            "sha256": "57c72d4010fb11a98fc8e62dc8ef112b23a7a7525b71e571ca978d35cb3b2eec",
+            "size_bytes": 4856
+          }
+        ]
+      },
+      {
+        "role": "deep",
+        "repo": "Qwen/Qwen3-8B-GGUF",
+        "revision": "7c41481f57cb95916b40956ab2f0b139b296d974",
+        "license": "apache-2.0",
+        "parameters_billions": 8,
+        "files": [
+          {
+            "path": "deep/Qwen3-8B-Q4_K_M.gguf",
+            "url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf",
+            "sha256": "d98cdcbd03e17ce47681435b5150e34c1417f50b5c0019dd560e4882c5745785",
+            "size_bytes": 5027783488
+          },
+          {
+            "path": "deep/LICENSE",
+            "url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/LICENSE",
+            "sha256": "5de36594c10839788a8c589443a8ef9d8b8d17c65a1b5807206ae037fc36c6bd",
+            "size_bytes": 11544
+          },
+          {
+            "path": "deep/README.md",
+            "url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/README.md",
+            "sha256": "913fd918b4afb4511accca0874f701248b024013e804fa7a463639ead74e4dcb",
+            "size_bytes": 7577
+          }
+        ]
+      },
+      {
+        "role": "embeddings",
+        "repo": "ggml-org/bge-small-en-v1.5-Q8_0-GGUF",
+        "revision": "f2068edd9b54f2a369549ccc71f70ed273a2a801",
+        "license": "MIT",
+        "parameters_billions": 0.033,
+        "files": [
+          {
+            "path": "embeddings/bge-small-en-v1.5-q8_0.gguf",
+            "url": "https://huggingface.co/ggml-org/bge-small-en-v1.5-Q8_0-GGUF/resolve/f2068edd9b54f2a369549ccc71f70ed273a2a801/bge-small-en-v1.5-q8_0.gguf",
+            "sha256": "f046db1dc724cf4f6f0a0c5917e922823b73eb1d27b8f9a9c2797f7866974804",
+            "size_bytes": 36685152
+          },
+          {
+            "path": "embeddings/LICENSE",
+            "url": "https://raw.githubusercontent.com/FlagOpen/FlagEmbedding/d04f7989eeec2c6db4ead7c77ddef656f9c9d3aa/LICENSE",
+            "sha256": "587a673933425dbc36ec61268d3b954051b2d3ef3c9b322ede357976055ffdd5",
+            "size_bytes": 1065
+          },
+          {
+            "path": "embeddings/README.md",
+            "url": "https://huggingface.co/ggml-org/bge-small-en-v1.5-Q8_0-GGUF/resolve/f2068edd9b54f2a369549ccc71f70ed273a2a801/README.md",
+            "sha256": "07a5c558583f72bc94f2614d118572d5a59006c5b82130c361e9e077d8955de1",
+            "size_bytes": 62097
+          }
+        ]
+      }
+    ]
+  }
+}
