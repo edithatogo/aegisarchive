@@ -486,7 +486,7 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 ## Phase 5 — Tests
 
-- [ ] **W8 Tests to add (stdlib only)** *(AC8; regression for AC1–AC7)*
+- [x] **W8 Tests to add (stdlib only)** *(AC8; regression for AC1–AC7)*
 
   **Files** (create): `tests/js/warc_writer.test.js`, `tests/js/warc_reader.test.js`, `tests/test_warc_python.py`. Run `mkdir -p tests/js` first if the directory is absent (other tracks may already have created it; never delete their files).
 
