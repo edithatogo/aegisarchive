@@ -275,10 +275,14 @@ def main():
             print("[AegisArchive CLI] Stop requested; finalizing.")
             break
 
+        if urllib.parse.urlparse(url).scheme not in ('http', 'https'):
+            print(f"[SKIP] {url} (non-HTTP scheme)")
+            continue
         req = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive/1.0 (Ethical Archival Preservation)'})
         start_t = time.time()
         try:
-            with urllib.request.urlopen(req, timeout=15) as resp:
+            # Scheme allow-listed above; audit rules cannot see that guard.
+            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                 elapsed_ms = int((time.time() - start_t) * 1000)
                 body = resp.read()
                 headers = normalize_headers(resp.headers.items())

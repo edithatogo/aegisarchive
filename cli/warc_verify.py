@@ -85,8 +85,13 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
                 headers[line[:idx].strip().lower()] = line[idx+1:].strip()
 
         rec_type = headers.get('warc-type', 'unknown')
-        body_len = int(headers.get('content-length', '0'))
         target_uri = headers.get('warc-target-uri', '-')
+        raw_len = headers.get('content-length', '0')
+        if not raw_len.isdigit():
+            print(f"  [Warning] Malformed Content-Length {raw_len!r} at offset {pos}; stopping scan.")
+            corrupt_count += 1
+            break
+        body_len = int(raw_len)
 
         total_records += 1
         if rec_type == 'warcinfo':
@@ -99,7 +104,7 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
             request_count += 1
 
         rec_body_start = header_end + 4
-        rec_body_end = rec_body_start + body_len
+        rec_body_end = min(rec_body_start + body_len, content_len)
         rec_body = content[rec_body_start:rec_body_end]
 
         expected_digest = headers.get('warc-payload-digest', '')
