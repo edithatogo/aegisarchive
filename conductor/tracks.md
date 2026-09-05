@@ -67,8 +67,8 @@
   *Link: [./tracks/repo_standards_alignment_20260905/](./tracks/repo_standards_alignment_20260905/)*
   *Renovate, CITATION.cff, CalVer changelog, security-insights, Scorecard/zizmor copies, thin standards CI, pyproject with zero runtime deps, README nine-section contract.*
 
-- [ ] **Track: Security Gates & Fuzzing**
-  *Status: Planned*
+- [~] **Track: Security Gates & Fuzzing**
+  *Status: In Progress*
   *Link: [./tracks/security_gates_and_fuzzing_20260905/](./tracks/security_gates_and_fuzzing_20260905/)*
   *New `security.yml` only (do not edit `ci.yml`): secret scan, CodeQL, Semgrep, Bandit, fuzz harnesses; fail on medium-or-higher findings.*
 
