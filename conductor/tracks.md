@@ -72,9 +72,9 @@
   *Link: [./tracks/security_gates_and_fuzzing_20260905/](./tracks/security_gates_and_fuzzing_20260905/)*
   *New `security.yml` only (do not edit `ci.yml`): secret scan, CodeQL, Semgrep, Bandit, fuzz harnesses; fail on medium-or-higher findings.*
 
-- [~] **Track: Self-Improving System Loop**
-  *Status: In Progress*
-  *Link: [./tracks/self_improvement_loop_20260905/](./tracks/self_improvement_loop_20260905/)*
+- [x] **Track: Self-Improving System Loop**
+  *Status: Completed*
+  *Link: [./archive/self_improvement_loop_20260905/index.md](./archive/self_improvement_loop_20260905/index.md)*
   *Claims audit, track health, weekly workflow, improvement issue form; governance docs already seeded.*
 
 - [ ] **Track: Contributor Experience**
