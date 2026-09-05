@@ -192,7 +192,7 @@ Global drift guards (apply to every task):
 
 ## Phase 3 — Managed workflows (copied verbatim)
 
-- [ ] **T5 Managed Scorecard workflow** *(R5, AC5)*
+- [x] **T5 Managed Scorecard workflow** *(R5, AC5)* (fcfd09e)
 
   **Files**: create `.github/workflows/scorecard.yml`.
 
@@ -250,7 +250,7 @@ Global drift guards (apply to every task):
 
   **Do not**: edit any line (the file is centrally managed and drift is audited); do not add a Scorecard badge to the README until a published result exists (T9 leaves a placeholder comment instead).
 
-- [ ] **T6 Managed zizmor workflow** *(R5, AC5)*
+- [x] **T6 Managed zizmor workflow** *(R5, AC5)* (41e4830)
 
   **Files**: create `.github/workflows/zizmor.yml`.
 
