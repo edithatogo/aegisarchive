@@ -77,9 +77,9 @@
   *Link: [./archive/self_improvement_loop_20260905/index.md](./archive/self_improvement_loop_20260905/index.md)*
   *Claims audit, track health, weekly workflow, improvement issue form; governance docs already seeded.*
 
-- [ ] **Track: Contributor Experience**
-  *Status: Planned*
-  *Link: [./tracks/contributor_experience_20260905/](./tracks/contributor_experience_20260905/)*
+- [x] **Track: Contributor Experience**
+  *Status: Archived*
+  *Link: [./archive/contributor_experience_20260905/](./archive/contributor_experience_20260905/)*
   *Five-minute CONTRIBUTING setup, QUICKSTART, SUPPORT, good-first-issue seeds. Does not rewrite README or add `release.yml`.*
 
 - [x] **Track: Release Workflow, Provenance, and Dev Container**

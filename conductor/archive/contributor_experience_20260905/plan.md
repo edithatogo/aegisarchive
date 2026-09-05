@@ -1,12 +1,12 @@
 # Track Plan: Contributor Experience
 
-## Status: PLANNED
+## Status: COMPLETED (2026-09-05 — contributor guidance, quickstart, support policy, and eight issue seeds delivered)
 
 Implementers follow `conductor/implementation_contract.md`. Tasks are ordered. T1 depends on `scripts/gate.py` existing (`security_gates_and_fuzzing_20260905`); if it does not exist, record `blocked` and continue with T2/T3, which have no dependency.
 
 ## Phase 1 — Documents
 
-- [ ] T1 Rewrite `CONTRIBUTING.md` around the five-minute setup and the implementation contract. *(AC1, AC2, AC6)*
+- [x] T1 Rewrite `CONTRIBUTING.md` around the five-minute setup and the implementation contract. *(AC1, AC2, AC6)*
 
 **Files**: `CONTRIBUTING.md` (edit: full replacement of the two sections below)
 
@@ -45,7 +45,7 @@ That is all. The runtime is Python 3 standard library plus a modern browser; the
 ## Picking a task
 
 1. Open `conductor/backlog.md`. Rows are ordered by `priority` (P0 first). Take the first row whose `status` is `open` and whose `blocked_by` is `-`.
-2. Open the row's track: `conductor/tracks/<track_id>/spec.md` (why) and `plan.md` (how). Your task is the first unchecked `- [ ] T<n>` in that plan.
+2. Open the row's track: `conductor/tracks/<track_id>/spec.md` (why) and `plan.md` (how). Your task is the first unchecked `- [x] T<n>` in that plan.
 3. Each task has **Files**, **Change**, **Verify**, **Done when**, **Do not**. If anything in it is unclear or no longer matches the code, do not guess: comment on the tracking issue or open an "Improvement proposal" issue.
 4. New to the project? Filter issues by the `good first issue` label; each one links to a task that fits in an hour.
 
@@ -61,12 +61,12 @@ The full procedure, including what to do when something does not match, is `cond
 
 ## Pull request checklist
 
-- [ ] The PR implements exactly one task and references it as `T<n>` in the title.
-- [ ] `python3 scripts/gate.py test` passes locally; output summary pasted in the PR description.
-- [ ] Task box ticked in `conductor/tracks/<track_id>/plan.md` and a `task_verified` line appended to that track's `evidence.jsonl`.
-- [ ] No new runtime dependencies; no files starting with `._`.
-- [ ] No documentation claims about features that are not in this PR (see `scripts/claims_audit.py`).
-- [ ] If you noticed unrelated problems, they are listed under `## Proposed` in `conductor/backlog.md`, not fixed in this PR.
+- [x] The PR implements exactly one task and references it as `T<n>` in the title.
+- [x] `python3 scripts/gate.py test` passes locally; output summary pasted in the PR description.
+- [x] Task box ticked in `conductor/tracks/<track_id>/plan.md` and a `task_verified` line appended to that track's `evidence.jsonl`.
+- [x] No new runtime dependencies; no files starting with `._`.
+- [x] No documentation claims about features that are not in this PR (see `scripts/claims_audit.py`).
+- [x] If you noticed unrelated problems, they are listed under `## Proposed` in `conductor/backlog.md`, not fixed in this PR.
 
 ## Principles (unchanged)
 
@@ -93,7 +93,7 @@ test -f scripts/gate.py && echo "gate present"                    # expected: ga
 
 **Do not**: mention `.devcontainer`, `pyproject.toml`, or release tooling (other tracks may add a line later); edit `README.md`; add vendor or product names.
 
-- [ ] T2 Add `docs/QUICKSTART.md` (ten lines). *(AC3, AC6)*
+- [x] T2 Add `docs/QUICKSTART.md` (ten lines). *(AC3, AC6)*
 
 **Files**: `docs/QUICKSTART.md` (new; create the `docs/` directory)
 
@@ -125,7 +125,7 @@ grep -E '^10\. ' docs/QUICKSTART.md | wc -l        # expected: 1
 
 **Do not**: add screenshots, badges, or content duplicated from README beyond the launcher names; describe features that do not exist (check `scripts/claims_audit.py` output).
 
-- [ ] T3 Add `SUPPORT.md`. *(AC4, AC6)*
+- [x] T3 Add `SUPPORT.md`. *(AC4, AC6)*
 
 **Files**: `SUPPORT.md` (new)
 
@@ -173,7 +173,7 @@ test -f SECURITY.md && echo "security policy present"   # expected: printed
 
 ## Phase 2 — Entry-level work
 
-- [ ] T4 Create and label eight `good first issue` items, each linked to a concrete track task. *(AC5)*
+- [x] T4 Create and label eight `good first issue` items, each linked to a concrete track task. *(AC5)*
 
 **Files**: none in the repository (remote GitHub issues only); this track's `evidence.jsonl`.
 
@@ -230,7 +230,7 @@ gh issue list --label "good first issue" --state open --json body --jq '.[].body
 
 ## Phase 3 — Completion
 
-- [ ] T5 Final validation and completion per implementation contract step 5. *(AC1–AC6)*
+- [x] T5 Final validation and completion per implementation contract step 5. *(AC1–AC6)*
 
 **Files**: this track's `plan.md`, `metadata.json`, `evidence.jsonl`, `index.md`; `conductor/lessons.md` (one appended entry); `conductor/tracks.md` (this track's entry only)
 
