@@ -25,8 +25,12 @@ class MemoryTests(unittest.TestCase):
         self.memory.put("b", "forest assessment", [0, 1])
         self.memory.relate("committee", "published", "report", "a")
         self.assertEqual(self.memory.search("water")[0]["id"], "a")
-        self.assertEqual(self.memory.search("", [0, 1])[0]["id"], "b")
-        self.assertEqual(self.memory.search("water", [1, 0])[0]["id"], "a")
+        semantic = self.memory.search("", [0, 1])
+        self.assertEqual(semantic[0]["id"], "b")
+        self.assertAlmostEqual(semantic[0]["score"], 1 / 61)
+        hybrid = self.memory.search("water", [1, 0])
+        self.assertEqual(hybrid[0]["id"], "a")
+        self.assertAlmostEqual(hybrid[0]["score"], 2 / 61)
         self.assertEqual(self.memory.search("absent"), [])
         self.memory.close()
         self.memory = Memory(self.path)
@@ -37,7 +41,8 @@ class MemoryTests(unittest.TestCase):
         self.assertEqual(self.memory.neighbors("committee"), [])
 
     def test_invalid_vectors_and_source(self):
-        self.assertAlmostEqual(sum(x*x for x in _vector([1.7e308, 1.7e308])), 1)
+        self.assertAlmostEqual(sum(x * x for x in _vector([1.7e308, 1.7e308])), 1)
+        self.assertAlmostEqual(sum(x * x for x in _vector([1e-320, 1e-320])), 1)
         for bad in ([0, 0], [float("nan")], [float("inf")], [], [True]):
             with self.assertRaises(ValueError):
                 self.memory.put("bad", "bad", bad)
@@ -116,6 +121,19 @@ class ToolTests(unittest.TestCase):
             tools.config["assets"]["scout"]["path"] = sys.executable
             with self.assertRaises(ValueError):
                 tools.asset("scout")
+
+
+class QualificationContractTests(unittest.TestCase):
+    def test_native_qualification_requires_semantic_git_console_and_post_integrity(self):
+        source = Path(__file__).with_name("native_qualification.py").read_text(encoding="utf-8")
+        self.assertIn("memory.search('',", source)
+        self.assertIn("record('git', git_check)", source)
+        self.assertIn("record('console', console_check)", source)
+        self.assertIn("record('integrity_after'", source)
+        self.assertIn("git('init')", source)
+        self.assertIn("git('fsck', '--full')", source)
+        self.assertIn("git('show', 'HEAD:evidence.txt')", source)
+        self.assertIn("printf \"%s\" \"$1\"", source)
 
 
 if __name__ == "__main__":

@@ -136,6 +136,8 @@ def main():
                     graph = memory.neighbors('archive')
                     if results[0]['id'] != 'water' or semantic[0]['id'] != 'water' or graph[0]['document'] != 'water':
                         raise ValueError('Retrieval or source graph mismatch')
+                    if abs(semantic[0]['score'] - 1 / 61) > 1e-9:
+                        raise ValueError('Semantic-only retrieval mixed lexical ranks')
                     return {'dimensions': len(vector), 'results': results, 'semantic_only': semantic, 'graph': graph}
                 finally:
                     memory.close()
