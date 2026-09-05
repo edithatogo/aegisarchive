@@ -30,8 +30,8 @@
   *Link: [./archive/ci_cd_repo_hardening/index.md](./archive/ci_cd_repo_hardening/index.md)*
   *GitHub Actions CI matrix, compilation checks, schema validation, and leak prevention gate.*
 
-- [ ] **Track: Portable Platform Compatibility & Offline Intelligence Suite**
-  *Status: Roadmap Planned*
+- [~] **Track: Portable Platform Compatibility & Offline Intelligence Suite**
+  *Status: In Progress*
   *Link: [./tracks/portable_intelligence_suite/index.md](./tracks/portable_intelligence_suite/index.md)*
   *Windows embeddable Python auto-detection, portable Git and console runtimes, local multi-tier LLMs (llama.cpp), Whisper transcription, Piper TTS, and local GraphRAG memory.*
 
@@ -63,7 +63,7 @@
   *Case-insensitive headers, query-string fidelity, stdlib politeness port, set-based queue, shared loopback fixture.*
 
 - [x] **Track: Repository Standards Alignment**
-  *Status: Completed — external attestation backend boundary recorded*
+  *Status: Completed — hosted attestation verified*
   *Link: [./archive/repo_standards_alignment_20260905/index.md](./archive/repo_standards_alignment_20260905/index.md)*
   *Renovate, CITATION.cff, CalVer changelog, security-insights, Scorecard/zizmor copies, thin standards CI, pyproject with zero runtime deps, README nine-section contract.*
 

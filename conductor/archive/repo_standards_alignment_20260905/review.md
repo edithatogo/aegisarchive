@@ -35,3 +35,7 @@ The named unit/integration tests cover the local acceptance behavior. Plan comma
 ## Limits and gates
 
 Local tests do not establish hosted qualification, native cross-platform launch success or external WARC conformance. Publication remains G1-gated. The security run was observed failing, and standards hosted settings were not changed. Existing security handoff exceptions remain visible in the security specification.
+
+## Hosted resolution
+
+Supersedes earlier blocked disposition. Standards CI https://github.com/edithatogo/aegisarchive/actions/runs/33966578495 passed on d6f29dc, including SBOM, attestation and Codecov. Broad repository subject input caused the failure; the backend outage attribution was unsupported. Actionlint passed. Evidence: attestation-resolution.jsonl.
