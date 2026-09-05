@@ -144,4 +144,4 @@ jobs:
             python "$harness" -max_total_time=60 -atheris_runs=500000 -rss_limit_mb=2048
           done
       - name: JS property tests (node --test)
-        run: FUZZ_RUNS=2000 node --test tests/js/
+        run: FUZZ_RUNS=2000 node --test tests/js/*.test.js

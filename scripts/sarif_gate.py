@@ -50,10 +50,22 @@ def gate(paths, threshold):
     for path in paths:
         with open(path, "r", encoding="utf-8") as fh:
             sarif = json.load(fh)
-        for run in sarif.get("runs", []) or []:
+        if not isinstance(sarif, dict) or not isinstance(sarif.get("runs"), list) or not sarif["runs"]:
+            raise ValueError("SARIF must contain at least one run")
+        for run in sarif["runs"]:
+            if not isinstance(run, dict) or not isinstance(run.get("results", []), list):
+                raise ValueError("Invalid SARIF run/results")
+            if any(inv.get("executionSuccessful") is False for inv in run.get("invocations", [])):
+                raise ValueError("SARIF scanner execution failed")
             rules = _rule_index(run)
             for result in run.get("results", []) or []:
                 rule = rules.get(result.get("ruleId"), {})
+                if not rule and "ruleIndex" in result:
+                    index = result["ruleIndex"]
+                    definitions = run.get("tool", {}).get("driver", {}).get("rules", [])
+                    if not isinstance(index, int) or index < 0 or index >= len(definitions):
+                        raise ValueError("Invalid SARIF ruleIndex")
+                    rule = definitions[index]
                 level = result.get("level") or rule.get("defaultConfiguration", {}).get("level", "warning")
                 sev = _severity(rule)
                 if level == "error" or (sev is not None and sev >= threshold):
@@ -68,9 +80,12 @@ def main(argv=None):
     parser.add_argument("--threshold", type=float, default=4.0,
                         help="minimum security-severity that fails the gate (default 4.0 = medium)")
     args = parser.parse_args(argv)
+    if not 0 <= args.threshold <= 4.0:
+        print("sarif_gate: threshold must not exceed medium (4.0)", file=sys.stderr)
+        return 2
     try:
         failures = gate(args.sarif, args.threshold)
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, TypeError, AttributeError) as exc:
         print("sarif_gate: cannot read SARIF: %s" % exc, file=sys.stderr)
         return 2
     if failures:

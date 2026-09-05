@@ -11,6 +11,7 @@ Subcommands (default: all):
 Exit status 0 only when every executed check passed. Skipped tools are reported.
 """
 import base64
+import glob
 import os
 import re
 import shutil
@@ -69,7 +70,7 @@ def check_test():
     if os.path.isfile(station):
         rc |= _run([sys.executable, station])
     if os.path.isdir(os.path.join(ROOT, "tests", "js")) and shutil.which("node"):
-        rc |= _run(["node", "--test", "tests/js/"])
+        rc |= _run(["node", "--test", *sorted(glob.glob(os.path.join(ROOT, "tests", "js", "*.test.js")))])
     return rc
 
 

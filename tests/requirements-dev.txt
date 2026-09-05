@@ -5,4 +5,4 @@ bandit==1.9.4
 semgrep==1.176.1
 zizmor==1.30.0
 # atheris publishes Linux wheels for CPython 3.12+ only; CI fuzz job uses Python 3.12.
-atheris==3.1.0; sys_platform == "linux"
+atheris==3.1.0; sys_platform == "linux" and python_version >= "3.12"

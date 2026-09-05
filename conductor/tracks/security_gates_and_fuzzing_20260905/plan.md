@@ -1146,3 +1146,12 @@ Global drift guards (apply to every task):
 
 - [x] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
 - [x] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11).
+
+## Review Fixes
+
+- [ ] Rev-1 Repair hosted runtime incompatibilities and fail-closed SARIF handling.
+  - **Files**: `.github/workflows/security.yml`, `tests/requirements-dev.txt`, `scripts/gate.py`, `scripts/sarif_gate.py`, `tests/test_security_review.py`.
+  - **Change**: restrict atheris to supported Python versions; expand JS test filenames for Node 22; reject malformed/failed SARIF runs, resolve indexed rules and reject thresholds above medium.
+  - **Verify**: `python3 -m unittest tests.test_security_review`; `actionlint .github/workflows/security.yml`; `python3 scripts/gate.py test`.
+  - **Done when**: local regression checks pass. Hosted acceptance F1 remains pending until a new successful run on main.
+  - **Do not**: lower scanner severity or grant publication authorization.
