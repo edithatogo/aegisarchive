@@ -14,6 +14,6 @@ elif command -v python >/dev/null 2>&1; then
     exec python cli/launch.py
 else
     echo "[Error] Python 3 was not found on this Mac."
-    echo "Please install Python 3 from https://python.org or Homebrew."
+    echo "Please install Python 3 using your operating system's package manager."
     read -p "Press Enter to exit..."
 fi

@@ -24,6 +24,12 @@ if (Test-Path "runtime\python\python.exe") {
 } elseif (Get-Command python -ErrorAction SilentlyContinue) {
     python cli\launch.py
 } else {
-    Write-Host "[Error] Python 3 was not found. Please install from https://python.org or place Python Embeddable into runtime\python\" -ForegroundColor Red
+    Write-Host "[Error] Python 3 was not found. Please install Python 3 for your system, or place a portable Python runtime into runtime\python\" -ForegroundColor Red
+    Read-Host "Press Enter to exit..."
+}
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Host ""
+    Write-Host "[Error] The launcher exited with an error. See the messages above." -ForegroundColor Red
     Read-Host "Press Enter to exit..."
 }

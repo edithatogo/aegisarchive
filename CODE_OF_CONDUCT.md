@@ -7,4 +7,4 @@ We as members, contributors, and leaders pledge to make participation in our com
 Community leaders are responsible for clarifying and enforcing our standards of acceptable behavior and will take appropriate and fair corrective action in response to any behavior that they deem inappropriate, threatening, offensive, or harmful.
 
 ## Attribution
-This Code of Conduct is adapted from the Contributor Covenant, version 2.1, available at https://www.contributor-covenant.org/version/2/1/code_of_conduct.html.
+This Code of Conduct is adapted from a widely used, openly licensed community code of conduct standard.
