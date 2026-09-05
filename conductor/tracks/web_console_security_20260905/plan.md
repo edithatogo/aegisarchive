@@ -313,7 +313,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 5 — Persistence claims
 
-- [ ] **S5 Wire `OpfsStreamer` into `WarcWriter`** *(AC5)*
+- [x] **S5 Wire `OpfsStreamer` into `WarcWriter`** *(AC5)*
 
   **Files**: `web/lib/warc_writer.js`, `web/lib/core_crawler.js`. Apply after `warc_interop_20260905` W1–W6 if that track is in progress (its request record adds one more `this.records.push` site).
 
@@ -383,7 +383,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: change `OpfsStreamer` itself; do not call `exportToUserDirectory`; do not keep a second copy of records in memory when a streamer is attached.
 
-- [ ] **S6 Checkpoint/resume of the frontier** *(AC6)*
+- [x] **S6 Checkpoint/resume of the frontier** *(AC6)*
 
   **Files**: `web/lib/core_crawler.js`, `web/index.html`.
 
@@ -480,7 +480,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: persist WARC bytes or the audit ledger in `localStorage`; do not use IndexedDB in this task; do not auto-resume without the operator clicking Resume.
 
-- [ ] **S7 Read `?profile=` from the URL** *(AC7)*
+- [x] **S7 Read `?profile=` from the URL** *(AC7)*
 
   **Files**: `web/index.html` only. Requires S4 (bundle) for id lookup.
 

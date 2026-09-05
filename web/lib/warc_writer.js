@@ -66,6 +66,8 @@
       const prefix = options.prefix || 'aegis_archive';
       this.filename = options.filename || `${prefix}_${dateStr}.warc`;
       this.records = [];
+      this.recordCount = 0;
+      this.streamer = null; // OpfsStreamer once attached (V5)
       this.cdxLines = [];
       this.currentOffset = 0;
       this.deduplicate = options.deduplicate !== false;
@@ -114,11 +116,27 @@
       fullRecord.set(trailingBytes, headerBytes.length + contentBytes.length);
 
       this.records.push(fullRecord);
+      this.recordCount += 1;
       this.currentOffset += fullRecord.length;
     }
 
+    /** Appends finished record bytes to memory or, once attached, to the streamer. */
+    async appendRecord(bytes) {
+      this.recordCount += 1;
+      this.currentOffset += bytes.length;
+      if (this.streamer) await this.streamer.writeChunk(bytes);
+      else this.records.push(bytes);
+    }
+
+    /** Attaches an initialised OpfsStreamer and flushes records already held in memory. */
+    async attachStreamer(streamer) {
+      for (const rec of this.records) await streamer.writeChunk(rec);
+      this.records = [];
+      this.streamer = streamer;
+    }
+
     /** Writes a synthesised WARC request record (Dg); returns its record id. */
-    addRequestRecord(url, request, concurrentToId, warcDate) {
+    async addRequestRecord(url, request, concurrentToId, warcDate) {
       const recordId = `<urn:uuid:${generateUUID()}>`;
       const u = new URL(url);
       let block = `${(request.method || 'GET').toUpperCase()} ${u.pathname}${u.search} HTTP/1.1\r\nHost: ${u.host}\r\n`;
@@ -133,8 +151,7 @@
       const trailing = new TextEncoder().encode('\r\n\r\n');
       const rec = new Uint8Array(headerBytes.length + bodyBytes.length + trailing.length);
       rec.set(headerBytes, 0); rec.set(bodyBytes, headerBytes.length); rec.set(trailing, headerBytes.length + bodyBytes.length);
-      this.records.push(rec);
-      this.currentOffset += rec.length;
+      await this.appendRecord(rec);
       return recordId;
     }
 
@@ -144,7 +161,7 @@
       const warcDate = formatWarcDate(dateObj);
       const cdxDate = formatCdxDate(dateObj);
 
-      const requestRecordId = options.request ? this.addRequestRecord(url, options.request, recordId, warcDate) : null;
+      const requestRecordId = options.request ? await this.addRequestRecord(url, options.request, recordId, warcDate) : null;
       const concurrentLine = requestRecordId ? [`WARC-Concurrent-To: ${requestRecordId}`] : [];
 
       const status = response.status || 200;
@@ -232,8 +249,7 @@
         this.payloadMap.set(payloadDigest, { recordId, url, date: warcDate });
       }
 
-      this.records.push(recordBytes);
-      this.currentOffset += recordBytes.length;
+      await this.appendRecord(recordBytes);
 
       // Generate standard 11-field CDX index entry
       const surt = toSURT(url);
@@ -252,7 +268,11 @@
       };
     }
 
-    getWarcBlob() {
+    async getWarcBlob() {
+      if (this.streamer) {
+        await this.streamer.close();
+        return this.streamer.getBlob('application/warc');
+      }
       return new Blob(this.records, { type: 'application/warc' });
     }
 
@@ -267,7 +287,7 @@
 
     getStats() {
       return {
-        recordCount: this.records.length,
+        recordCount: this.recordCount,
         totalBytes: this.currentOffset,
         deduplicatedCount: Array.from(this.payloadMap.keys()).length,
         filename: this.filename

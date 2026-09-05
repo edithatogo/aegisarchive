@@ -40,6 +40,7 @@
         onProgress: callbacks.onProgress || (() => {}),
         onStatusChange: callbacks.onStatusChange || (() => {}),
         onDocumentFound: callbacks.onDocumentFound || (() => {}),
+        onCheckpoint: callbacks.onCheckpoint || (() => {}),
         onComplete: callbacks.onComplete || (() => {})
       };
 
@@ -64,6 +65,9 @@
         organization: profile.archival ? profile.archival.organization : 'Public Preservation',
         deduplicate: profile.archival ? profile.archival.deduplicate_payloads : true
       });
+      const wantsOpfs = !profile.archival || profile.archival.enable_opfs_streaming !== false;
+      this.streamer = (wantsOpfs && typeof OpfsStreamer !== 'undefined') ? new OpfsStreamer(this.warc.filename) : null;
+      this.streamerAttached = false;
 
       // Config shortcuts
       this.targetConfig = profile.target || {};
@@ -198,6 +202,13 @@
         this.seedQueue();
       }
 
+      if (this.streamer && !this.streamerAttached) {
+        const onDisk = await this.streamer.init();
+        await this.warc.attachStreamer(this.streamer);
+        this.streamerAttached = true;
+        this.callbacks.onLog(onDisk ? '[Storage] Streaming WARC records to origin-private file storage.' : '[Storage] OPFS unavailable; streaming to memory chunks.');
+      }
+
       this.callbacks.onLog(`[AegisArchive] Engine started. Seeded ${this.queue.length} target URLs.`);
       if (this.robotsPolicy === 'ignore_authorised' && !this.robotsPolicyLogged) {
         this.robotsPolicyLogged = true;
@@ -227,13 +238,15 @@
 
         await this.processUrl(task);
         this.callbacks.onProgress(this.getProgressStats());
+        if (this.visited.size % 10 === 0) this.callbacks.onCheckpoint(this.exportCheckpoint());
       }
 
       this.isRunning = false;
       this.endTime = Date.now();
       this.callbacks.onStatusChange('STOPPED');
+      this.callbacks.onCheckpoint(this.queue.length > 0 ? this.exportCheckpoint() : null);
       this.callbacks.onLog(`[AegisArchive] Run complete. Crawled ${this.visited.size} pages; archived ${this.documents.length} assets.`);
-      this.callbacks.onComplete(this.getFinalResults());
+      this.callbacks.onComplete(await this.getFinalResults());
     }
 
     async processUrl(task) {
@@ -456,6 +469,7 @@
       this.isPaused = true;
       this.callbacks.onLog('[AegisArchive] Pause requested. Completing active request before sleeping.');
       this.callbacks.onStatusChange('PAUSED');
+      this.callbacks.onCheckpoint(this.exportCheckpoint());
     }
 
     resume() {
@@ -472,6 +486,25 @@
       this.politeness.abort();
       this.callbacks.onLog('[AegisArchive] Graceful shutdown requested. Preserving all captured records.');
       this.callbacks.onStatusChange('STOPPING');
+      this.callbacks.onCheckpoint(this.exportCheckpoint());
+    }
+
+    /** Serialisable frontier for crash-safe resume (V6). Records already written are not included. */
+    exportCheckpoint() {
+      return {
+        version: 1,
+        profile_id: this.profile.profile_id || null,
+        savedAt: new Date().toISOString(),
+        queue: this.queue,
+        visited: Array.from(this.visited)
+      };
+    }
+
+    importCheckpoint(cp) {
+      if (!cp || cp.version !== 1 || !Array.isArray(cp.queue)) return false;
+      this.queue = cp.queue.slice();
+      this.visited = new Set(cp.visited || []);
+      return true;
     }
 
     getProgressStats() {
@@ -484,7 +517,7 @@
       };
     }
 
-    getFinalResults() {
+    async getFinalResults() {
       const selfReflection = SelfReflectionEngine.analyze({
         auditLedger: this.auditLedger,
         documents: this.documents,
@@ -495,7 +528,7 @@
       }, this.profile);
 
       return {
-        warcBlob: this.warc.getWarcBlob(),
+        warcBlob: await this.warc.getWarcBlob(),
         cdxBlob: this.warc.getCdxBlob(),
         cdxText: this.warc.getCdxContent(),
         warcStats: this.warc.getStats(),

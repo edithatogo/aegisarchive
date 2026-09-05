@@ -3,7 +3,7 @@
   "type": "fix",
   "status": "in_progress",
   "created_at": "2026-09-05T04:35:00Z",
-  "updated_at": "2026-09-05T06:30:00Z",
+  "updated_at": "2026-09-05T06:35:00Z",
   "description": "Security and persistence fixes for web/index.html, web/viewer.html and web/lib: flagless iframe sandbox plus injected Content-Security-Policy, blob:-based offline replay replacing the live <base href>, escaping of crawled URLs/titles in innerHTML, generated web/profiles.bundle.js from profiles/*.json via a stdlib script, OpfsStreamer wired into WarcWriter, localStorage checkpoint/resume of queue and visited set with a resume banner, and ?profile= handling for the launcher hand-off; plus stdlib-only tests.",
   "evidence_schema": "1.0"
 }

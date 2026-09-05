@@ -46,6 +46,12 @@
       </div>
     </div>
 
+    <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
+      <span id="resumeBannerText"></span>
+      <button class="btn btn-emerald" onclick="resumeFromCheckpoint()">▶️ Resume</button>
+      <button class="btn btn-secondary" onclick="discardCheckpoint()">Discard</button>
+    </div>
+
     <!-- Live Telemetry Grid -->
     <div class="telemetry-grid">
       <div class="telemetry-card">
@@ -235,6 +241,8 @@
     let crawler = null;
     let finalResults = null;
     let currentReportMd = "";
+    let pendingCheckpoint = null;
+    const CHECKPOINT_KEY = 'aegis.checkpoint.v1';
 
     // Built-in profiles come from the generated bundle (single source of truth: profiles/*.json) (V4).
     const BUILTIN_PROFILES = (typeof AEGIS_BUNDLED_PROFILES !== 'undefined') ? AEGIS_BUNDLED_PROFILES : {};
@@ -250,7 +258,66 @@
       }
       activeProfile = BUILTIN_PROFILES.default_polite || Object.values(BUILTIN_PROFILES)[0] || null;
       if (activeProfile) select.value = activeProfile.profile_id;
+      const cp = loadCheckpoint(); if (cp && Array.isArray(cp.queue) && cp.queue.length > 0) showResumeBanner(cp);
       updateProfileDisplay();
+      const profileParam = new URLSearchParams(location.search).get('profile'); if (profileParam) applyProfileParam(profileParam);
+    }
+
+    function saveCheckpoint(cp) {
+      try {
+        if (cp === null) localStorage.removeItem(CHECKPOINT_KEY);
+        else localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(cp));
+      } catch (e) { log(`[Checkpoint] Not saved: ${e.message}`); }
+    }
+    function loadCheckpoint() {
+      try { const raw = localStorage.getItem(CHECKPOINT_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+    }
+    function showResumeBanner(cp) {
+      document.getElementById('resumeBannerText').textContent =
+        `Unfinished session for profile '${cp.profile_id}': ${cp.visited.length} visited, ${cp.queue.length} queued (saved ${cp.savedAt}). Resume restores the frontier only; records captured before the reload must have been exported.`;
+      document.getElementById('resumeBanner').style.display = 'flex';
+    }
+    function resumeFromCheckpoint() {
+      pendingCheckpoint = loadCheckpoint();
+      document.getElementById('resumeBanner').style.display = 'none';
+      if (pendingCheckpoint && BUILTIN_PROFILES[pendingCheckpoint.profile_id]) {
+        activeProfile = BUILTIN_PROFILES[pendingCheckpoint.profile_id];
+        document.getElementById('profileSelect').value = pendingCheckpoint.profile_id;
+        updateProfileDisplay();
+      }
+      startHarvest();
+    }
+    function discardCheckpoint() {
+      saveCheckpoint(null);
+      document.getElementById('resumeBanner').style.display = 'none';
+    }
+
+    // Launcher hand-off (V7): ?profile=<bundled id | path ending in <id>.json | same-origin URL>
+    async function applyProfileParam(raw) {
+      const select = document.getElementById('profileSelect');
+      const idFromPath = (raw.split(/[\\/]/).pop() || '').replace(/\.json$/i, '');
+      const byId = BUILTIN_PROFILES[raw] || BUILTIN_PROFILES[idFromPath];
+      if (byId) {
+        activeProfile = byId; select.value = byId.profile_id; updateProfileDisplay();
+        log(`[Profile] Selected '${byId.profile_name}' from ?profile=.`);
+        return;
+      }
+      let u = null;
+      try { u = new URL(raw, location.href); } catch (e) {}
+      if (!u || u.origin !== location.origin || !/^https?:$/.test(u.protocol)) {
+        log(`[Profile] Ignored ?profile= value (not a bundled id or same-origin URL).`);
+        return;
+      }
+      try {
+        const resp = await fetch(u.href, { cache: 'no-store' });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const parsed = await resp.json();
+        if (!parsed.target || !parsed.target.allowed_domains) throw new Error("missing 'target.allowed_domains'");
+        activeProfile = parsed; select.value = 'custom'; updateProfileDisplay();
+        log(`[Profile] Loaded profile from ${u.pathname}: ${parsed.profile_name || 'Custom'}`);
+      } catch (err) {
+        log(`[Profile] Could not load ?profile= target: ${err.message}`);
+      }
     }
 
     function updateProfileDisplay() {
@@ -342,8 +409,14 @@
         onProgress: (stats) => updateProgress(stats),
         onStatusChange: (status) => updateStatus(status),
         onDocumentFound: (doc) => addDocumentRow(doc),
+        onCheckpoint: (cp) => saveCheckpoint(cp),
         onComplete: (results) => handleComplete(results)
       });
+
+      if (pendingCheckpoint) {
+        if (crawler.importCheckpoint(pendingCheckpoint)) log(`[Checkpoint] Resumed ${pendingCheckpoint.visited.length} visited / ${pendingCheckpoint.queue.length} queued URLs.`);
+        pendingCheckpoint = null;
+      }
 
       document.getElementById('btnStart').disabled = true;
       document.getElementById('btnPause').disabled = false;
