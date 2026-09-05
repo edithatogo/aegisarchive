@@ -18,7 +18,7 @@ Global drift guards (apply to every task):
 
 ## Phase 2 — Additive metadata files (no CI impact)
 
-- [ ] **T1 Renovate preset** *(R1, AC1)*
+- [x] **T1 Renovate preset** *(R1, AC1)* (a7b56e7)
 
   **Files**: create `renovate.json`. Nothing else.
 
@@ -37,7 +37,7 @@ Global drift guards (apply to every task):
 
   **Do not**: add `packageRules`, schedules, or automerge settings here (they live in the shared preset). Do not create `.github/renovate.json`.
 
-- [ ] **T2 Citation metadata** *(R2, AC2)*
+- [x] **T2 Citation metadata** *(R2, AC2)* (87c09e8)
 
   **Files**: create `CITATION.cff`.
 
@@ -69,7 +69,7 @@ Global drift guards (apply to every task):
 
   **Do not**: add `version`, `date-released`, `doi`, `orcid`, or `affiliation` (standards: only when release automation maintains them / only when real).
 
-- [ ] **T3 CalVer changelog seeded from git history** *(R3, AC3)*
+- [x] **T3 CalVer changelog seeded from git history** *(R3, AC3)* (ea5997e)
 
   **Files**: create `CHANGELOG.md`.
 
@@ -110,7 +110,7 @@ Global drift guards (apply to every task):
 
   **Do not**: invent a tagged release section; do not paraphrase commit subjects except the single case already applied above: the original subject of commit `4869443` contains a product name that the `ci.yml` leak gate blocks, so the bullet must use `portable-platform` exactly as shown (never copy that subject verbatim from `git log`).
 
-- [ ] **T4 OpenSSF Security Insights** *(R4, AC4)*
+- [x] **T4 OpenSSF Security Insights** *(R4, AC4)* (7bf08fd)
 
   **Files**: create `security-insights.yml`.
 
