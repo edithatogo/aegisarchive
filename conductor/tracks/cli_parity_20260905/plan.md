@@ -490,3 +490,12 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
 - [x] **F1** Final validation: all Verify commands of C1–C6; `python3 -m py_compile cli/aegis_cli.py cli/politeness.py cli/warc_verify.py cli/launch.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
 - [x] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2) and CI wiring (G3: unittest step + `cli/politeness.py` in the `py_compile` list) to the integrator.
+
+## Review Fixes
+
+- [ ] Rev-1 Preserve URL identity, decode HTTP payloads and gate redirect hops.
+  - **Files**: `cli/aegis_cli.py`, `tests/test_cli_review.py`.
+  - **Change**: preserve duplicate query value order, IPv6 brackets and semicolon paths; honour depth zero; scope seeds and redirect destinations; return redirects to the gated frontier; decode gzip/deflate before omitting encoding headers.
+  - **Verify**: `python3 -m unittest tests.test_cli_review tests.test_cli tests.test_cli_parity`; `python3 scripts/gate.py test`.
+  - **Done when**: loopback redirect/gzip and identity regressions pass with the baseline.
+  - **Do not**: add runtime dependencies or implement the deferred CLI robots policy.

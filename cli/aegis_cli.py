@@ -21,6 +21,8 @@ from datetime import datetime, timezone
 import re
 import collections
 import inspect
+import gzip
+import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
@@ -64,17 +66,19 @@ def canonicalize_url(raw_url, base_url=None):
     fragment dropped, tracking params scrubbed, remaining query sorted and KEPT, trailing slash kept (P2)."""
     try:
         full = urllib.parse.urljoin(base_url, raw_url) if base_url else raw_url
-        u = urllib.parse.urlparse(full)
+        u = urllib.parse.urlsplit(full)
         if u.scheme not in ('http', 'https') or not u.hostname:
             return None
         pairs = [(k, v) for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)
                  if k.lower() not in TRACKING_PARAMS and not k.lower().startswith('utm_')]
-        pairs.sort()
+        pairs.sort(key=lambda pair: pair[0])
         host = u.hostname.lower()
+        if ':' in host:
+            host = f'[{host}]'
         port = u.port
         if port and not ((u.scheme == 'http' and port == 80) or (u.scheme == 'https' and port == 443)):
             host = f"{host}:{port}"
-        return urllib.parse.urlunparse((u.scheme, host, u.path or '/', '', urllib.parse.urlencode(pairs), ''))
+        return urllib.parse.urlunsplit((u.scheme, host, u.path or '/', urllib.parse.urlencode(pairs), ''))
     except ValueError:
         return None
 
@@ -82,6 +86,25 @@ def canonicalize_url(raw_url, base_url=None):
 def in_scope(url, allowed_domains):
     host = (urllib.parse.urlparse(url).hostname or '').lower()
     return any(host == d.lower() or host.endswith('.' + d.lower()) for d in allowed_domains)
+
+
+class ScopedRedirectHandler(urllib.request.HTTPRedirectHandler):
+    """Return redirects to the frontier so each hop receives a fresh permission gate."""
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def decode_payload(body, headers):
+    """urllib removes chunk framing, but does not decode Content-Encoding."""
+    for encoding in reversed(headers.get('content-encoding', '').lower().split(',')):
+        encoding = encoding.strip()
+        if encoding == 'gzip':
+            body = gzip.decompress(body)
+        elif encoding == 'deflate':
+            body = zlib.decompress(body)
+        elif encoding not in ('', 'identity'):
+            raise ValueError(f'Unsupported content encoding: {encoding}')
+    return body
 
 
 class PythonWarcWriter:
@@ -125,7 +148,7 @@ class PythonWarcWriter:
 
     def _write_request(self, url, request_headers, concurrent_to, warc_date):
         rec_id = f"<urn:uuid:{uuid.uuid4()}>"
-        u = urllib.parse.urlparse(url)
+        u = urllib.parse.urlsplit(url)
         path = (u.path or "/") + (f"?{u.query}" if u.query else "")
         lines = [f"GET {path} HTTP/1.1", f"Host: {u.netloc}"] + [f"{k}: {v}" for k, v in request_headers.items()]
         body = ("\r\n".join(lines) + "\r\n\r\n").encode("utf-8")
@@ -234,10 +257,11 @@ def main():
     )
 
     allowed_domains = profile.get('target', {}).get('allowed_domains', [])
-    max_depth = args.depth or profile.get('target', {}).get('max_depth', 4)
+    max_depth = args.depth if args.depth is not None else profile.get('target', {}).get('max_depth', 4)
     max_pages = args.max_pages or profile.get('target', {}).get('max_pages', 500)
 
     politeness = PolitenessEngine(profile.get('politeness', {}))
+    opener = urllib.request.build_opener(ScopedRedirectHandler())
     MAX_RETRIES = 3
     accepts_request_headers = 'request_headers' in inspect.signature(writer.write_response).parameters
 
@@ -255,7 +279,7 @@ def main():
     seeds = profile.get('target', {}).get('seed_urls', {}).get('tier_1_core', [])
     for s in seeds:
         canon = canonicalize_url(s)
-        if canon and canon not in pending:
+        if canon and in_scope(canon, allowed_domains) and canon not in pending:
             queue.append((canon, 0, 0))
             pending.add(canon)
 
@@ -282,10 +306,11 @@ def main():
         start_t = time.time()
         try:
             # Scheme allow-listed above; audit rules cannot see that guard.
-            with urllib.request.urlopen(req, timeout=15) as resp:  # nosec B310  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
+            with opener.open(req, timeout=15) as resp:
                 elapsed_ms = int((time.time() - start_t) * 1000)
                 body = resp.read()
                 headers = normalize_headers(resp.headers.items())
+                body = decode_payload(body, headers)
                 status = resp.status
                 politeness.record_success(url, elapsed_ms)
                 if accepts_request_headers:
@@ -307,7 +332,15 @@ def main():
                             queue.append((clean_url, depth + 1, 0))
                             pending.add(clean_url)
         except urllib.error.HTTPError as e:
+            if e.code in (301, 302, 303, 307, 308):
+                target = canonicalize_url(e.headers.get('Location', ''), url)
+                if target and in_scope(target, allowed_domains) and target not in visited and target not in pending:
+                    queue.append((target, depth, 0))
+                    pending.add(target)
+                e.close()
+                continue
             counted = politeness.record_failure(url, e.code, e.headers.get('Retry-After') if e.headers else None)
+            e.close()
             print(f"[HTTP {e.code}] {url}{' (counted toward breaker)' if counted else ''}")
             if counted:
                 requeue(url, depth, retries)
