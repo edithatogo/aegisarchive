@@ -84,3 +84,7 @@ Maintenance rules:
 ## 2026-09-05 — self_improvement_loop_20260905
 - **Surprise**: The governance protocol was partly seeded before its scheduled workflow and issue form, so the track could appear active while its audit loop was absent.
 - **Change for the next planner**: Treat scheduled automation, issue intake, governance text, and track-health evidence as one acceptance slice.
+
+## 2026-09-05 — release_and_packaging_20260905
+- **Surprise**: Release provenance needs its subject digest computed from the exact uploaded archive.
+- **Change for the next planner**: Generate checksums and provenance from the same release asset in one workflow before upload.
