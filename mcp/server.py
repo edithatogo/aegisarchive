@@ -12,6 +12,11 @@ import os
 import json
 import traceback
 
+try:
+    from .profile_schema import validate as validate_schema
+except ImportError:
+    from profile_schema import validate as validate_schema
+
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(REPO_ROOT, "profiles")
 
@@ -82,6 +87,8 @@ def handle_tool_call(tool_name, arguments):
         profile_json = arguments.get("profile_json", "{}")
         try:
             data = json.loads(profile_json)
+            with open(os.path.join(PROFILES_DIR, 'schema.json'), encoding='utf-8') as schema_file:
+                validate_schema(data, json.load(schema_file))
             if not data.get("profile_id"):
                 return {"valid": False, "error": "Missing 'profile_id'"}
             if not data.get("target", {}).get("allowed_domains"):
