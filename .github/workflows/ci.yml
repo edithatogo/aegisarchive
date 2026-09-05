@@ -21,7 +21,7 @@ jobs:
 
       - name: Python Syntax & Compilation Check
         run: |
-          python3 -m py_compile cli/launch.py cli/aegis_cli.py cli/warc_verify.py mcp/server.py
+          python3 -m py_compile cli/launch.py cli/aegis_cli.py cli/warc_verify.py cli/test_station_hardening.py mcp/server.py
           echo "All Python scripts compiled cleanly."
 
       - name: Profile Schema Validation
@@ -64,6 +64,10 @@ jobs:
           bash -n START_MAC.command
           bash -n START_LINUX.sh
           echo "Shell scripts verified."
+
+      - name: Station Hardening Tests
+        run: |
+          python3 cli/test_station_hardening.py
 
       - name: Strict Abstraction & Leak Prevention Gate
         run: |
