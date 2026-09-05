@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aegisarchive"
+description = "Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic engine with CDX-11 indexing and an MCP server."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Dylan Mordaunt" }]
+keywords = ["warc", "cdx", "web-archiving", "digital-preservation", "iso-28500", "mcp"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
+  "Topic :: System :: Archiving",
+]
+# Zero runtime dependencies is an architectural invariant (AGENTS.md). Keep this empty.
+dependencies = []
+dynamic = ["version"]
+
+[project.urls]
+Homepage = "https://github.com/edithatogo/aegisarchive"
+Repository = "https://github.com/edithatogo/aegisarchive"
+Issues = "https://github.com/edithatogo/aegisarchive/issues"
+Changelog = "https://github.com/edithatogo/aegisarchive/blob/main/CHANGELOG.md"
+
+[project.scripts]
+aegisarchive = "aegisarchive_cli.aegis_cli:main"
+aegisarchive-verify = "aegisarchive_cli.warc_verify:main"
+aegisarchive-mcp = "aegisarchive_mcp.server:main"
+
+# On-disk folders stay cli/ and mcp/ (launchers and ci.yml depend on them).
+# Installed import names are prefixed so they never shadow the PyPI packages
+# "mcp" (the official MCP SDK) or "cli".
+[tool.setuptools]
+packages = ["aegisarchive_cli", "aegisarchive_mcp"]
+include-package-data = false
+
+[tool.setuptools.package-dir]
+aegisarchive_cli = "cli"
+aegisarchive_mcp = "mcp"
+
+[tool.setuptools_scm]
+# Version comes from the CalVer git tag (vYYYY.MM.DD). Shallow CI checkouts fall back to 0.0.0.
+fallback_version = "0.0.0"

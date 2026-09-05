@@ -1,0 +1,2 @@
+# Development-only tooling. Never imported at runtime (AGENTS.md zero-install invariant).
+coverage>=7.6
