@@ -1,6 +1,6 @@
 # Track Plan: Portable Station Hardening & Diagnostics
 
-## Status: IN PROGRESS (in-repo implementation complete 2026-09-05; Phase 3 external gate G2 pending)
+## Status: COMPLETED (2026-09-05 — all phases done; implementation commits recorded below; G2 closure verified via companion track `station_hardening_delegation_20260905`)
 
 ## Phase 1 — Specification & approval
 
@@ -22,7 +22,7 @@
 ## Phase 3 — Cross-repository coordination (external gate G2)
 
 - [x] C1 Handshake note delivered to the companion program's active conductor track listing delegated items: root launcher delegation, agent tool-argument guards and id-only staging, dynamic staging dates, inference endpoint authentication, bundle integrity manifest, encrypted-media guidance. *(delivered: companion commit `1837bb7`, file `conductor/tracks/intranet_acquisition_toolkit_20260904/handshake_portable_station_hardening_20260905.md`)*
-- [ ] C2 Verify delegated items appear as planned tasks in the companion conductor; record evidence reference. *(pending the parallel agent's next planning cycle; handshake note requests registration and linkage)*
+- [x] C2 Verify delegated items appear as planned tasks in the companion conductor; record evidence reference. *(verified 2026-09-05: companion track `station_hardening_delegation_20260905` initialized with spec/plan/metadata/index/evidence and registry entry — companion commit `f2f51b7`; all six delegated items planned as tasks P1–P6 plus submodule pin refresh P7)*
 
 ## Phase 4 — Completion
 

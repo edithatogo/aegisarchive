@@ -35,7 +35,7 @@
   *Plan: [./tracks/portable_intelligence_suite/plan.md](./tracks/portable_intelligence_suite/plan.md)*
   *Windows embeddable Python auto-detection, portable Git and console runtimes, local multi-tier LLMs (llama.cpp), Whisper transcription, Piper TTS, and local GraphRAG memory.*
 
-- [ ] **Track: Portable Station Hardening & Diagnostics**
-  *Status: In Progress (repo implementation complete; external gate G2 pending)*
+- [x] **Track: Portable Station Hardening & Diagnostics**
+  *Status: Completed*
   *Link: [./tracks/portable_station_hardening_20260905/index.md](./tracks/portable_station_hardening_20260905/index.md)*
-  *Hardened loopback server, session-token-guarded control endpoints, bundle SHA-256 verification, status/self-test surface, operator diagnostics, and controlled shutdown; cross-repo items coordinated with the parallel companion-program agent.*
+  *Hardened loopback server, session-token-guarded control endpoints, bundle SHA-256 verification, status/self-test surface, operator diagnostics, and controlled shutdown; G2 delegations registered in the companion program as track `station_hardening_delegation_20260905`.*

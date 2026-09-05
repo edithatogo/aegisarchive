@@ -5,6 +5,6 @@
 * [Metadata](./metadata.json)
 * [Evidence Ledger](./evidence.jsonl)
 
-Type: feature. Status: new. Created: 2026-09-05.
+Type: feature. Status: completed (2026-09-05). Created: 2026-09-05.
 
-Cross-repository items (G2) are delegated to the companion program's active conductor track and must be coordinated with the parallel agent working there.
+G2 delegations were registered in the companion program as track `station_hardening_delegation_20260905` (companion commit `f2f51b7`).
