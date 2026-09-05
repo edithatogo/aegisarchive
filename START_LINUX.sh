@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # ---------------------------------------------------------
 # AegisArchive 1-Click Launcher for Linux
 # ---------------------------------------------------------
@@ -14,5 +14,6 @@ elif command -v python >/dev/null 2>&1; then
     exec python cli/launch.py
 else
     echo "[Error] Python 3 was not found."
-    read -p "Press Enter to exit..."
+    printf "%s" "Press Enter to exit..."
+    read -r reply
 fi
