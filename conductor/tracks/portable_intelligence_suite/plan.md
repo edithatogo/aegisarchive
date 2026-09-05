@@ -13,14 +13,14 @@
 
 ## Implementation tasks
 
-- [ ] T1 Assemble a verified portable package.
+- [x] T1 Assemble a verified portable package.
   - **Files**: `portable/packaging.py`, `tests/test_portable_packaging.py`.
   - **Change**: app/data/runtime layout; SHA256-pinned local asset intake, licence/source inventory, traversal-safe extraction and offline verification.
   - **Verify**: `python3 -m unittest tests.test_portable_packaging`.
   - **Done when**: tampering and unsafe extraction tests fail closed and a temporary package verifies.
   - **Do not**: describe synthetic test assets as native runtime bundles.
 
-- [ ] T2 Implement optional offline intelligence integration.
+- [x] T2 Implement optional offline intelligence integration.
   - **Files**: `portable/intelligence.py`, `portable/test_intelligence.py`, optional requirements and documentation under `portable/`.
   - **Change**: subprocess adapters for inference and speech; isolated embeddings; SQLite BM25/vector/graph retrieval.
   - **Verify**: `python3 -m unittest discover -s portable -p 'test_*.py'`.

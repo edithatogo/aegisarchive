@@ -1,0 +1,2 @@
+# Optional isolated environment only; never needed by the core application.
+sentence-transformers>=3,<6
