@@ -87,7 +87,7 @@
   *Link: [./tracks/release_and_packaging_20260905/](./tracks/release_and_packaging_20260905/)*
   *`.devcontainer`, `release.yml` with SHA256SUMS and SLSA provenance. Does not own README, CONTRIBUTING, or pyproject.toml.*
 
-- [ ] **Track: Future Capabilities (Research-First)**
-  *Status: Planned*
-  *Link: [./tracks/future_capabilities_20260905/](./tracks/future_capabilities_20260905/)*
+- [x] **Track: Future Capabilities (Research-First)**
+  *Status: Completed — ADR research set archived*
+  *Link: [./archive/future_capabilities_20260905/index.md](./archive/future_capabilities_20260905/index.md)*
   *ADR spikes only (WACZ+CDXJ, Compression Streams, service-worker replay, MCP resources, in-browser PDF and embeddings later, OPFS wiring, task scheduling, provenance score). Depends on `warc_interop_20260905` before WACZ.*
