@@ -92,115 +92,123 @@ def handle_tool_call(tool_name, arguments):
 
     return {"error": f"Unknown tool: {tool_name}"}
 
+def handle_request(req):
+    """Dispatch one JSON-RPC 2.0 request dict. Returns a response dict, or None for notifications."""
+    req_id = req.get("id")
+    method = req.get("method")
+    params = req.get("params", {})
+
+    if method == "initialize":
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "protocolVersion": "2024-11-05",
+                "capabilities": {
+                    "tools": {}
+                },
+                "serverInfo": {
+                    "name": "aegisarchive-mcp",
+                    "version": "1.0.0"
+                }
+            }
+        }
+    if method == "notifications/initialized":
+        return None
+    if method == "tools/list":
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "tools": [
+                    {
+                        "name": "list_profiles",
+                        "description": "List all available AegisArchive preservation profiles.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {}
+                        }
+                    },
+                    {
+                        "name": "search_archive",
+                        "description": "Search local CDX indexes for captured URLs and MIME types.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "query": { "type": "string", "description": "Keyword or URL substring to search for" },
+                                "cdx_path": { "type": "string", "description": "Optional path to .cdx index file" }
+                            },
+                            "required": ["query"]
+                        }
+                    },
+                    {
+                        "name": "validate_profile",
+                        "description": "Validate a JSON profile against the AegisArchive schema.",
+                        "inputSchema": {
+                            "type": "object",
+                            "properties": {
+                                "profile_json": { "type": "string", "description": "Raw JSON string of the profile" }
+                            },
+                            "required": ["profile_json"]
+                        }
+                    }
+                ]
+            }
+        }
+    if method == "tools/call":
+        tool_name = params.get("name")
+        tool_args = params.get("arguments", {})
+        tool_result = handle_tool_call(tool_name, tool_args)
+        return {
+            "jsonrpc": "2.0",
+            "id": req_id,
+            "result": {
+                "content": [
+                    {
+                        "type": "text",
+                        "text": json.dumps(tool_result, indent=2)
+                    }
+                ]
+            }
+        }
+    return {
+        "jsonrpc": "2.0",
+        "id": req_id,
+        "error": {
+            "code": -32601,
+            "message": f"Method not found: {method}"
+        }
+    }
+
+def process_line(line):
+    """Handle one raw stdin line. Returns the JSON response text to write, or None for notifications."""
+    try:
+        req = json.loads(line)
+        res = handle_request(req)
+        if res is None:
+            return None
+        return json.dumps(res) + "\n"
+    except Exception as e:
+        err_res = {
+            "jsonrpc": "2.0",
+            "id": None,
+            "error": {
+                "code": -32603,
+                "message": f"Internal error: {str(e)}",
+                "data": traceback.format_exc()
+            }
+        }
+        return json.dumps(err_res) + "\n"
+
 def main():
     """Stdio JSON-RPC 2.0 loop for Model Context Protocol."""
     while True:
-        try:
-            line = sys.stdin.readline()
-            if not line:
-                break
-            req = json.loads(line)
-            req_id = req.get("id")
-            method = req.get("method")
-            params = req.get("params", {})
-
-            if method == "initialize":
-                res = {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "protocolVersion": "2024-11-05",
-                        "capabilities": {
-                            "tools": {}
-                        },
-                        "serverInfo": {
-                            "name": "aegisarchive-mcp",
-                            "version": "1.0.0"
-                        }
-                    }
-                }
-            elif method == "notifications/initialized":
-                continue
-            elif method == "tools/list":
-                res = {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "tools": [
-                            {
-                                "name": "list_profiles",
-                                "description": "List all available AegisArchive preservation profiles.",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {}
-                                }
-                            },
-                            {
-                                "name": "search_archive",
-                                "description": "Search local CDX indexes for captured URLs and MIME types.",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "query": { "type": "string", "description": "Keyword or URL substring to search for" },
-                                        "cdx_path": { "type": "string", "description": "Optional path to .cdx index file" }
-                                    },
-                                    "required": ["query"]
-                                }
-                            },
-                            {
-                                "name": "validate_profile",
-                                "description": "Validate a JSON profile against the AegisArchive schema.",
-                                "inputSchema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "profile_json": { "type": "string", "description": "Raw JSON string of the profile" }
-                                    },
-                                    "required": ["profile_json"]
-                                }
-                            }
-                        ]
-                    }
-                }
-            elif method == "tools/call":
-                tool_name = params.get("name")
-                tool_args = params.get("arguments", {})
-                tool_result = handle_tool_call(tool_name, tool_args)
-                res = {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps(tool_result, indent=2)
-                            }
-                        ]
-                    }
-                }
-            else:
-                res = {
-                    "jsonrpc": "2.0",
-                    "id": req_id,
-                    "error": {
-                        "code": -32601,
-                        "message": f"Method not found: {method}"
-                    }
-                }
-
-            sys.stdout.write(json.dumps(res) + "\n")
-            sys.stdout.flush()
-
-        except Exception as e:
-            err_res = {
-                "jsonrpc": "2.0",
-                "id": None,
-                "error": {
-                    "code": -32603,
-                    "message": f"Internal error: {str(e)}",
-                    "data": traceback.format_exc()
-                }
-            }
-            sys.stdout.write(json.dumps(err_res) + "\n")
+        line = sys.stdin.readline()
+        if not line:
+            break
+        out = process_line(line)
+        if out is not None:
+            sys.stdout.write(out)
             sys.stdout.flush()
 
 if __name__ == "__main__":
