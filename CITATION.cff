@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use AegisArchive, please cite it using the metadata in this file."
+title: "AegisArchive"
+abstract: "Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic engine with CDX-11 indexing, an in-browser replay viewer, a Python standard-library CLI, and a Model Context Protocol server."
+type: software
+authors:
+  - family-names: Mordaunt
+    given-names: Dylan
+repository-code: "https://github.com/edithatogo/aegisarchive"
+url: "https://github.com/edithatogo/aegisarchive"
+license: Apache-2.0
+keywords:
+  - web-archiving
+  - warc
+  - cdx
+  - digital-preservation
+  - iso-28500
