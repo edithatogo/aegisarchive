@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AegisArchive - Station Status</title>
+  <style>
+    :root { --bg: #f4f7f9; --surface: #ffffff; --border: #d1dbe3; --text: #1f2d3d; --muted: #5c6f84; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg); color: var(--text);
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh; padding: 24px;
+    }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; box-shadow: 0 10px 35px rgba(0,0,0,0.08);
+      max-width: 640px; width: 100%; padding: 32px;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 4px; }
+    .sub { color: var(--muted); font-size: 0.9rem; margin-bottom: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; width: 40%; }
+    tr:last-child th, tr:last-child td { border-bottom: none; }
+    .ok { color: #15803d; font-weight: 700; }
+    code { background: #eef2f6; padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>&#128737;&#65039; AegisArchive Station Status</h1>
+    <p class="sub">Self-test report from the local station server (loopback only).</p>
+    <div id="status"><p>Checking station&hellip;</p></div>
+  </div>
+  <script>
+    fetch('/__station/status')
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) {
+        var rows = Object.keys(d).map(function (k) {
+          var v = (typeof d[k] === 'string' || d[k] === null) ? String(d[k]) : JSON.stringify(d[k]);
+          return '<tr><th>' + k + '</th><td>' + v + '</td></tr>';
+        }).join('');
+        document.getElementById('status').innerHTML =
+          '<p class="ok">&#10003; Station active</p><table>' + rows + '</table>';
+      })
+      .catch(function (e) {
+        document.getElementById('status').innerHTML =
+          '<p>&#9888; Station server not reachable on this port. Start it with ' +
+          '<code>python3 cli/launch.py</code> (or the 1-click launcher for your OS).</p>';
+      });
+  </script>
+</body>
+</html>
