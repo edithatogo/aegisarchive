@@ -511,11 +511,12 @@
       const tr = document.createElement('tr');
       const sizeKb = (doc.size / 1024).toFixed(1);
       const shortHash = doc.hash ? doc.hash.slice(0, 12) + '...' : '-';
+      const safeHref = /^https?:\/\//i.test(doc.url || '') ? doc.url : '#';
       tr.innerHTML = `
-        <td><a href="${doc.url}" target="_blank" title="${doc.url}">${doc.title || doc.url}</a></td>
-        <td><span class="badge">${doc.mimeType || 'unknown'}</span></td>
+        <td><a href="${escapeHtml(safeHref)}" target="_blank" rel="noopener noreferrer" title="${escapeHtml(doc.url)}">${escapeHtml(doc.title || doc.url)}</a></td>
+        <td><span class="badge">${escapeHtml(doc.mimeType || 'unknown')}</span></td>
         <td>${sizeKb} KB</td>
-        <td><code style="font-family: var(--font-mono); font-size: 0.75rem;">${shortHash}</code></td>
+        <td><code style="font-family: var(--font-mono); font-size: 0.75rem;">${escapeHtml(shortHash)}</code></td>
       `;
       tbody.prepend(tr);
       document.getElementById('docCountBadge').textContent = `${document.getElementById('telemetryDocs').textContent} assets`;
@@ -532,7 +533,9 @@
     }
 
     function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return String(str == null ? '' : str)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
 
     function exportWarc() {

@@ -120,7 +120,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 3 — Output encoding
 
-- [ ] **S3 Escape crawled strings in `index.html` and `viewer.html`** *(AC3)*
+- [x] **S3 Escape crawled strings in `index.html` and `viewer.html`** *(AC3)*
 
   **Files**: `web/index.html`, `web/viewer.html`.
 

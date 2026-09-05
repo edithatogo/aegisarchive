@@ -174,6 +174,12 @@
     let currentUrls = [];
     let activeUrl = null;
 
+    function escapeHtml(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    }
+
     function handleWarcFileSelect(event) {
       const file = event.target.files[0];
       if (file) loadWarcFile(file);
@@ -188,7 +194,7 @@
     async function loadWarcFile(file) {
       document.getElementById('emptyState').innerHTML = `
         <div class="pulse-dot" style="width: 24px; height: 24px; color: var(--accent-blue);"></div>
-        <p style="color: var(--text-primary); margin-top: 16px;">Parsing ISO 28500 records from ${file.name}...</p>
+        <p style="color: var(--text-primary); margin-top: 16px;">Parsing ISO 28500 records from ${escapeHtml(file.name)}...</p>
       `;
 
       try {
@@ -237,10 +243,10 @@
         const sizeKb = rec ? (rec.bodyBytes.length / 1024).toFixed(1) : '0';
 
         li.innerHTML = `
-          <span class="url-link" title="${url}">${url}</span>
+          <span class="url-link" title="${escapeHtml(url)}">${escapeHtml(url)}</span>
           <div class="url-meta">
-            <span class="badge">${status}</span>
-            <span>${mime}</span>
+            <span class="badge">${escapeHtml(status)}</span>
+            <span>${escapeHtml(mime)}</span>
             <span>${sizeKb} KB</span>
           </div>
         `;
