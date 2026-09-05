@@ -507,5 +507,5 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 ## Phase 6 — Completion
 
-- [ ] **F1** Final validation: all Verify commands of W1–W8; `python3 -m py_compile cli/*.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2) to the integrator; notify `cli_parity_20260905` that W2/W6 are available.
+- [x] **F1** Final validation: all Verify commands of W1–W8; `python3 -m py_compile cli/*.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2) to the integrator; notify `cli_parity_20260905` that W2/W6 are available.

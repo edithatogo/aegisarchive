@@ -47,8 +47,8 @@
   *Link: [./tracks/engine_correctness_20260905/](./tracks/engine_correctness_20260905/)*
   *EWMA baseline warm-up, 404-safe breaker, retry budget, abortable waits, cache no-store, schema bounds, robots policy, requisite extraction, canonicalization fidelity.*
 
-- [~] **Track: WARC/CDX Interoperability & Integrity**
-  *Status: In Progress*
+- [x] **Track: WARC/CDX Interoperability & Integrity**
+  *Status: Completed*
   *Link: [./tracks/warc_interop_20260905/](./tracks/warc_interop_20260905/)*
   *Decoded-payload header hygiene, CDX `S` field, fail-closed digests, WARC-Refers-To, request records, reader revisit resolution, verifier CDX offset and `.warc.gz`.*
 

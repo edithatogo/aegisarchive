@@ -30,3 +30,7 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 - **Surprise**: Failure classifications (404 tripping the circuit breaker) and single-flight assumptions were conflated with concurrency settings in profiles (`concurrency: 4` in `rapid_research.json` while the engine operated strictly single-flight). Furthermore, tracking parameter scrubbing was overly aggressive (stripping standard navigational queries like `ref` and `source`).
 - **Change for the next planner**: profile schema properties must reflect actual runtime mechanics (mark unused/misleading options deprecated or bound them with strict constraints), and web crawler tests must assert preservation of critical routing queries and requisite tags rather than relying on happy-path smoke runs.
 
+## 2026-09-05 — warc_interop_20260905
+- **Surprise**: Multiple interoperability subtleties were undetected: revisit records lacked `WARC-Refers-To`, the reader lacked revisit record resolution against payload digests, hop-by-hop/encoding headers were copied verbatim into WARC HTTP headers alongside decoded payloads, and CDX offset validation was completely absent in the verifier.
+- **Change for the next planner**: Archival formats require bidirectional roundtrip verification (writer -> reader resolution, writer -> verifier CDX span/offset audit, multi-member gzip decompression) in automated test suites rather than isolated unit mocks.
+
