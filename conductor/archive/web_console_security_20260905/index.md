@@ -12,3 +12,5 @@ Hardens the browser console and replay viewer: flagless iframe sandbox with an i
 - [Historical evidence](./evidence.legacy.jsonl)
 
 - [Post-implementation Review](./review.md)
+
+Archived 2026-09-05T08:00:08Z after the recorded post-implementation review passed.

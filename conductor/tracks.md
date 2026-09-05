@@ -54,7 +54,7 @@
 
 - [x] **Track: Web Console Security & Persistence Claims**
   *Status: Completed*
-  *Link: [./tracks/web_console_security_20260905/](./tracks/web_console_security_20260905/)*
+  *Link: [./archive/web_console_security_20260905/](./archive/web_console_security_20260905/)*
   *Sandbox and CSP, blob replay, output encoding, generated profile bundle, OPFS/checkpoint honesty, `?profile=` consumer in `index.html` only.*
 
 - [x] **Track: Headless CLI Parity with the Browser Engine**
