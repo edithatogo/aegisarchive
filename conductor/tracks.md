@@ -2,7 +2,7 @@
 
 - [x] **Track: Core Engine & Server Preservation Suite**
   *Status: Completed*
-  *Link: [./tracks/core_engine_politeness/index.md](./tracks/core_engine_politeness/index.md)*
+  *Link: [./archive/core_engine_politeness/index.md](./archive/core_engine_politeness/index.md)*
   *Token-bucket rate limiting, decorrelated jitter, EWMA latency tracking, and circuit breaker.*
 
 - [x] **Track: ISO 28500 WARC/1.1 Archival & Deduplication Engine**
