@@ -62,8 +62,8 @@
   *Link: [./tracks/cli_parity_20260905/](./tracks/cli_parity_20260905/)*
   *Case-insensitive headers, query-string fidelity, stdlib politeness port, set-based queue, shared loopback fixture.*
 
-- [ ] **Track: Repository Standards Alignment**
-  *Status: Planned*
+- [~] **Track: Repository Standards Alignment**
+  *Status: In Progress*
   *Link: [./tracks/repo_standards_alignment_20260905/](./tracks/repo_standards_alignment_20260905/)*
   *Renovate, CITATION.cff, CalVer changelog, security-insights, Scorecard/zizmor copies, thin standards CI, pyproject with zero runtime deps, README nine-section contract.*
 
