@@ -383,8 +383,15 @@
       const u = new URL(urlStr);
       const path = u.pathname + u.search;
       return rules.some(rule => {
-        const pattern = rule.split('*').map(s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*');
-        return new RegExp('^' + pattern).test(path);
+        const parts = rule.split('*');
+        if (!path.startsWith(parts[0])) return false;
+        let offset = parts[0].length;
+        for (const part of parts.slice(1)) {
+          const found = path.indexOf(part, offset);
+          if (found === -1) return false;
+          offset = found + part.length;
+        }
+        return true;
       });
     }
 
