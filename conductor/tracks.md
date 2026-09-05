@@ -7,7 +7,7 @@
 
 - [x] **Track: ISO 28500 WARC/1.1 Archival & Deduplication Engine**
   *Status: Completed*
-  *Link: [./tracks/warc_iso28500_engine/index.md](./tracks/warc_iso28500_engine/index.md)*
+  *Link: [./archive/warc_iso28500_engine/index.md](./archive/warc_iso28500_engine/index.md)*
   *Standards-compliant WARC streaming, CDX-11 indexing, and SHA-256 revisit records.*
 
 - [x] **Track: In-Browser Sandboxed WARC Replay Viewer**
