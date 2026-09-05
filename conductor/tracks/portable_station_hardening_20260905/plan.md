@@ -27,4 +27,10 @@
 ## Phase 4 — Completion
 
 - [x] F1 Final validation run (AC7, AC8) and evidence ledger update. *(validated 2026-09-05T03:54:56Z; ledger updated in this commit)*
-- [x] F2 Update `metadata.json` status and the registry entry per lifecycle rules. *(status remains in_progress pending G2)*
+- [x] F2 Update `metadata.json` status and the registry entry per lifecycle rules. *(status set to completed; G2 closure verified via companion track `station_hardening_delegation_20260905`)*
+
+## Phase 5 — Conductor review & archive
+
+- [x] Rev-1 Security: `/__station/status` no longer exposes the per-session token (unauthenticated endpoint; token only needed by token-gated POST shutdown). Regression test added. *(commit `913c611`; 18/18 suite passes)*
+- [x] Rev-2 Documentation: corrected stale F2 note (previously claimed status was still in-progress pending G2).
+- [x] Archive this track under `conductor/archive/portable_station_hardening_20260905/` and redirect the registry link (archive-eligible: completed, validated, review fixes applied).
