@@ -131,6 +131,7 @@ def git_console(work, receipts, system):
     (git/'bin/git').chmod(0o755)
     shutil.copytree(installed/'share/git-core/templates', git/'share/git-core/templates')
     shutil.copyfile(git_source/'COPYING', git/'COPYING')
+    shutil.copyfile(git_archive,git/'git-source.tar.gz')
     # Small native dispatcher preserves every builtin alias without symlinks or
     # hundreds of copies of the full git executable in a regular-files bundle.
     shim = work/'git-shim.c'
@@ -167,6 +168,7 @@ execv(t,argv);perror("bundled git");return 126;}
     (console/'bin').mkdir()
     shutil.copyfile(bash_source/'bash',console/'bin/bash');(console/'bin/bash').chmod(0o755)
     shutil.copyfile(bash_source/'COPYING',console/'COPYING')
+    shutil.copyfile(bash_archive,console/'bash-source.tar.gz')
     return git,'bin/git',console,'bin/bash','COPYING','COPYING',GIT_URL
 
 
