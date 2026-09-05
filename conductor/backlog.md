@@ -14,7 +14,7 @@ Task ids are the first implementable checkbox in each `plan.md` (`T1`, `W1`, `S1
 | --- | --- | --- | --- | --- | --- |
 | P0 | engine_correctness_20260905 | T1 | done | - | - |
 | P0 | warc_interop_20260905 | W1 | done | - | - |
-| P0 | web_console_security_20260905 | S1 | open | - | - |
+| P0 | web_console_security_20260905 | S1 | done | - | - |
 | P0 | cli_parity_20260905 | C1 | open | - | - |
 | P1 | repo_standards_alignment_20260905 | T1 | open | - | - |
 | P1 | security_gates_and_fuzzing_20260905 | T1 | open | - | - |

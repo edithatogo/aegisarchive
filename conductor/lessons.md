@@ -34,3 +34,8 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 - **Surprise**: Multiple interoperability subtleties were undetected: revisit records lacked `WARC-Refers-To`, the reader lacked revisit record resolution against payload digests, hop-by-hop/encoding headers were copied verbatim into WARC HTTP headers alongside decoded payloads, and CDX offset validation was completely absent in the verifier.
 - **Change for the next planner**: Archival formats require bidirectional roundtrip verification (writer -> reader resolution, writer -> verifier CDX span/offset audit, multi-member gzip decompression) in automated test suites rather than isolated unit mocks.
 
+## 2026-09-05 — web_console_security_20260905
+- **Surprise**: Web console security assumptions relied on an iframe with `allow-scripts` and `allow-same-origin` on `srcdoc`, which completely bypasses the browser sandbox. Additionally, live origin `<base href>` tags leaked egress traffic during local replays, crawled string interpolations risked XSS, and client-side persistence (OPFS streaming, frontier checkpointing) was claimed in documentation but was unwired in `core_crawler.js`.
+- **Change for the next planner**: Web UI replay containers must enforce strict isolation from day one (flagless `sandbox=""`, default-src 'none' CSP, requisite rewriting to blobs/data URIs, and robust HTML entity escaping). All UI state persistence claims must be backed by concrete automated round-trip tests and static assertion test cases.
+
+

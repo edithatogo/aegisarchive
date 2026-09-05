@@ -555,5 +555,5 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 7 — Completion
 
-- [ ] **F1** Final validation: all Verify commands of S1–S8; `python3 -m py_compile scripts/build_profile_bundle.py cli/*.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2), CI wiring (G3) and the launcher recommendation (G4) to the integrator.
+- [x] **F1** Final validation: all Verify commands of S1–S8; `python3 -m py_compile scripts/build_profile_bundle.py cli/*.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2), CI wiring (G3) and the launcher recommendation (G4) to the integrator.

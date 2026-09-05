@@ -52,8 +52,8 @@
   *Link: [./tracks/warc_interop_20260905/](./tracks/warc_interop_20260905/)*
   *Decoded-payload header hygiene, CDX `S` field, fail-closed digests, WARC-Refers-To, request records, reader revisit resolution, verifier CDX offset and `.warc.gz`.*
 
-- [~] **Track: Web Console Security & Persistence Claims**
-  *Status: In Progress*
+- [x] **Track: Web Console Security & Persistence Claims**
+  *Status: Completed*
   *Link: [./tracks/web_console_security_20260905/](./tracks/web_console_security_20260905/)*
   *Sandbox and CSP, blob replay, output encoding, generated profile bundle, OPFS/checkpoint honesty, `?profile=` consumer in `index.html` only.*
 
