@@ -2,7 +2,7 @@
 """
 AegisArchive - Conductor Track Health
 
-Parses every conductor/tracks/*/ directory (metadata.json, plan.md,
+Parses active and archived Conductor track directories (metadata.json, plan.md,
 evidence.jsonl) plus conductor/backlog.md and reports:
 
   - in_progress tracks older than 14 days (by metadata.updated_at)
@@ -56,8 +56,11 @@ def load_tracks():
     tracks = []
     if not os.path.isdir(TRACKS):
         return tracks
-    for name in sorted(os.listdir(TRACKS)):
-        d = os.path.join(TRACKS, name)
+    archive = os.path.join(os.path.dirname(TRACKS), 'archive')
+    directories = [(base, name) for base in (TRACKS, archive) if os.path.isdir(base)
+                   for name in sorted(os.listdir(base))]
+    for base, name in directories:
+        d = os.path.join(base, name)
         if not os.path.isdir(d) or name.startswith('.'):
             continue
         t = {'id': name, 'dir': d, 'meta': None, 'plan': '', 'spec': False, 'evidence_lines': 0}
@@ -82,7 +85,12 @@ def backlog_track_ids():
     ids = []
     if not os.path.isfile(BACKLOG):
         return ids
+    local_section = False
     for line in read(BACKLOG).splitlines():
+        if line.startswith('## '):
+            local_section = line.strip() in ('## Approved', '## Proposed')
+        if not local_section:
+            continue
         m = re.match(r'^\|\s*P[0-3]\s*\|\s*([^|]+?)\s*\|', line)
         if m:
             ids.append(m.group(1).strip('` '))
@@ -133,7 +141,7 @@ def main(argv=None):
             findings.append(f"`{t['id']}`: completed but {unt} plan box(es) unticked")
         if status == 'completed' and t['id'] not in lessons:
             findings.append(f"`{t['id']}`: completed without an entry in conductor/lessons.md")
-        if status == 'planned' and not t['spec']:
+        if status in ('new', 'planned') and not t['spec']:
             findings.append(f"`{t['id']}`: planned without spec.md")
         if t['evidence_lines'] == 0:
             findings.append(f"`{t['id']}`: missing or empty evidence.jsonl")
