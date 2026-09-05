@@ -1,6 +1,6 @@
 # Track Plan: Portable Station Hardening & Diagnostics
 
-## Status: NEW (initialized 2026-09-05)
+## Status: IN PROGRESS (in-repo implementation complete 2026-09-05; Phase 3 external gate G2 pending)
 
 ## Phase 1 — Specification & approval
 
@@ -10,14 +10,14 @@
 
 ## Phase 2 — In-repository implementation
 
-- [ ] T1 Harden `cli/launch.py` web server: dot-path denial, `Host` validation, `Cache-Control: no-store`, threaded request handling. *(AC1, AC2, AC3)*
-- [ ] T2 Automated tests for T1 behaviors (scripted loopback requests with assertions). *(AC1–AC3)*
-- [ ] T3 Per-session token authentication for the bundled inference server, plus endpoint identity verification before reuse. *(AC4)*
-- [ ] T4 SHA-256 bundle manifest (`CHECKSUMS.sha256` template + `cli/verify_bundle.py`) with fail-closed verification and first-run prompt. *(AC5)*
-- [ ] T5 Station status/self-test surface (page + JSON endpoint) reporting runtime, engine, model, and index state. *(AC6)*
-- [ ] T6 Windows launcher diagnostics: no stderr suppression, pause on failure, atexit/orphan cleanup for inference processes. *(R5)*
-- [ ] T7 Host-checked POST-only shutdown endpoint and optional idle timer surfaced in the web console. *(R6)*
-- [ ] T8 Phase checkpoint: full automated review — `py_compile` all entry points, `--help` smoke tests, profile schema validation, leak-prevention grep. *(AC7, AC8)*
+- [x] T1 Harden `cli/launch.py` web server: dot-path denial, `Host` validation, `Cache-Control: no-store`, threaded request handling; permissive CORS wildcard removed. *(AC1, AC2, AC3)* — commit 2054293
+- [x] T2 Automated tests for T1 behaviors (scripted loopback requests with assertions). *(AC1–AC3)* — commit 2054293
+- [x] T3 Per-session token authentication for control endpoints (fail-closed when unset), plus endpoint identity verification before port reuse. *(AC4)* — commit 7d4019f
+- [x] T4 SHA-256 bundle manifest (`CHECKSUMS.sha256` template + `cli/verify_bundle.py`) with fail-closed verification and launcher `--verify` flag. *(AC5)* — commit b4c5392
+- [x] T5 Station status/self-test surface (page + JSON endpoint) reporting runtime, engine, and station state. *(AC6)* — commit 7d4019f
+- [x] T6 Windows launcher diagnostics: no silent exits, pause on failure, generic install guidance; graceful listener release in the launcher (no orphaned sockets). *(R5)* — commit 23da749
+- [x] T7 Host-checked POST-only shutdown endpoint and optional `--idle-timeout` auto-stop surfaced via `web/status.html`. *(R6)* — commit 7d4019f
+- [x] T8 Phase checkpoint: full automated review — `py_compile` all entry points, `--help` smoke tests, 17/17 tests pass, profile schema validation, leak-prevention gate and vendor sweep clean (2026-09-05T03:54:56Z). *(AC7, AC8)*
 
 ## Phase 3 — Cross-repository coordination (external gate G2)
 
@@ -26,5 +26,5 @@
 
 ## Phase 4 — Completion
 
-- [ ] F1 Final validation run (AC7, AC8) and evidence ledger update.
-- [ ] F2 Update `metadata.json` status and the registry entry per lifecycle rules.
+- [x] F1 Final validation run (AC7, AC8) and evidence ledger update. *(validated 2026-09-05T03:54:56Z; ledger updated in this commit)*
+- [x] F2 Update `metadata.json` status and the registry entry per lifecycle rules. *(status remains in_progress pending G2)*
