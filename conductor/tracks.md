@@ -30,7 +30,12 @@
   *Plan: [./tracks/ci_cd_repo_hardening/plan.md](./tracks/ci_cd_repo_hardening/plan.md)*
   *GitHub Actions CI matrix, compilation checks, schema validation, and leak prevention gate.*
 
-- [ ] **Track: PortableApps Compatibility & Offline Intelligence Suite**
+- [ ] **Track: Portable Platform Compatibility & Offline Intelligence Suite**
   *Status: Roadmap Planned*
   *Plan: [./tracks/portable_intelligence_suite/plan.md](./tracks/portable_intelligence_suite/plan.md)*
-  *Windows embeddable Python auto-detection, MinGit, Cmder Mini shell, local multi-tier LLMs (llama.cpp), Whisper transcription, Piper TTS, and local GraphRAG memory.*
+  *Windows embeddable Python auto-detection, portable Git and console runtimes, local multi-tier LLMs (llama.cpp), Whisper transcription, Piper TTS, and local GraphRAG memory.*
+
+- [ ] **Track: Portable Station Hardening & Diagnostics**
+  *Status: New*
+  *Link: [./tracks/portable_station_hardening_20260905/index.md](./tracks/portable_station_hardening_20260905/index.md)*
+  *Hardened loopback server, inference endpoint authentication, bundle SHA-256 verification, status/self-test surface, operator diagnostics, and controlled shutdown; cross-repo items coordinated with the parallel companion-program agent.*
