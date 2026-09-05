@@ -42,14 +42,41 @@ jobs:
           fail-on-severity: moderate
 
   supply-chain-evidence:
-    # SBOM (SPDX + CycloneDX), checksums and build-provenance attestation for committed project metadata.
-    # The reusable workflow checks out the repository itself, so artifact-path must be a committed path;
-    # release artefacts get their own provenance in release.yml (release_and_packaging_20260905).
+    # Inventory the checkout, then attest only uniquely named generated evidence.
     if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       id-token: write
       attestations: write
-    uses: edithatogo/repository-standards/.github/workflows/supply-chain-evidence.yml@ad67bedaa0c4d0769bd54fd76354bac65b25b88c # main 2026-09-05
-    with:
-        artifact-path: .
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom.spdx.json
+      - uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom.cyclonedx.json
+      - name: Generate checksums
+        run: sha256sum sbom.spdx.json sbom.cyclonedx.json > CHECKSUMS.sha256
+      - uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4.1.1
+        with:
+          subject-path: |
+            sbom.spdx.json
+            sbom.cyclonedx.json
+            CHECKSUMS.sha256
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: supply-chain-evidence-${{ github.run_id }}
+          path: |
+            sbom.spdx.json
+            sbom.cyclonedx.json
+            CHECKSUMS.sha256
+          retention-days: 90
