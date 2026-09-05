@@ -1,0 +1,29 @@
+{
+  "errors": [],
+  "generated_at": "2026-09-05T00:00:00Z",
+  "metrics": {},
+  "results": [
+    {
+      "code": "171     try:\n172         with urllib.request.urlopen(\n173             f\"http://127.0.0.1:{port}/__station/status\", timeout=timeout\n174         ) as resp:\n175             data = json.loads(resp.read().decode(\"utf-8\"))\n",
+      "col_offset": 13,
+      "end_col_offset": 9,
+      "filename": "cli/launch.py",
+      "issue_confidence": "HIGH",
+      "issue_cwe": {
+        "id": 22,
+        "link": "https://cwe.mitre.org/data/definitions/22.html"
+      },
+      "issue_severity": "MEDIUM",
+      "issue_text": "Audit url open for permitted schemes. Allowing use of file:/ or custom schemes is often unexpected.",
+      "line_number": 172,
+      "line_range": [
+        172,
+        173,
+        174
+      ],
+      "more_info": "https://bandit.readthedocs.io/en/1.9.4/blacklists/blacklist_calls.html#b310-urllib-urlopen",
+      "test_id": "B310",
+      "test_name": "blacklist"
+    }
+  ]
+}
