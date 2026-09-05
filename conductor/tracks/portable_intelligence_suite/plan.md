@@ -14,7 +14,7 @@
 ## Implementation tasks
 
 - [x] T1 Assemble a verified portable package.
-  - **Files**: `portable/packaging.py`, `tests/test_portable_packaging.py`.
+  - **Files**: `portable/packaging.py`, `portable/PACKAGING.md`, `tests/test_portable_packaging.py`.
   - **Change**: app/data/runtime layout; SHA256-pinned local asset intake, licence/source inventory, traversal-safe extraction and offline verification.
   - **Verify**: `python3 -m unittest tests.test_portable_packaging`.
   - **Done when**: tampering and unsafe extraction tests fail closed and a temporary package verifies.
