@@ -496,7 +496,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 5 — Tests
 
-- [ ] **T10 Tests to add (stdlib only)** *(AC11; regression coverage for AC1–AC10)*
+- [x] **T10 Tests to add (stdlib only)** *(AC11; regression coverage for AC1–AC10)*
 
   **Files** (create): `tests/js/politeness_engine.test.js`, `tests/js/core_crawler.test.js`, `tests/test_profile_schema.py`. Create the directories with `mkdir -p tests/js` if absent (other tracks may already have created them; never delete their files).
 
