@@ -20,6 +20,7 @@
     constructor() {
       this.recordsByUrl = new Map(); // normalizedUrl -> { url, status, headers, bodyBytes, mimeType }
       this.recordsByDigest = new Map(); // WARC-Payload-Digest -> record
+      this.recordsById = new Map();
       this.warcInfo = null;
       this.urlList = [];
     }
@@ -55,6 +56,15 @@
      * Parses a raw WARC file ArrayBuffer into memory records.
      */
     async loadWarcBuffer(arrayBuffer) {
+      for (const record of this.recordsByUrl.values()) {
+        if (record.blobUrl) URL.revokeObjectURL(record.blobUrl);
+      }
+      this.recordsByUrl.clear();
+      this.recordsByDigest.clear();
+      this.recordsById.clear();
+      this.urlList = [];
+      this.warcInfo = null;
+      const warnings = [];
       const uint8 = new Uint8Array(arrayBuffer);
       const textDecoder = new TextDecoder('utf-8');
       let offset = 0;
@@ -63,16 +73,24 @@
       while (offset < totalLen) {
         // Find header boundary (\r\n\r\n)
         const headerEnd = this.findSequence(uint8, [13, 10, 13, 10], offset);
-        if (headerEnd === -1) break;
+        if (headerEnd === -1) { warnings.push('Incomplete WARC header'); break; }
 
         const warcHeaderStr = textDecoder.decode(uint8.subarray(offset, headerEnd));
         const warcHeaders = this.parseHeaders(warcHeaderStr);
         const recordType = warcHeaders['warc-type'];
         const targetUri = warcHeaders['warc-target-uri'];
-        const contentLength = parseInt(warcHeaders['content-length'] || '0', 10);
+        const rawLength = warcHeaders['content-length'];
+        const contentLength = Number(rawLength);
+        if (!/^WARC\/1\.[01]\r\n/.test(warcHeaderStr) || !/^\d+$/.test(rawLength || '') ||
+            !Number.isSafeInteger(contentLength) || contentLength < 0) {
+          warnings.push('Invalid WARC header or record length'); break;
+        }
 
         const contentStart = headerEnd + 4;
         const recordEnd = contentStart + contentLength;
+        if (recordEnd > totalLen || !uint8.subarray(recordEnd, recordEnd + 4).every((b, i) => b === [13, 10, 13, 10][i]) || recordEnd + 4 > totalLen) {
+          warnings.push('Truncated WARC record or missing terminator'); break;
+        }
 
         if (recordType === 'warcinfo') {
           this.warcInfo = textDecoder.decode(uint8.subarray(contentStart, recordEnd));
@@ -100,14 +118,16 @@
 
             this.recordsByUrl.set(this.normalizeUrl(targetUri), record);
             record.isRevisit = false;
+            this.recordsById.set(warcHeaders['warc-record-id'], record);
             if (warcHeaders['warc-payload-digest']) this.recordsByDigest.set(warcHeaders['warc-payload-digest'], record);
             this.urlList.push(targetUri);
           }
         } else if (recordType === 'revisit' && targetUri) {
           const http = this.parseHttpBlock(uint8, contentStart, recordEnd, textDecoder);
           const refUri = warcHeaders['warc-refers-to-target-uri'];
-          const referred = (refUri && this.recordsByUrl.get(this.normalizeUrl(refUri)))
-            || this.recordsByDigest.get(warcHeaders['warc-payload-digest']) || null;
+          const referred = this.recordsById.get(warcHeaders['warc-refers-to'])
+            || this.recordsByDigest.get(warcHeaders['warc-payload-digest'])
+            || (refUri && this.recordsByUrl.get(this.normalizeUrl(refUri))) || null;
           const headers = http ? http.headers : {};
           const contentType = headers['content-type'] || (referred ? referred.mimeType : 'application/octet-stream');
           this.recordsByUrl.set(this.normalizeUrl(targetUri), {
@@ -134,15 +154,16 @@
         totalRecords: this.recordsByUrl.size,
         warcInfo: this.warcInfo,
         urls: this.urlList
+        , warnings
       };
     }
 
     normalizeUrl(urlStr) {
       try {
         const u = new URL(urlStr);
-        return `${u.origin}${u.pathname}${u.search}`.toLowerCase().replace(/\/$/, '');
+        return `${u.origin}${u.pathname}${u.search}`;
       } catch (e) {
-        return urlStr.toLowerCase().replace(/\/$/, '');
+        return urlStr;
       }
     }
 

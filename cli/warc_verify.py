@@ -11,6 +11,7 @@ import os
 import hashlib
 import gzip
 import argparse
+import re
 
 def read_container(path):
     """Reads a .warc or (multi-member) .warc.gz container fully into memory."""
@@ -32,9 +33,16 @@ def verify_cdx(cdx_path, content, record_spans, compressed):
                 bad += 1
                 continue
             checked += 1
+            try:
+                length, offset = int(parts[8]), int(parts[9])
+                if length <= 0 or offset < 0:
+                    raise ValueError('invalid span')
+            except ValueError:
+                print(f"  [Warning] CDX line {lineno}: invalid offset or length")
+                bad += 1
+                continue
             if compressed:
-                continue  # offsets are only checkable against the uncompressed stream
-            length, offset = int(parts[8]), int(parts[9])
+                continue  # compressed offsets are not uncompressed-stream offsets
             if not content.startswith(b"WARC/1.1", offset) or (offset, length) not in spans:
                 print(f"  [Warning] CDX line {lineno}: offset {offset} / length {length} is not a record boundary ({parts[2]})")
                 bad += 1
@@ -60,7 +68,14 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
     total_bytes = os.path.getsize(warc_path)
     record_spans = []  # (offset, length, target_uri)
 
-    content = read_container(warc_path)
+    try:
+        content = read_container(warc_path)
+    except (OSError, EOFError, ValueError) as exc:
+        print(f"  [Warning] Cannot read container: {exc}")
+        return False
+    if not content:
+        print('  [Warning] Empty container')
+        return False
 
     pos = 0
     content_len = len(content)
@@ -69,6 +84,7 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
         rec_start = pos
         header_end = content.find(b"\r\n\r\n", pos)
         if header_end == -1:
+            corrupt_count += 1
             break
 
         header_bytes = content[pos:header_end]
@@ -86,8 +102,8 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
 
         rec_type = headers.get('warc-type', 'unknown')
         target_uri = headers.get('warc-target-uri', '-')
-        raw_len = headers.get('content-length', '0')
-        if not raw_len.isdigit():
+        raw_len = headers.get('content-length', '')
+        if not header_bytes.startswith((b'WARC/1.1\r\n', b'WARC/1.0\r\n')) or not re.fullmatch(r'[0-9]{1,18}', raw_len):
             print(f"  [Warning] Malformed Content-Length {raw_len!r} at offset {pos}; stopping scan.")
             corrupt_count += 1
             break
@@ -104,7 +120,11 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
             request_count += 1
 
         rec_body_start = header_end + 4
-        rec_body_end = min(rec_body_start + body_len, content_len)
+        rec_body_end = rec_body_start + body_len
+        if rec_body_end > content_len or content[rec_body_end:rec_body_end+4] != b'\r\n\r\n':
+            print(f"  [Warning] Truncated record or missing terminator at offset {pos}")
+            corrupt_count += 1
+            break
         rec_body = content[rec_body_start:rec_body_end]
 
         expected_digest = headers.get('warc-payload-digest', '')
@@ -113,6 +133,8 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
             expected_hex = expected_digest.split(':', 1)[1]
             if rec_type == 'response':
                 http_sep = rec_body.find(b"\r\n\r\n")
+                if http_sep == -1:
+                    corrupt_count += 1
                 if http_sep != -1:
                     actual_payload = rec_body[http_sep+4:]
                     actual_hex = hashlib.sha256(actual_payload).hexdigest()

@@ -46,3 +46,25 @@ test('WarcReader resolves revisit records end-to-end (W5, AC5)', async () => {
   assert.equal(recB.mimeType, 'text/plain');
   assert.equal(recB.unresolved, false);
 });
+
+test('reader keeps case-sensitive paths and trailing slashes distinct; resets between files', async () => {
+  const writer = new WarcWriter();
+  const urls = ['http://h.test/A', 'http://h.test/a', 'http://h.test/a/'];
+  for (const url of urls) await writer.addResponseRecord(url, {status: 200, headers: new Headers()}, new TextEncoder().encode(url));
+  const reader = new WarcReader();
+  const result = await reader.loadWarcBuffer(await (await writer.getWarcBlob()).arrayBuffer());
+  assert.equal(result.totalRecords, 3);
+  for (const url of urls) assert.equal(new TextDecoder().decode(reader.getRecord(url).bodyBytes), url);
+  await reader.loadWarcBuffer(await (await new WarcWriter().getWarcBlob()).arrayBuffer());
+  assert.equal(reader.getRecord(urls[0]), null);
+});
+
+test('reader stops safely on negative, oversized and truncated record lengths', async () => {
+  for (const length of ['-40', '99999999999999999999999', '20']) {
+    const reader = new WarcReader();
+    const bytes = new TextEncoder().encode(`WARC/1.1\r\nWARC-Type: response\r\nContent-Length: ${length}\r\n\r\nx`);
+    const result = await reader.loadWarcBuffer(bytes.buffer);
+    assert.equal(result.totalRecords, 0);
+    assert.equal(result.warnings.length, 1);
+  }
+});

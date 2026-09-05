@@ -509,3 +509,12 @@ Conventions: paths relative to the repository root; line numbers refer to commit
 
 - [x] **F1** Final validation: all Verify commands of W1–W8; `python3 -m py_compile cli/*.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
 - [x] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2) to the integrator; notify `cli_parity_20260905` that W2/W6 are available.
+
+## Review Fixes
+
+- [ ] Rev-1 Preserve replay URL identity and fail closed on malformed containers.
+  - **Files**: `web/lib/warc_reader.js`, `cli/warc_verify.py`, `tests/js/warc_reader.test.js`, `tests/test_warc_review.py`.
+  - **Change**: retain path/query case and trailing slashes, reset reader state on load, prefer record-ID/digest revisit linkage, bound record lengths, reject empty/truncated/invalid gzip containers, and report malformed CDX spans without an exception.
+  - **Verify**: `node --test tests/js/warc_reader.test.js`; `python3 -m unittest tests.test_warc_review`; `python3 scripts/gate.py test`.
+  - **Done when**: regression cases and repository baseline pass.
+  - **Do not**: reinterpret compressed CDX offsets as uncompressed offsets.
