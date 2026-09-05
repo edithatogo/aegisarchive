@@ -10,7 +10,6 @@ Licensed under the Apache License, Version 2.0.
 import sys
 import os
 import json
-import traceback
 
 try:
     from .profile_schema import validate as validate_schema
@@ -99,7 +98,7 @@ def handle_tool_call(tool_name, arguments):
 
     return {"error": f"Unknown tool: {tool_name}"}
 
-def handle_request(req):
+def _dispatch_request(req):
     """Dispatch one JSON-RPC 2.0 request dict. Returns a response dict, or None for notifications."""
     req_id = req.get("id")
     method = req.get("method")
@@ -187,25 +186,38 @@ def handle_request(req):
         }
     }
 
+def rpc_error(req_id, code, message):
+    return {"jsonrpc": "2.0", "id": req_id, "error": {"code": code, "message": message}}
+
+
+def handle_request(req):
+    """Validate an RPC envelope; notifications never produce replies."""
+    if not isinstance(req, dict) or req.get('jsonrpc') != '2.0' or not isinstance(req.get('method'), str):
+        return rpc_error(None, -32600, 'Invalid Request')
+    req_id = req.get('id')
+    notification = 'id' not in req
+    if isinstance(req_id, (dict, list, bool)):
+        return rpc_error(None, -32600, 'Invalid Request')
+    params = req.get('params', {})
+    if not isinstance(params, dict):
+        return None if notification else rpc_error(req_id, -32602, 'Invalid params')
+    if req['method'] == 'tools/call' and not isinstance(params.get('arguments', {}), dict):
+        return None if notification else rpc_error(req_id, -32602, 'Invalid params')
+    try:
+        result = _dispatch_request(req)
+    except Exception:
+        result = rpc_error(req_id, -32603, 'Internal error')
+    return None if notification else result
+
+
 def process_line(line):
-    """Handle one raw stdin line. Returns the JSON response text to write, or None for notifications."""
+    """Parse a line without exposing internal paths or tracebacks on the wire."""
     try:
         req = json.loads(line)
-        res = handle_request(req)
-        if res is None:
-            return None
-        return json.dumps(res) + "\n"
-    except Exception as e:
-        err_res = {
-            "jsonrpc": "2.0",
-            "id": None,
-            "error": {
-                "code": -32603,
-                "message": f"Internal error: {str(e)}",
-                "data": traceback.format_exc()
-            }
-        }
-        return json.dumps(err_res) + "\n"
+    except (ValueError, TypeError):
+        return json.dumps(rpc_error(None, -32700, 'Parse error')) + "\n"
+    response = handle_request(req)
+    return None if response is None else json.dumps(response) + "\n"
 
 def main():
     """Stdio JSON-RPC 2.0 loop for Model Context Protocol."""

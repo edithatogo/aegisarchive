@@ -14,3 +14,13 @@ class ProfileReviewTests(unittest.TestCase):
             data['politeness'][field] = value
             self.assertFalse(handle_tool_call('validate_profile', {'profile_json': json.dumps(data)})['valid'])
         self.assertFalse(handle_tool_call('validate_profile', {'profile_json': json.dumps({'profile_id': 'x', 'target': {'allowed_domains': ['h.test']}})})['valid'])
+
+    def test_rpc_envelopes_notifications_and_parse_errors(self):
+        from mcp.server import process_line
+        self.assertEqual(json.loads(process_line('garbage'))['error']['code'], -32700)
+        self.assertEqual(json.loads(process_line('[]'))['error']['code'], -32600)
+        self.assertIsNone(process_line('{"jsonrpc":"2.0","method":"unknown"}'))
+        response = json.loads(process_line('{"jsonrpc":"2.0","id":7,"method":"tools/call","params":null}'))
+        self.assertEqual(response['id'], 7)
+        self.assertEqual(response['error']['code'], -32602)
+        self.assertNotIn('data', response['error'])
