@@ -17,7 +17,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 2 — Politeness engine (`web/lib/politeness_engine.js`)
 
-- [ ] **T1 EWMA baseline warm-up** *(AC1)*
+- [x] **T1 EWMA baseline warm-up** *(AC1)*
 
   **Files**: `web/lib/politeness_engine.js` only. Do not touch `web/lib/core_crawler.js`.
 
@@ -72,7 +72,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: change `ewmaAlpha`, the strain threshold (`1.35`) or `getTelemetry()` keys; do not read warm-up size from the profile (no schema change in this task).
 
-- [ ] **T2 Count only 0/429/5xx as failures** *(AC2)*
+- [x] **T2 Count only 0/429/5xx as failures** *(AC2)*
 
   **Files**: `web/lib/politeness_engine.js` only.
 
@@ -106,7 +106,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: rename `recordFailure`; do not alter `consecutiveErrorTripwire` semantics; do not change the crawler's ledger writes (they must keep recording 4xx).
 
-- [ ] **T3 Re-queue with retry budget on countable failures** *(AC3)*
+- [x] **T3 Re-queue with retry budget on countable failures** *(AC3)*
 
   **Files**: `web/lib/core_crawler.js` only. Requires T2.
 
@@ -148,7 +148,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: change the queue sort; do not add a separate retry queue; do not modify `politeness_engine.js`.
 
-- [ ] **T4 Abortable waits, Retry-After cap, `stop()` aborts** *(AC4)*
+- [x] **T4 Abortable waits, Retry-After cap, `stop()` aborts** *(AC4)*
 
   **Files**: `web/lib/politeness_engine.js`, `web/lib/core_crawler.js`.
 
@@ -228,7 +228,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: throw on abort (return the `aborted` flag instead); do not change the `getTelemetry()` shape; do not touch `index.html`.
 
-- [ ] **T5 Fetch from origin (`cache: 'no-store'`)** *(AC5)*
+- [x] **T5 Fetch from origin (`cache: 'no-store'`)** *(AC5)*
 
   **Files**: `web/lib/core_crawler.js` only.
 

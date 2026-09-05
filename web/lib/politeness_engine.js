@@ -48,6 +48,9 @@
       this.ewmaAlpha = 0.2;
       this.ewmaLatencyMs = null;
       this.baselineLatencyMs = null;
+      this.warmupSize = 10;            // samples used for the median baseline
+      this.warmupSamples = [];
+      this.baselineDriftAlpha = 0.02;  // slow drift after warm-up
 
       // Back-off and Circuit Breaker state
       this.consecutiveErrors = 0;
@@ -55,9 +58,30 @@
       this.circuitState = CircuitState.NOMINAL;
       this.circuitTripTimestamp = null;
       this.domainCooldowns = new Map(); // domain -> wakeEpochMs
+      this.abortController = (typeof AbortController !== 'undefined') ? new AbortController() : null;
 
       // Telemetry callback
       this.onStateChange = config.onStateChange || null;
+    }
+
+    /** Interruptible sleep; resolves true when the delay elapsed, false when aborted (D4). */
+    sleep(ms) {
+      const signal = this.abortController ? this.abortController.signal : null;
+      return new Promise(resolve => {
+        if (signal && signal.aborted) return resolve(false);
+        const onAbort = () => { clearTimeout(timer); resolve(false); };
+        const timer = setTimeout(() => {
+          if (signal) signal.removeEventListener('abort', onAbort);
+          resolve(true);
+        }, ms);
+        if (signal) signal.addEventListener('abort', onAbort, { once: true });
+      });
+    }
+
+    abort() { if (this.abortController) this.abortController.abort(); }
+
+    resetAbort() {
+      if (typeof AbortController !== 'undefined') this.abortController = new AbortController();
     }
 
     /**
@@ -132,9 +156,21 @@
       // Update EWMA
       if (this.ewmaLatencyMs === null) {
         this.ewmaLatencyMs = latencyMs;
-        this.baselineLatencyMs = latencyMs;
       } else {
         this.ewmaLatencyMs = Math.round(this.ewmaAlpha * latencyMs + (1 - this.ewmaAlpha) * this.ewmaLatencyMs);
+      }
+
+      // Baseline: median of the first warmupSize samples, then slow drift (D1)
+      if (this.warmupSamples.length < this.warmupSize) {
+        this.warmupSamples.push(latencyMs);
+        if (this.warmupSamples.length === this.warmupSize) {
+          const sorted = this.warmupSamples.slice().sort((a, b) => a - b);
+          this.baselineLatencyMs = sorted[Math.floor(sorted.length / 2)];
+        }
+      } else {
+        this.baselineLatencyMs = Math.round(
+          (1 - this.baselineDriftAlpha) * this.baselineLatencyMs + this.baselineDriftAlpha * latencyMs
+        );
       }
 
       // Check if circuit was half-open or throttled, and restore to nominal
@@ -145,17 +181,29 @@
     }
 
     /**
+     * Only network errors (0), 429 and 5xx indicate server strain (D2).
+     */
+    static isCountableFailure(status) {
+      const s = Number(status);
+      return s === 0 || s === 429 || (s >= 500 && s <= 599);
+    }
+
+    /**
      * Records a failed request (429, 5xx, or network timeout) and updates circuit state.
      */
     recordFailure(url, status, retryAfterHeader = null) {
+      if (!PolitenessEngine.isCountableFailure(status)) {
+        return false; // informational 4xx: ledger only, no circuit change
+      }
       this.consecutiveErrors++;
 
       // Check for explicit Retry-After
       const retryMs = this.respectRetryAfter ? this.parseRetryAfter(retryAfterHeader) : null;
       if (retryMs) {
+        const capMs = this.cooldownSeconds * 10 * 1000; // never honour absurd Retry-After (D4)
         try {
           const domain = new URL(url).hostname;
-          this.domainCooldowns.set(domain, Date.now() + retryMs);
+          this.domainCooldowns.set(domain, Date.now() + Math.min(retryMs, capMs));
         } catch (e) {}
       }
 
@@ -168,6 +216,7 @@
         this.calculateDecorrelatedBackoff();
         this.notifyState();
       }
+      return true;
     }
 
     notifyState() {
@@ -186,7 +235,7 @@
         const cooldownMs = this.cooldownSeconds * 1000;
         if (elapsedSinceTrip < cooldownMs) {
           const waitRemaining = cooldownMs - elapsedSinceTrip;
-          await new Promise(resolve => setTimeout(resolve, waitRemaining));
+          if (!(await this.sleep(waitRemaining))) return { delayMs: 0, state: this.circuitState, aborted: true };
         }
         // Advance to Half-Open probe state
         this.circuitState = CircuitState.HALF_OPEN;
@@ -199,7 +248,7 @@
         const wakeEpoch = this.domainCooldowns.get(domain);
         if (wakeEpoch && Date.now() < wakeEpoch) {
           const sleepMs = wakeEpoch - Date.now();
-          await new Promise(resolve => setTimeout(resolve, sleepMs));
+          if (!(await this.sleep(sleepMs))) return { delayMs: 0, state: this.circuitState, aborted: true };
           this.domainCooldowns.delete(domain);
         }
       } catch (e) {}
@@ -209,7 +258,7 @@
       if (this.tokens < 1.0) {
         const neededTokens = 1.0 - this.tokens;
         const waitMs = Math.ceil(neededTokens / this.tokenFillRatePerMs);
-        await new Promise(resolve => setTimeout(resolve, waitMs));
+        if (!(await this.sleep(waitMs))) return { delayMs: 0, state: this.circuitState, aborted: true };
         this.refillTokens();
       }
       this.tokens -= 1.0;
@@ -235,8 +284,8 @@
         calculatedDelay = Math.max(calculatedDelay, this.currentBackoffDelayMs);
       }
 
-      await new Promise(resolve => setTimeout(resolve, calculatedDelay));
-      return { delayMs: calculatedDelay, state: this.circuitState };
+      if (!(await this.sleep(calculatedDelay))) return { delayMs: 0, state: this.circuitState, aborted: true };
+      return { delayMs: calculatedDelay, state: this.circuitState, aborted: false };
     }
 
     getTelemetry() {

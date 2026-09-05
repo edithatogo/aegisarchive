@@ -46,7 +46,7 @@
       this.endTime = null;
 
       // Queues & Trackers
-      this.queue = [];       // [{ url, tier, depth, parentUrl }]
+      this.queue = [];       // [{ url, tier, depth, parentUrl, retries }]
       this.visited = new Set();
       this.documents = [];   // [{ url, title, mimeType, size, hash, date }]
       this.auditLedger = []; // [{ url, status, mimeType, latency_ms, size_bytes, timestamp }]
@@ -68,6 +68,7 @@
       ]).map(ext => ext.toLowerCase()));
       this.maxDepth = this.targetConfig.max_depth || 5;
       this.maxPages = this.targetConfig.max_pages || 5000;
+      this.maxRetries = 3;
     }
 
     /**
@@ -184,6 +185,7 @@
       this.isRunning = true;
       this.isPaused = false;
       this.shouldStop = false;
+      this.politeness.resetAbort();
       this.startTime = this.startTime || Date.now();
 
       if (this.queue.length === 0 && this.visited.size === 0) {
@@ -224,10 +226,11 @@
     }
 
     async processUrl(task) {
-      const { url, depth, tier } = task;
+      const { url, depth, tier } = task; // task.retries is managed by requeueForRetry
 
       // Acquire permission from Politeness Engine (applies rate limit, EWMA backoff, Retry-After, circuit tripwire)
       const gate = await this.politeness.acquirePermission(url);
+      if (gate.aborted) return;
       const reqStartTime = performance.now();
 
       try {
@@ -237,7 +240,7 @@
             'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,*/*;q=0.8',
             'X-Preservation-Agent': 'AegisArchive/1.0'
           },
-          cache: 'default'
+          cache: 'no-store'
         });
 
         const reqEndTime = performance.now();
@@ -255,6 +258,7 @@
             timestamp: new Date().toISOString()
           });
           this.callbacks.onLog(`[HTTP ${resp.status}] ${url} (${latencyMs} ms)`);
+          if (PolitenessEngine.isCountableFailure(resp.status)) this.requeueForRetry(task);
           return;
         }
 
@@ -314,7 +318,24 @@
           timestamp: new Date().toISOString()
         });
         this.callbacks.onLog(`[Network Error] ${url}: ${err.message}`);
+        this.requeueForRetry(task);
       }
+    }
+
+    /**
+     * Puts a task back on the queue after a countable failure (D3). Back-off is applied by
+     * acquirePermission() because the engine is now THROTTLED/TRIPPED.
+     */
+    requeueForRetry(task) {
+      const retries = (task.retries || 0) + 1;
+      if (retries > this.maxRetries) {
+        this.callbacks.onLog(`[Retry] Abandoning ${task.url} after ${this.maxRetries} retries.`);
+        return false;
+      }
+      this.visited.delete(task.url);
+      this.queue.push({ ...task, retries });
+      this.callbacks.onLog(`[Retry ${retries}/${this.maxRetries}] Re-queued ${task.url}`);
+      return true;
     }
 
     extractLinks(html, baseUrl, nextDepth, tier) {
@@ -358,6 +379,7 @@
     stop() {
       this.shouldStop = true;
       this.isPaused = false;
+      this.politeness.abort();
       this.callbacks.onLog('[AegisArchive] Graceful shutdown requested. Preserving all captured records.');
       this.callbacks.onStatusChange('STOPPING');
     }
