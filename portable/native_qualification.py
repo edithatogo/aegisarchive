@@ -6,6 +6,8 @@ receipt after every step and exits nonzero if any required check fails.
 import argparse
 import array
 import errno
+import hashlib
+import http.client
 import json
 import os
 from pathlib import Path
@@ -14,6 +16,7 @@ import re
 import socket
 import subprocess
 import sys
+import tempfile
 import time
 import wave
 
@@ -54,11 +57,12 @@ def main():
               'python': sys.executable, 'bundle': str(bundle), 'checks': {}, 'status': 'running'}
     args.receipt.parent.mkdir(parents=True, exist_ok=True)
 
-    def record(name, operation):
+    def record(name, operation, *, fatal=False):
         started = time.monotonic()
         try:
             result = operation()
             report['checks'][name] = {'status': 'passed', 'result': result}
+            return result
         except Exception as error:
             report['checks'][name] = {'status': 'failed', 'error': str(error)}
             if isinstance(error, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
@@ -69,7 +73,8 @@ def main():
                     if value:
                         report['checks'][name][field] = value[-6000:]
                 report['checks'][name]['returncode'] = getattr(error, 'returncode', None)
-            raise
+            if fatal:
+                raise
         finally:
             report['checks'][name]['seconds'] = time.monotonic() - started
             args.receipt.write_text(json.dumps(report, indent=2) + '\n')
@@ -86,11 +91,11 @@ def main():
             raise RuntimeError('External network connection permitted')
 
     try:
-        record('external_egress_denied', egress)
+        record('external_egress_denied', egress, fatal=True)
         tools = LocalTools(bundle / 'manifest.json')
         expected_python = tools.asset('python')
-        record('bundled_python', lambda: same_file(expected_python, Path(sys.executable)))
-        record('integrity', lambda: {'immutable_files': len(verify(bundle)['files'])})
+        record('bundled_python', lambda: same_file(expected_python, Path(sys.executable)), fatal=True)
+        record('integrity', lambda: {'immutable_files': len(verify(bundle)['files'])}, fatal=True)
         data = bundle / 'data' / ('qualification-' + str(time.time_ns()))
         data.mkdir()
         for tier in ('scout', 'general', 'deep'):
@@ -102,13 +107,17 @@ def main():
             record(tier, generate)
         text = 'The archive is available offline. All evidence is stored locally.'
         record('synthesis', lambda: str(tools.speak(text, data / 'speech.wav')))
-        resample(data / 'speech.wav', data / 'speech16.wav')
         def transcribe():
+            resample(data / 'speech.wav', data / 'speech16.wav')
             output = tools.transcribe(data / 'speech16.wav')
             if 'archive' not in output.lower() or 'offline' not in output.lower():
                 raise RuntimeError('Unexpected transcription: ' + output)
             return output
-        record('transcription', transcribe)
+        if report['checks']['synthesis']['status'] == 'passed':
+            record('transcription', transcribe)
+        else:
+            report['checks']['transcription'] = {'status': 'blocked',
+                'error': 'Synthesis prerequisite failed', 'seconds': 0}
         def retrieval():
             with GGUFEmbedder(bundle / 'manifest.json') as encoder:
                 vector = encoder.encode('The archive preserves water reports.')
@@ -164,8 +173,61 @@ def main():
             launcher_command = [str(Path(os.environ['SystemRoot']) / 'System32/cmd.exe'),
                                 '/d', '/c', 'call', *launcher_command]
         record('relocated_launcher', lambda: subprocess.check_output(launcher_command, text=True, timeout=60))
+        def station_check():
+            with socket.socket() as probe:
+                probe.bind(('127.0.0.1', 0))
+                port = probe.getsockname()[1]
+            command = [*launcher_command[:-1], '--no-browser', '--port', str(port),
+                       '--idle-timeout', '0.1']
+            with tempfile.TemporaryFile() as log:
+                process = subprocess.Popen(command, stdin=subprocess.DEVNULL,
+                                           stdout=log, stderr=subprocess.STDOUT)
+                try:
+                    deadline = time.monotonic() + 30
+                    while True:
+                        try:
+                            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=2)
+                            connection.request('GET', '/__station/status')
+                            response = connection.getresponse()
+                            status = json.loads(response.read())
+                            if response.status != 200 or status.get('station') != 'aegisarchive':
+                                raise ValueError('Unexpected station identity')
+                            break
+                        except (OSError, http.client.HTTPException):
+                            if process.poll() is not None or time.monotonic() >= deadline:
+                                raise RuntimeError('Relocated station did not become ready')
+                            time.sleep(0.1)
+                        finally:
+                            connection.close()
+                    connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+                    try:
+                        connection.request('GET', '/index.html')
+                        response = connection.getresponse()
+                        page = response.read()
+                        if response.status != 200 or hashlib.sha256(page).hexdigest() != tools.config['files']['app/web/index.html']['sha256']:
+                            raise ValueError('Station did not serve the verified package page')
+                    finally:
+                        connection.close()
+                    if process.wait(timeout=20) != 0:
+                        raise RuntimeError('Station launcher exited unsuccessfully')
+                    return {'station': status, 'index_sha256': hashlib.sha256(page).hexdigest(),
+                            'idle_shutdown': 'passed'}
+                except Exception as error:
+                    log.seek(0)
+                    raise RuntimeError(str(error) + ': ' + log.read()[-6000:].decode('utf-8', errors='replace')) from error
+                finally:
+                    if process.poll() is None:
+                        if os.name == 'nt':
+                            subprocess.run([str(Path(os.environ['SystemRoot']) / 'System32/taskkill.exe'),
+                                            '/PID', str(process.pid), '/T', '/F'],
+                                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10)
+                        else:
+                            process.terminate()
+                        process.wait(timeout=10)
+        record('relocated_station', station_check)
         record('integrity_after', lambda: {'immutable_files': len(verify(bundle)['files'])})
-        report['status'] = 'passed'
+        report['status'] = ('passed' if all(check['status'] == 'passed'
+                            for check in report['checks'].values()) else 'failed')
     except Exception:
         report['status'] = 'failed'
     args.receipt.write_text(json.dumps(report, indent=2) + '\n')

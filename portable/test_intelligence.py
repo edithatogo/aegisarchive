@@ -68,7 +68,7 @@ class ToolTests(unittest.TestCase):
                        side_effect=lambda *a, **k: target.write_bytes(b'0' * 44)) as run:
                 LocalTools(manifest).speak('archive', target)
             self.assertEqual(run.call_args.args[0], root / 'python')
-            self.assertEqual(run.call_args.args[1][:3], ['-I', '-B', root / 'piper_entry.py'])
+            self.assertEqual(run.call_args.args[1][:5], ['-X', 'utf8', '-I', '-B', root / 'piper_entry.py'])
 
     def test_real_subprocess_literal_argument_and_error(self):
         literal = '$(touch should-not-exist); "quoted"'

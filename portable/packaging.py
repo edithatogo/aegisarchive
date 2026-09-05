@@ -165,7 +165,7 @@ def assemble(source, destination, assets=()):
                         'bundle_root="$PWD"\n'
                         'cd app\n'
                         'exec "$bundle_root"/' + shlex.quote(interpreter) +
-                        ' -I -B cli/launch.py "$@"\n')
+                        ' -X utf8 -I -B cli/launch.py "$@"\n')
             for name in ('START_MAC.command', 'START_LINUX.sh'):
                 (root / name).write_text(launcher)
                 (root / name).chmod(0o755)
@@ -175,7 +175,7 @@ def assemble(source, destination, assets=()):
                 (root / 'START_WINDOWS.cmd').write_text(
                     '@echo off\r\ncd /d "%~dp0app"\r\n"%~dp0' +
                     interpreter.replace('/', '\\') +
-                    '" -I -B cli/launch.py %*\r\n')
+                    '" -X utf8 -I -B cli/launch.py %*\r\n')
         manifest = {'schema_version': 1, 'application': 'AegisArchive',
                     'layout': {'application': 'app', 'writable_data': 'data', 'runtimes': 'runtime'},
                     'assets': records, 'files': files(root)}

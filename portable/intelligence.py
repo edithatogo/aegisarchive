@@ -86,7 +86,7 @@ class LocalTools:
         piper = self.asset("piper")
         executable, prefix = piper, []
         if piper.suffix == ".py":
-            executable, prefix = self.asset("python"), ["-I", "-B", piper]
+            executable, prefix = self.asset("python"), ["-X", "utf8", "-I", "-B", piper]
         run_tool(executable, [*prefix, "--model", self.asset("piper_model"),
                  "--config", self.asset("piper_config"), "--output_file", output], text=text)
         if not output.is_file() or output.stat().st_size < 44:

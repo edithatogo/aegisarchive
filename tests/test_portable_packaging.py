@@ -60,7 +60,7 @@ class PackagingTests(unittest.TestCase):
         literal = '$(touch should-not-exist); "literal"'
         output = subprocess.check_output([str(relocated / 'START_LINUX.sh'), literal],
                                          text=True, env={'PATH': '/usr/bin:/bin'})
-        self.assertEqual(output.splitlines(), [str(relocated / 'app'), '-I', '-B',
+        self.assertEqual(output.splitlines(), [str(relocated / 'app'), '-X', 'utf8', '-I', '-B',
                                                'cli/launch.py', literal])
         verify(relocated)
 
