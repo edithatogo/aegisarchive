@@ -1144,8 +1144,8 @@ Global drift guards (apply to every task):
 
 ## Phase 6 — Completion (after G1 push by the integrator)
 
-- [ ] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11).
+- [x] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). *(run 33955593936; all seven jobs passed)* If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11). *(completed after hosted run 33955593936)*
 
 ## Review Fixes
 

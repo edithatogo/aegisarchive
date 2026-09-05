@@ -1,29 +1,30 @@
 {
   "track_id": "security_gates_and_fuzzing_20260905",
   "type": "feature",
-  "status": "in_progress",
+  "status": "completed",
   "created_at": "2026-09-05T04:50:00Z",
-  "updated_at": "2026-09-05T07:57:11Z",
+  "updated_at": "2026-09-05T08:40:30Z",
   "description": "New security.yml workflow with fail-closed medium-or-higher gates: gitleaks, CodeQL (python + javascript-typescript) with a stdlib SARIF severity gate, Semgrep, Bandit, zizmor, atheris fuzz harnesses for the WARC verifier, CDX search and MCP JSON-RPC dispatch, node --test property tests, ClusterFuzzLite PR fuzzing, and a stdlib local gate runner (scripts/gate.py) mirroring CI including the ci.yml leak gate. Includes the prerequisite MCP dispatch extraction and WARC verifier hardening. ci.yml is untouched.",
   "evidence_schema": "1.0",
   "gates": [
     {
       "id": "G1",
       "kind": "publication",
-      "status": "pending"
+      "status": "satisfied",
+      "evidence": "https://github.com/edithatogo/aegisarchive/actions/runs/33955593936"
     },
     {
       "id": "AC8",
       "kind": "hosted_validation",
-      "status": "blocked",
-      "evidence": "https://github.com/edithatogo/aegisarchive/actions/runs/33951784808"
+      "status": "satisfied",
+      "evidence": "https://github.com/edithatogo/aegisarchive/actions/runs/33955593936"
     }
   ],
   "legacy_evidence": "evidence.legacy.jsonl",
   "review": {
-    "status": "blocked",
-    "recorded_at": "2026-09-05T07:57:11Z",
-    "revision": "2f13d9cffe3333623020ee8204b5cdb6dc7e43d9",
+    "status": "passed",
+    "recorded_at": "2026-09-05T08:40:30Z",
+    "revision": "fb138618f2ef5ab2aed6c87d9710baf9a49f2663",
     "report": "review.md"
   }
 }
