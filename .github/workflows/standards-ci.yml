@@ -1,0 +1,55 @@
+name: Standards CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: standards-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python-ci:
+    # Reusable workflow: tests with coverage and uploads to Codecov via OIDC.
+    # Requires the repository to be activated on Codecov (gate G2); until then this job fails at the upload step.
+    permissions:
+      contents: read
+      id-token: write
+    uses: edithatogo/repository-standards/.github/workflows/python-ci.yml@ad67bedaa0c4d0769bd54fd76354bac65b25b88c # main 2026-09-05
+    with:
+      python-version: "3.11"
+      install-command: python -m pip install -e . -r tests/requirements-dev.txt
+      test-command: python -m coverage run --source=cli,mcp -m unittest discover -s tests -t . -p "test_*.py" && python -m coverage xml
+
+  dependency-review:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: moderate
+
+  supply-chain-evidence:
+    # SBOM (SPDX + CycloneDX), checksums and build-provenance attestation for committed project metadata.
+    # The reusable workflow checks out the repository itself, so artifact-path must be a committed path;
+    # release artefacts get their own provenance in release.yml (release_and_packaging_20260905).
+    if: github.event_name != 'pull_request'
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    uses: edithatogo/repository-standards/.github/workflows/supply-chain-evidence.yml@ad67bedaa0c4d0769bd54fd76354bac65b25b88c # main 2026-09-05
+    with:
+      artifact-path: pyproject.toml

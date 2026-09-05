@@ -10,6 +10,9 @@ __pycache__/
 *.pyd
 .venv/
 env/
+.coverage
+coverage.xml
+*.egg-info/
 
 # Crawl run outputs (keep git clean, user data stays local)
 archive/*.warc
