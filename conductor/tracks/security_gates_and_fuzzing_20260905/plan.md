@@ -861,7 +861,7 @@ Global drift guards (apply to every task):
 
 ## Phase 4 — Workflows
 
-- [ ] **T9 `security.yml`** *(R3–R8, AC5, AC6, AC8)*
+- [x] **T9 `security.yml`** *(R3–R8, AC5, AC6, AC8)* (9be48c6)
 
   **Files**: create `.github/workflows/security.yml`. Requires T1–T8.
 
@@ -1029,7 +1029,7 @@ Global drift guards (apply to every task):
 
   **Do not**: touch `ci.yml`; add `continue-on-error`; change `upload: never`; scan `.github` with Semgrep; use Python 3.11 for the fuzz job (no atheris wheel).
 
-- [ ] **T10 ClusterFuzzLite configuration and PR workflow** *(R9)*
+- [x] **T10 ClusterFuzzLite configuration and PR workflow** *(R9)* (641016c)
 
   **Files**: create `.clusterfuzzlite/project.yaml`, `.clusterfuzzlite/Dockerfile`, `.clusterfuzzlite/build.sh`, `.github/workflows/cflite_pr.yml`.
 
