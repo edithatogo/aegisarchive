@@ -303,7 +303,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
 ## Phase 4 — Crawler (`web/lib/core_crawler.js`)
 
-- [ ] **T7 Canonicalization fidelity** *(AC10)*
+- [x] **T7 Canonicalization fidelity** *(AC10)*
 
   **Files**: `web/lib/core_crawler.js` only.
 
@@ -336,7 +336,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: change `isUrlInScope` or `isAssetUrl`; do not touch `warc_reader.js` `normalizeUrl` (viewer lookup is tolerant of the slash by design).
 
-- [ ] **T8 Requisite extraction (DOMParser with regex fallback)** *(AC9)*
+- [x] **T8 Requisite extraction (DOMParser with regex fallback)** *(AC9)*
 
   **Files**: `web/lib/core_crawler.js` only. Requires T7 (expected URLs below assume the trailing slash is kept).
 
@@ -401,7 +401,7 @@ node -e "global.PolitenessEngine=require('./web/lib/politeness_engine.js');globa
 
   **Do not**: introduce a separate "requisite tier"; do not count requisites differently toward `max_pages`; do not fetch anything in `extractLinks`.
 
-- [ ] **T9 robots.txt policy** *(AC8)*
+- [x] **T9 robots.txt policy** *(AC8)*
 
   **Files**: `web/lib/core_crawler.js` only (schema property added in T6). Requires T4 (uses `gate.aborted`) and T5.
 

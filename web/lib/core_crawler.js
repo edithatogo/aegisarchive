@@ -23,7 +23,7 @@
 
   const TRACKING_PARAMS = new Set([
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-    'fbclid', 'gclid', 'ref', 'source', 'session_id', 'jsessionid', 'phpsessid',
+    'fbclid', 'gclid', 'session_id', 'jsessionid', 'phpsessid',
     '_ga', '_gl', 'msclkid', 'mc_cid', 'mc_eid'
   ]);
 
@@ -69,6 +69,11 @@
       this.maxDepth = this.targetConfig.max_depth || 5;
       this.maxPages = this.targetConfig.max_pages || 5000;
       this.maxRetries = 3;
+
+      // robots.txt (D8): 'respect' (default) or 'ignore_authorised'
+      this.robotsPolicy = (profile.politeness && profile.politeness.robots_policy) || 'respect';
+      this.agentToken = 'aegisarchive';
+      this.robotsRules = new Map(); // origin -> array of Disallow prefixes
     }
 
     /**
@@ -99,11 +104,7 @@
           u.port = '';
         }
 
-        let normalized = u.toString();
-        if (normalized.endsWith('/') && u.pathname !== '/') {
-          normalized = normalized.slice(0, -1);
-        }
-        return normalized;
+        return u.toString(); // trailing slash preserved: /docs/ and /docs may be different resources (D10)
       } catch (e) {
         return null;
       }
@@ -193,6 +194,11 @@
       }
 
       this.callbacks.onLog(`[AegisArchive] Engine started. Seeded ${this.queue.length} target URLs.`);
+      if (this.robotsPolicy === 'ignore_authorised' && !this.robotsPolicyLogged) {
+        this.robotsPolicyLogged = true;
+        this.auditLedger.push({ url: 'robots_policy', status: -1, mimeType: 'robots_policy', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, timestamp: new Date().toISOString() });
+        this.callbacks.onLog('[Robots] Policy ignore_authorised: robots.txt is NOT consulted. Operator asserts authorisation for these targets.');
+      }
       this.callbacks.onStatusChange('RUNNING');
 
       while (this.isRunning && !this.shouldStop && this.queue.length > 0) {
@@ -231,6 +237,11 @@
       // Acquire permission from Politeness Engine (applies rate limit, EWMA backoff, Retry-After, circuit tripwire)
       const gate = await this.politeness.acquirePermission(url);
       if (gate.aborted) return;
+      if (!(await this.isAllowedByRobots(url))) {
+        this.auditLedger.push({ url, status: -1, mimeType: 'robots_disallow', latency_ms: 0, size_bytes: 0, timestamp: new Date().toISOString() });
+        this.callbacks.onLog(`[Robots] Skipped (Disallow): ${url}`);
+        return;
+      }
       const reqStartTime = performance.now();
 
       try {
@@ -322,6 +333,57 @@
       }
     }
 
+    parseRobotsTxt(text) {
+      const star = [], agent = [];
+      let current = null, agentSeen = false;
+      for (const rawLine of String(text).split(/\r?\n/)) {
+        const line = rawLine.split('#')[0].trim();
+        const idx = line.indexOf(':');
+        if (idx === -1) continue;
+        const field = line.slice(0, idx).trim().toLowerCase();
+        const value = line.slice(idx + 1).trim();
+        if (field === 'user-agent') {
+          const ua = value.toLowerCase();
+          if (ua === '*') current = star;
+          else if (ua.includes(this.agentToken)) { current = agent; agentSeen = true; }
+          else current = null;
+        } else if (field === 'disallow' && current && value) {
+          current.push(value);
+        }
+      }
+      return agentSeen ? agent : star;
+    }
+
+    isPathDisallowed(urlStr, rules) {
+      const u = new URL(urlStr);
+      const path = u.pathname + u.search;
+      return rules.some(rule => {
+        const pattern = rule.split('*').map(s => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*');
+        return new RegExp('^' + pattern).test(path);
+      });
+    }
+
+    async isAllowedByRobots(urlStr) {
+      if (this.robotsPolicy !== 'respect') return true;
+      const origin = new URL(urlStr).origin;
+      if (!this.robotsRules.has(origin)) {
+        this.robotsRules.set(origin, []); // reserve first: a failed fetch is never retried
+        const robotsUrl = origin + '/robots.txt';
+        const gate = await this.politeness.acquirePermission(robotsUrl);
+        if (gate.aborted) return true;
+        let status = 0, rules = [];
+        try {
+          const resp = await fetch(robotsUrl, { method: 'GET', headers: { 'X-Preservation-Agent': 'AegisArchive/1.0' }, cache: 'no-store' });
+          status = resp.status;
+          if (resp.ok) rules = this.parseRobotsTxt(await resp.text());
+        } catch (e) { status = 0; }
+        this.robotsRules.set(origin, rules);
+        this.auditLedger.push({ url: robotsUrl, status, mimeType: 'robots_txt', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, disallow_count: rules.length, timestamp: new Date().toISOString() });
+        this.callbacks.onLog(`[Robots] ${robotsUrl} -> HTTP ${status}; ${rules.length} Disallow rule(s) honoured.`);
+      }
+      return !this.isPathDisallowed(urlStr, this.robotsRules.get(origin));
+    }
+
     /**
      * Puts a task back on the queue after a countable failure (D3). Back-off is applied by
      * acquirePermission() because the engine is now THROTTLED/TRIPPED.
@@ -338,12 +400,38 @@
       return true;
     }
 
+    /**
+     * Collects raw candidate URLs (anchors + page requisites) from HTML (D9).
+     * Uses DOMParser in browsers; falls back to a tolerant regex (handles unquoted values).
+     */
+    collectCandidateUrls(html) {
+      const out = [];
+      const pushSrcset = (value) => {
+        for (const part of String(value || '').split(',')) {
+          const candidate = part.trim().split(/\s+/)[0];
+          if (candidate) out.push(candidate);
+        }
+      };
+      if (typeof DOMParser !== 'undefined') {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        doc.querySelectorAll('a[href], link[href], area[href]').forEach(el => out.push(el.getAttribute('href')));
+        doc.querySelectorAll('img[src], script[src], iframe[src], source[src], video[src], audio[src]')
+          .forEach(el => out.push(el.getAttribute('src')));
+        doc.querySelectorAll('img[srcset], source[srcset]').forEach(el => pushSrcset(el.getAttribute('srcset')));
+        return out;
+      }
+      const attrRegex = /<(?:a|link|area|img|script|iframe|source|video|audio)\b[^>]*?\s(?:href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
+      let m;
+      while ((m = attrRegex.exec(html)) !== null) out.push(m[1] || m[2] || m[3]);
+      const srcsetRegex = /\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
+      while ((m = srcsetRegex.exec(html)) !== null) pushSrcset(m[1] || m[2]);
+      return out;
+    }
+
     extractLinks(html, baseUrl, nextDepth, tier) {
-      const linkRegex = /<a\s+(?:[^>]*?\s+)?href=["']([^"']+)["']/gi;
-      let match;
-      while ((match = linkRegex.exec(html)) !== null) {
-        const rawHref = match[1].trim();
-        if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:') || rawHref.startsWith('mailto:')) {
+      for (const candidate of this.collectCandidateUrls(html)) {
+        const rawHref = String(candidate || '').trim();
+        if (!rawHref || /^(#|javascript:|mailto:|tel:|data:|blob:)/i.test(rawHref)) {
           continue;
         }
 
