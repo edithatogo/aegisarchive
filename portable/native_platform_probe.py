@@ -75,7 +75,7 @@ def main() -> None:
     output = args.output.resolve()
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="aegis native probe ") as workspace:
-        work = Path(workspace)
+        work = Path(workspace).resolve()
         archive = work / "python.tar.gz"
         with urllib.request.urlopen(url, timeout=120) as response, archive.open("wb") as destination:
             shutil.copyfileobj(response, destination)
@@ -93,7 +93,7 @@ def main() -> None:
         repo = Path(__file__).resolve().parents[1]
         for name in ("cli", "mcp", "portable", "profiles"):
             shutil.copytree(repo / name, app / name, ignore=shutil.ignore_patterns("__pycache__", "._*"))
-        executable = relocated / "python" / ("python.exe" if os.name == "nt" else "bin/python3")
+        executable = (relocated / "python" / ("python.exe" if os.name == "nt" else "bin/python3")).resolve(strict=True)
         report = relocated / "probe.json"
         command = [str(executable), "-I", "-B", str(app / "portable/native_platform_probe.py"), "--child", "--output", str(report)]
         environment = dict(os.environ)
@@ -109,13 +109,24 @@ def main() -> None:
             subprocess.run(["/usr/bin/sudo", "/usr/bin/unshare", "--net", "--", "/usr/bin/env", "PATH=" + environment["PATH"], *command], env=environment, check=True, timeout=300)
         else:
             restriction = "Windows Firewall outbound block for bundled python.exe"
+            # Firewall rejects DOS short-name paths (for example RUNNER~1).
+            # resolve(strict=True) above expands the executable to its long path.
+            # Establish that this exact interpreter can connect before blocking it.
+            subprocess.run([str(executable), "-I", "-B", "-c",
+                            "import socket; socket.create_connection(('1.1.1.1',443),timeout=10).close()"],
+                           env=environment, check=True, timeout=30)
             # Script is passed as data via an environment variable; no shell interpolation.
             script = work / "restrict.ps1"
             script.write_text("$ErrorActionPreference = 'Stop'\n"
                               "$rule = 'AegisProbe-' + [guid]::NewGuid().ToString()\n"
                               "$cmd = ConvertFrom-Json $env:AEGIS_PROBE_COMMAND\n"
+                              "Write-Output ('Firewall target: ' + $cmd[0])\n"
+                              "if (!(Test-Path -LiteralPath $cmd[0] -PathType Leaf)) { throw 'Python executable missing' }\n"
+                              "if (Get-NetFirewallProfile | Where-Object { $_.Enabled -ne 'True' }) { throw 'Firewall profile disabled' }\n"
                               "try {\n"
-                              "  New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $cmd[0] -Action Block | Out-Null\n"
+                              "  New-NetFirewallRule -DisplayName $rule -Direction Outbound -Program $cmd[0] -Action Block -Enabled True -Profile Any | Out-Null\n"
+                              "  $installed = Get-NetFirewallRule -DisplayName $rule -PolicyStore ActiveStore\n"
+                              "  if ($installed.Action -ne 'Block' -or $installed.Enabled -ne 'True') { throw 'Firewall rule not active' }\n"
                               "  & $cmd[0] $cmd[1..($cmd.Length-1)]\n"
                               "  if ($LASTEXITCODE -ne 0) { throw 'Bundled probe failed' }\n"
                               "} finally { Remove-NetFirewallRule -DisplayName $rule -ErrorAction SilentlyContinue }\n")
