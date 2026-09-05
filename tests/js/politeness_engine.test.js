@@ -63,3 +63,13 @@ test('PolitenessEngine sleep() resolves true when not aborted (T4, AC4)', async 
   const ok = await engine.sleep(1);
   assert.equal(ok, true);
 });
+
+test('output slots remain paced when permission calls overlap', async t => {
+  t.mock.method(Date, 'now', () => 1000);
+  const engine = new PolitenessEngine({min_delay_ms: 10, max_delay_ms: 10});
+  const delays = [];
+  engine.sleep = async ms => { delays.push(ms); return true; };
+  await Promise.all([engine.acquirePermission('http://h.test/'), engine.acquirePermission('http://h.test/')]);
+  assert.deepEqual(delays, [10, 20]);
+  assert.ok(Number.isFinite(engine.parseRetryAfter('9'.repeat(5000))));
+});

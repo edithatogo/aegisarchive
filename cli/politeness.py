@@ -12,6 +12,7 @@ Licensed under the Apache License, Version 2.0.
 
 import math
 import random
+import re
 import threading
 import time
 from email.utils import parsedate_to_datetime
@@ -70,6 +71,7 @@ class PolitenessEngine:
         self.circuit_state = CircuitState.NOMINAL
         self.circuit_trip_timestamp = None
         self.domain_cooldowns = {}  # host -> wake epoch (seconds)
+        self.next_permission_at = 0.0  # paced output slots (seconds)
 
     # -- helpers -------------------------------------------------------------
     @staticmethod
@@ -84,8 +86,8 @@ class PolitenessEngine:
         if not header_value:
             return None
         value = str(header_value).strip()
-        if value.isdigit():
-            return int(value) * 1000
+        if re.fullmatch(r'[0-9]+', value):
+            return min(int(value[:18]) * 1000, 2**53 - 1)
         try:
             dt = parsedate_to_datetime(value)
         except (TypeError, ValueError, IndexError):
@@ -193,7 +195,9 @@ class PolitenessEngine:
                     self.circuit_state = CircuitState.THROTTLED
         if self.circuit_state == CircuitState.THROTTLED:
             delay = max(delay, self.current_backoff_delay_ms)
-        if not self._sleep(delay):
+        now = self._clock()
+        self.next_permission_at = max(now, self.next_permission_at) + delay / 1000.0
+        if not self._sleep((self.next_permission_at - now) * 1000.0):
             return aborted
         return {"delay_ms": delay, "state": self.circuit_state, "aborted": False}
 

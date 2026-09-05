@@ -58,6 +58,7 @@
       this.circuitState = CircuitState.NOMINAL;
       this.circuitTripTimestamp = null;
       this.domainCooldowns = new Map(); // domain -> wakeEpochMs
+      this.nextPermissionAt = 0; // leaky-bucket output pacing, in epoch milliseconds
       this.abortController = (typeof AbortController !== 'undefined') ? new AbortController() : null;
 
       // Telemetry callback
@@ -92,9 +93,8 @@
       if (!headerValue) return null;
       const trimmed = headerValue.trim();
       // Case 1: Delta-seconds
-      const deltaSec = parseInt(trimmed, 10);
-      if (!isNaN(deltaSec) && deltaSec >= 0) {
-        return deltaSec * 1000;
+      if (/^[0-9]+$/.test(trimmed)) {
+        return Math.min(Number(trimmed) * 1000, Number.MAX_SAFE_INTEGER);
       }
       // Case 2: HTTP-date
       const parsedDate = Date.parse(trimmed);
@@ -284,7 +284,10 @@
         calculatedDelay = Math.max(calculatedDelay, this.currentBackoffDelayMs);
       }
 
-      if (!(await this.sleep(calculatedDelay))) return { delayMs: 0, state: this.circuitState, aborted: true };
+      // Reserve distinct output slots even when more than one caller is waiting.
+      const now = Date.now();
+      this.nextPermissionAt = Math.max(now, this.nextPermissionAt) + calculatedDelay;
+      if (!(await this.sleep(this.nextPermissionAt - now))) return { delayMs: 0, state: this.circuitState, aborted: true };
       return { delayMs: calculatedDelay, state: this.circuitState, aborted: false };
     }
 
