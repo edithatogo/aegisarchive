@@ -1,0 +1,65 @@
+header:
+  schema-version: 2.2.0
+  last-updated: '2026-09-05'
+  last-reviewed: '2026-09-05'
+  url: https://github.com/edithatogo/aegisarchive/blob/main/security-insights.yml
+  comment: |
+    Machine-readable security posture for AegisArchive. Runtime is browser
+    Web APIs plus the Python standard library; no third-party runtime
+    dependencies exist. Development tooling is confined to CI and
+    tests/requirements-dev.txt.
+
+project:
+  name: AegisArchive
+  administrators:
+    - name: Dylan Mordaunt
+      primary: true
+  repositories:
+    - name: aegisarchive
+      url: https://github.com/edithatogo/aegisarchive
+      comment: Zero-install web archiver, WARC/1.1 forensic engine, CLI and MCP server.
+  vulnerability-reporting:
+    reports-accepted: true
+    bug-bounty-available: false
+    security-policy: https://github.com/edithatogo/aegisarchive/blob/main/SECURITY.md
+    comment: |
+      Report privately through GitHub Security Advisories (see SECURITY.md).
+      Acknowledgement target is 48 hours.
+
+repository:
+  url: https://github.com/edithatogo/aegisarchive
+  status: active
+  accepts-change-request: true
+  accepts-automated-change-request: true
+  core-team:
+    - name: Dylan Mordaunt
+  license:
+    url: https://github.com/edithatogo/aegisarchive/blob/main/LICENSE
+    expression: Apache-2.0
+  security:
+    assessments:
+      self:
+        comment: |
+          Automated evidence: CI validation and leak-prevention gate, secret
+          scanning, CodeQL, Semgrep, Bandit, workflow linting, fuzzing,
+          Scorecard, SBOM and provenance on release. Sole maintainer; zero
+          mandatory human approvals by design.
+    tools:
+      - name: CodeQL
+        type: SCA
+        version: latest
+        rulesets:
+          - built-in
+        integration:
+          adhoc: false
+          ci: true
+          release: false
+      - name: gitleaks
+        type: secret
+        version: latest
+        rulesets:
+          - built-in
+        integration:
+          adhoc: true
+          ci: true
+          release: false
