@@ -27,7 +27,7 @@
 
 - [x] **Track: CI/CD & Repository Security Hardening**
   *Status: Completed*
-  *Link: [./tracks/ci_cd_repo_hardening/index.md](./tracks/ci_cd_repo_hardening/index.md)*
+  *Link: [./archive/ci_cd_repo_hardening/index.md](./archive/ci_cd_repo_hardening/index.md)*
   *GitHub Actions CI matrix, compilation checks, schema validation, and leak prevention gate.*
 
 - [ ] **Track: Portable Platform Compatibility & Offline Intelligence Suite**

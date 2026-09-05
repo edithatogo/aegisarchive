@@ -3,7 +3,7 @@
   "type": "feature",
   "status": "completed",
   "created_at": "2026-09-05T07:50:07Z",
-  "updated_at": "2026-09-05T07:57:11Z",
+  "updated_at": "2026-09-05T07:59:39Z",
   "description": "CI/CD & Repository Security Hardening",
   "metadata_origin": "Reconstructed during retrospective review; original plan retained in Git history.",
   "evidence_schema": "1.0",
@@ -12,5 +12,6 @@
     "recorded_at": "2026-09-05T07:57:11Z",
     "revision": "2f13d9cffe3333623020ee8204b5cdb6dc7e43d9",
     "report": "review.md"
-  }
+  },
+  "archived_at": "2026-09-05T07:59:39Z"
 }
