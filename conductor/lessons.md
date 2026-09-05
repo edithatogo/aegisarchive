@@ -41,6 +41,6 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 ## 2026-09-05 — cli_parity_20260905
 - **Surprise**: The headless CLI diverged sharply from the browser engine in subtle but critical ways: Python `http.client` preserves response header casing so checking `Content-Type` directly missed headers sent as `Content-type` (suppressing link discovery and emitting `application/octet-stream` in CDX), URL canonicalisation stripped query strings completely, queue membership tests were `O(N)` linear searches over full URL lists, and politeness was merely a naive uniform random sleep with no back-off or circuit breaker.
 - **Change for the next planner**: Multi-surface engines (CLI vs Web) must share algorithmic parity specs and integration test fixtures from inception (e.g. tracking param regex parity tests, ephemeral loopback servers asserting identical crawl frontiers and 11-field CDX records).
-
-
-
+## 2026-09-05 — repo_standards_alignment_20260905
+- **Surprise**: `pyproject.toml` packaging required mapping top-level `cli` and `mcp` folders to non-shadowing distribution package names (`aegisarchive_cli`, `aegisarchive_mcp`) so as not to conflict with PyPI packages like the official `mcp` SDK, and editable installs (`pip install -e .`) generated untracked `.egg-info` artifacts that require explicit `.gitignore` rules.
+- **Change for the next planner**: When introducing standard Python packaging to existing folder hierarchies without renaming on-disk directories, specify `package-dir` mappings explicitly in `pyproject.toml`, test entry point executables in an isolated virtual environment, and ensure build artifacts (`.coverage`, `coverage.xml`, `*.egg-info/`) are ignored before running package tests.

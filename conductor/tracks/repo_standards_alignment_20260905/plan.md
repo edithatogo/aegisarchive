@@ -1,6 +1,6 @@
 # Track Plan: Repository Standards Alignment
 
-## Status: PLANNED
+## Status: COMPLETED
 
 Implementation contract for every task: touch only the files under **Files**; write exactly the content under **Change**; run the **Verify** command from the repository root and require the stated result; stop when **Done when** holds; never do anything listed under **Do not**. Tasks are ordered so the repository stays green after each one. Commit after each task with the conventional-commit message given (do not push; pushing is gate G1 and belongs to the integrator).
 
@@ -13,8 +13,8 @@ Global drift guards (apply to every task):
 
 ## Phase 1 — Specification & approval
 
-- [ ] Capture standards requirements into the track specification (traces to R1–R10). *(evidence: spec.md)*
-- [ ] Approval basis: user requested alignment with `edithatogo/repository-standards` (2026-09-05). Tracks-only scope; implementation by a later agent.
+- [x] Capture standards requirements into the track specification (traces to R1–R10). *(evidence: spec.md)*
+- [x] Approval basis: user requested alignment with `edithatogo/repository-standards` (2026-09-05). Tracks-only scope; implementation by a later agent.
 
 ## Phase 2 — Additive metadata files (no CI impact)
 
@@ -552,74 +552,74 @@ Global drift guards (apply to every task):
   **Do not**: add badges for services not yet active (Codecov, Scorecard, PyPI); claim any Planned capability as Implemented; remove the per-OS quick start; introduce any organisation or vendor names.
 
 ## Phase 6 — Remote configuration (external gate G1)
-
-- [ ] **T10 Handshake notes** *(AC10)*
-
-  **Files**: create `conductor/tracks/repo_standards_alignment_20260905/handoff.md`.
-
-  **Change**: a short note with two items for other owners: (a) parallel agent — `ci.yml` uses mutable major tags for `actions/checkout` and `actions/setup-python`; the standards require SHA pins (`3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1`, `5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0`); requested, not done here. (b) integrator — register this repository in `edithatogo/repository-standards:registry/repositories.json` as archetype `python`, supply-chain profile `published`, sole developer, once T8's checks are stable (external repository; out of scope here).
-
-  **Verify**: file exists; leak grep clean.
-
-  **Done when**: committed: `chore(conductor): record standards handoff notes (T10)`.
-
-  **Do not**: edit `ci.yml` or the external registry yourself.
-
-- [ ] **T11 Rulesets and repository topics via `gh api`** *(R10, AC9)* — **gated by G1: do not run without explicit user authorisation recorded in `evidence.jsonl` as `gate_authorized`.** Run only after T1–T9 and the security track's `security.yml` have been pushed to `main` and have completed at least one successful run (check names must resolve).
-
-  **Files**: none in the repo except appending to `evidence.jsonl`; writes GitHub settings.
-
-  **Change**:
-  1. List real check names: `gh api "repos/edithatogo/aegisarchive/commits/main/check-runs?per_page=100" --jq '.check_runs[].name' | sort -u`. Keep only checks that have passed on `main` at least twice. Expected stable names as of planning: `Code & Schema Validation`, `Multi-OS CLI Execution Test (ubuntu-latest)`, `Multi-OS CLI Execution Test (macos-latest)`, `Multi-OS CLI Execution Test (windows-latest)`, plus the security track's `Secrets scan (gitleaks)`, `Static analysis (Bandit)`, `Static analysis (Semgrep)`, `CodeQL (python)`, `CodeQL (javascript-typescript)`, `Workflow lint (zizmor)`, `Fuzz smoke`. Exclude anything from `standards-ci.yml` until G2 (Codecov) is cleared.
-  2. Write `/tmp/ruleset.json` with the list from step 1 substituted into `required_status_checks`:
-
-     ```json
-     {
-       "name": "main protection (solo maintainer)",
-       "target": "branch",
-       "enforcement": "active",
-       "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
-       "bypass_actors": [
-         { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always" }
-       ],
-       "rules": [
-         { "type": "deletion" },
-         { "type": "non_fast_forward" },
-         {
-           "type": "pull_request",
-           "parameters": {
-             "required_approving_review_count": 0,
-             "dismiss_stale_reviews_on_push": false,
-             "require_code_owner_review": false,
-             "require_last_push_approval": false,
-             "required_review_thread_resolution": true
-           }
-         },
-         {
-           "type": "required_status_checks",
-           "parameters": {
-             "strict_required_status_checks_policy": false,
-             "required_status_checks": [
-               { "context": "Code & Schema Validation" },
-               { "context": "Multi-OS CLI Execution Test (ubuntu-latest)" }
-             ]
-           }
-         }
-       ]
-     }
-     ```
-
-     `actor_id: 5` is the Repository admin role — the explicit owner recovery path required by the solo-maintainer standard.
-  3. `gh api -X POST repos/edithatogo/aegisarchive/rulesets --input /tmp/ruleset.json`.
-  4. Topics: `gh api -X PUT repos/edithatogo/aegisarchive/topics -f 'names[]=anti-ddos' -f 'names[]=cdx' -f 'names[]=digital-preservation' -f 'names[]=iso-28500' -f 'names[]=mcp-server' -f 'names[]=offline-first' -f 'names[]=python' -f 'names[]=server-preservation' -f 'names[]=warc' -f 'names[]=web-archiving' -f 'names[]=solo-maintainer'` (existing ten topics plus `solo-maintainer`).
-
-  **Verify**: `gh api repos/edithatogo/aegisarchive/rulesets --jq '.[] | select(.enforcement=="active") | .name'` prints the ruleset name; `gh api repos/edithatogo/aegisarchive/rulesets/$(gh api repos/edithatogo/aegisarchive/rulesets --jq '.[0].id') --jq '[.rules[].type]'` contains `deletion`, `non_fast_forward`, `pull_request`, `required_status_checks`; `gh api repos/edithatogo/aegisarchive/topics --jq '.names | index("solo-maintainer")'` is not `null`.
-
-  **Done when**: verify passes and `evidence.jsonl` gets a `remote_config_applied` line listing the required check contexts. No repo commit other than the ledger: `chore(conductor): record ruleset application (T11, AC9)`.
-
-  **Do not**: set `required_approving_review_count` above 0; add CODEOWNERS; require `standards-ci` checks before G2; enable `strict_required_status_checks_policy` (would force rebases on a solo repo); delete or replace an existing ruleset if one appears — update it with `PUT .../rulesets/{id}` instead.
-
+ 
+- [x] **T10 Handshake notes** *(AC10)* (67ded2c)
+ 
+   **Files**: create `conductor/tracks/repo_standards_alignment_20260905/handoff.md`.
+ 
+   **Change**: a short note with two items for other owners: (a) parallel agent — `ci.yml` uses mutable major tags for `actions/checkout` and `actions/setup-python`; the standards require SHA pins (`3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1`, `5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0`); requested, not done here. (b) integrator — register this repository in `edithatogo/repository-standards:registry/repositories.json` as archetype `python`, supply-chain profile `published`, sole developer, once T8's checks are stable (external repository; out of scope here).
+ 
+   **Verify**: file exists; leak grep clean.
+ 
+   **Done when**: committed: `chore(conductor): record standards handoff notes (T10)`.
+ 
+   **Do not**: edit `ci.yml` or the external registry yourself.
+ 
+- [-] **T11 Rulesets and repository topics via `gh api`** *(R10, AC9)* — **gated by G1: do not run without explicit user authorisation recorded in `evidence.jsonl` as `gate_authorized`.** Run only after T1–T9 and the security track's `security.yml` have been pushed to `main` and have completed at least one successful run (check names must resolve).
+ 
+   **Files**: none in the repo except appending to `evidence.jsonl`; writes GitHub settings.
+ 
+   **Change**:
+   1. List real check names: `gh api "repos/edithatogo/aegisarchive/commits/main/check-runs?per_page=100" --jq '.check_runs[].name' | sort -u`. Keep only checks that have passed on `main` at least twice. Expected stable names as of planning: `Code & Schema Validation`, `Multi-OS CLI Execution Test (ubuntu-latest)`, `Multi-OS CLI Execution Test (macos-latest)`, `Multi-OS CLI Execution Test (windows-latest)`, plus the security track's `Secrets scan (gitleaks)`, `Static analysis (Bandit)`, `Static analysis (Semgrep)`, `CodeQL (python)`, `CodeQL (javascript-typescript)`, `Workflow lint (zizmor)`, `Fuzz smoke`. Exclude anything from `standards-ci.yml` until G2 (Codecov) is cleared.
+   2. Write `/tmp/ruleset.json` with the list from step 1 substituted into `required_status_checks`:
+ 
+      ```json
+      {
+        "name": "main protection (solo maintainer)",
+        "target": "branch",
+        "enforcement": "active",
+        "conditions": { "ref_name": { "include": ["~DEFAULT_BRANCH"], "exclude": [] } },
+        "bypass_actors": [
+          { "actor_id": 5, "actor_type": "RepositoryRole", "bypass_mode": "always" }
+        ],
+        "rules": [
+          { "type": "deletion" },
+          { "type": "non_fast_forward" },
+          {
+            "type": "pull_request",
+            "parameters": {
+              "required_approving_review_count": 0,
+              "dismiss_stale_reviews_on_push": false,
+              "require_code_owner_review": false,
+              "require_last_push_approval": false,
+              "required_review_thread_resolution": true
+            }
+          },
+          {
+            "type": "required_status_checks",
+            "parameters": {
+              "strict_required_status_checks_policy": false,
+              "required_status_checks": [
+                { "context": "Code & Schema Validation" },
+                { "context": "Multi-OS CLI Execution Test (ubuntu-latest)" }
+              ]
+            }
+          }
+        ]
+      }
+      ```
+ 
+      `actor_id: 5` is the Repository admin role — the explicit owner recovery path required by the solo-maintainer standard.
+   3. `gh api -X POST repos/edithatogo/aegisarchive/rulesets --input /tmp/ruleset.json`.
+   4. Topics: `gh api -X PUT repos/edithatogo/aegisarchive/topics -f 'names[]=anti-ddos' -f 'names[]=cdx' -f 'names[]=digital-preservation' -f 'names[]=iso-28500' -f 'names[]=mcp-server' -f 'names[]=offline-first' -f 'names[]=python' -f 'names[]=server-preservation' -f 'names[]=warc' -f 'names[]=web-archiving' -f 'names[]=solo-maintainer'` (existing ten topics plus `solo-maintainer`).
+ 
+   **Verify**: `gh api repos/edithatogo/aegisarchive/rulesets --jq '.[] | select(.enforcement=="active") | .name'` prints the ruleset name; `gh api repos/edithatogo/aegisarchive/rulesets/$(gh api repos/edithatogo/aegisarchive/rulesets --jq '.[0].id') --jq '[.rules[].type]'` contains `deletion`, `non_fast_forward`, `pull_request`, `required_status_checks`; `gh api repos/edithatogo/aegisarchive/topics --jq '.names | index("solo-maintainer")'` is not `null`.
+ 
+   **Done when**: verify passes and `evidence.jsonl` gets a `remote_config_applied` line listing the required check contexts. No repo commit other than the ledger: `chore(conductor): record ruleset application (T11, AC9)`.
+ 
+   **Do not**: set `required_approving_review_count` above 0; add CODEOWNERS; require `standards-ci` checks before G2; enable `strict_required_status_checks_policy` (would force rebases on a solo repo); delete or replace an existing ruleset if one appears — update it with `PUT .../rulesets/{id}` instead.
+ 
 ## Phase 7 — Completion
-
-- [ ] **F1** Final validation: `python3 -m unittest discover -s tests -t . -p "test_*.py"`, `python3 cli/test_station_hardening.py`, `--help` smoke tests from `AGENTS.md`, leak grep, `git diff --stat origin/main -- .github/workflows/ci.yml cli/launch.py cli/verify_bundle.py cli/test_station_hardening.py` empty. *(AC7, AC10)*
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md`.
+ 
+- [x] **F1** Final validation: `python3 -m unittest discover -s tests -t . -p "test_*.py"`, `python3 cli/test_station_hardening.py`, `--help` smoke tests from `AGENTS.md`, leak grep, `git diff --stat origin/main -- .github/workflows/ci.yml cli/launch.py cli/verify_bundle.py cli/test_station_hardening.py` empty. *(AC7, AC10)*
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md`.

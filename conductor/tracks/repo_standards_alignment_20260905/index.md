@@ -5,6 +5,6 @@
 * [Metadata](./metadata.json)
 * [Evidence Ledger](./evidence.jsonl)
 
-Type: chore. Status: planned. Created: 2026-09-05.
+Type: chore. Status: completed. Created: 2026-09-05.
 
 Aligns this repository with the `edithatogo/repository-standards` control plane (solo-maintainer posture, product-metadata contract, managed files, thin reusable-workflow CI, rulesets) without touching files owned by the parallel agent's track.
