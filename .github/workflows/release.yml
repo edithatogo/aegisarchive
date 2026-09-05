@@ -10,6 +10,9 @@ permissions:
 
 jobs:
   release:
+    permissions:
+      contents: write
+      id-token: write
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     steps:
@@ -19,7 +22,23 @@ jobs:
         run: git archive --format=tar.gz --prefix=aegisarchive-${GITHUB_REF_NAME}/ -o aegisarchive-${GITHUB_REF_NAME}.tar.gz HEAD
       - name: Write SHA256SUMS
         run: sha256sum aegisarchive-${GITHUB_REF_NAME}.tar.gz > SHA256SUMS
+      - name: Generate SLSA provenance
+        env:
+          ARCHIVE: aegisarchive-${{ github.ref_name }}.tar.gz
+        run: |
+          python3 - <<'PYPROV'
+          import hashlib, json, os
+          archive = os.environ["ARCHIVE"]
+          digest = hashlib.sha256(open(archive, "rb").read()).hexdigest()
+          statement = {
+              "_type": "https://in-toto.io/Statement/v1",
+              "subject": [{"name": archive, "digest": {"sha256": digest}}],
+              "predicateType": "https://slsa.dev/provenance/v1",
+              "predicate": {"buildDefinition": {"buildType": "https://github.com/aegisarchive/release"}, "runDetails": {"builder": {"id": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"}}},
+          }
+          json.dump(statement, open("SLSA-provenance.json", "w"), indent=2)
+          PYPROV
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${GITHUB_REF_NAME}" aegisarchive-${GITHUB_REF_NAME}.tar.gz SHA256SUMS --clobber
+        run: gh release upload "${GITHUB_REF_NAME}" aegisarchive-${GITHUB_REF_NAME}.tar.gz SHA256SUMS SLSA-provenance.json --clobber
