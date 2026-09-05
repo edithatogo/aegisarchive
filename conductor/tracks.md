@@ -49,7 +49,7 @@
 
 - [x] **Track: WARC/CDX Interoperability & Integrity**
   *Status: Completed*
-  *Link: [./tracks/warc_interop_20260905/](./tracks/warc_interop_20260905/)*
+  *Link: [./archive/warc_interop_20260905/](./archive/warc_interop_20260905/)*
   *Decoded-payload header hygiene, CDX `S` field, fail-closed digests, WARC-Refers-To, request records, reader revisit resolution, verifier CDX offset and `.warc.gz`.*
 
 - [x] **Track: Web Console Security & Persistence Claims**

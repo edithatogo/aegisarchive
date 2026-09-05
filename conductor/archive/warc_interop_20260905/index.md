@@ -12,3 +12,5 @@ Brings the browser and CLI WARC writers, the replay reader, the MCP CDX search a
 - [Historical evidence](./evidence.legacy.jsonl)
 
 - [Post-implementation Review](./review.md)
+
+Archived 2026-09-05T08:00:02Z after the recorded post-implementation review passed.
