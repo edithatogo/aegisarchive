@@ -11,7 +11,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
 ## Phase 2 — Correctness of the existing CLI
 
-- [ ] **C1 Case-insensitive response headers** *(AC1)*
+- [x] **C1 Case-insensitive response headers** *(AC1)*
 
   **Files**: `cli/aegis_cli.py` only.
 
@@ -44,7 +44,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
   **Do not**: change the header casing written into the WARC HTTP block beyond what `normalize_headers` produces (lowercase names are valid HTTP); do not touch `warc_verify.py`.
 
-- [ ] **C2 Keep query strings; canonicalise like the browser** *(AC2)*
+- [x] **C2 Keep query strings; canonicalise like the browser** *(AC2)*
 
   **Files**: `cli/aegis_cli.py` only.
 
@@ -114,7 +114,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
   **Do not**: strip the trailing slash; do not remove `ref`/`source` from the URL (they are functional parameters); do not add `path_whitelist_regex` handling (out of scope).
 
-- [ ] **C3 O(1) frontier: `deque` + `pending` set** *(AC3)*
+- [x] **C3 O(1) frontier: `deque` + `pending` set** *(AC3)*
 
   **Files**: `cli/aegis_cli.py` only. Requires C2.
 

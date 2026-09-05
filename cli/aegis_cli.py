@@ -19,6 +19,7 @@ import urllib.request
 import urllib.parse
 from datetime import datetime, timezone
 import re
+import collections
 
 def format_warc_date(dt=None):
     if dt is None:
@@ -39,6 +40,45 @@ def to_surt(url_str):
         return f"{','.join(host_parts)}{port_part}){u.path}{'?' + u.query if u.query else ''}"
     except Exception:
         return url_str
+
+
+def normalize_headers(items):
+    """Lowercases header names (http.client preserves the server's casing; lookups must not) (P1)."""
+    return {str(k).lower(): v for k, v in items}
+
+
+# Mirror of TRACKING_PARAMS in web/lib/core_crawler.js (kept identical by tests/test_cli_parity.py).
+TRACKING_PARAMS = {
+    'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
+    'fbclid', 'gclid', 'session_id', 'jsessionid', 'phpsessid',
+    '_ga', '_gl', 'msclkid', 'mc_cid', 'mc_eid'
+}
+
+
+def canonicalize_url(raw_url, base_url=None):
+    """Mirror of CoreCrawler.canonicalizeUrl: http(s) only, lowercase host, default ports removed,
+    fragment dropped, tracking params scrubbed, remaining query sorted and KEPT, trailing slash kept (P2)."""
+    try:
+        full = urllib.parse.urljoin(base_url, raw_url) if base_url else raw_url
+        u = urllib.parse.urlparse(full)
+        if u.scheme not in ('http', 'https') or not u.hostname:
+            return None
+        pairs = [(k, v) for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)
+                 if k.lower() not in TRACKING_PARAMS and not k.lower().startswith('utm_')]
+        pairs.sort()
+        host = u.hostname.lower()
+        port = u.port
+        if port and not ((u.scheme == 'http' and port == 80) or (u.scheme == 'https' and port == 443)):
+            host = f"{host}:{port}"
+        return urllib.parse.urlunparse((u.scheme, host, u.path or '/', '', urllib.parse.urlencode(pairs), ''))
+    except ValueError:
+        return None
+
+
+def in_scope(url, allowed_domains):
+    host = (urllib.parse.urlparse(url).hostname or '').lower()
+    return any(host == d.lower() or host.endswith('.' + d.lower()) for d in allowed_domains)
+
 
 class PythonWarcWriter:
     def __init__(self, filepath, operator="AegisArchive CLI", organization="Digital Preservation"):
@@ -156,7 +196,8 @@ class PythonWarcWriter:
 
         # Write CDX
         surt = to_surt(url)
-        mime = headers_dict.get('Content-Type', 'application/octet-stream').split(';')[0].strip()
+        content_type = next((v for k, v in headers_dict.items() if k.lower() == 'content-type'), 'application/octet-stream')
+        mime = content_type.split(';')[0].strip()
         cdx_line = f"{surt} {cdx_date} {url} {mime} {status} {digest} - - {len(full_block)} {rec_offset} {os.path.basename(self.filepath)}\n"
         self.cdx_file.write(cdx_line)
 
@@ -194,17 +235,22 @@ def main():
     min_delay = profile.get('politeness', {}).get('min_delay_ms', 1200) / 1000.0
     max_delay = profile.get('politeness', {}).get('max_delay_ms', 3200) / 1000.0
 
-    queue = []
+    queue = collections.deque()
+    pending = set()
     seeds = profile.get('target', {}).get('seed_urls', {}).get('tier_1_core', [])
     for s in seeds:
-        queue.append((s, 0))
+        canon = canonicalize_url(s)
+        if canon and canon not in pending:
+            queue.append((canon, 0))
+            pending.add(canon)
 
     visited = set()
     print(f"[AegisArchive CLI] Started with profile: {profile.get('profile_name', 'Custom')}")
     print(f"[AegisArchive CLI] Output target: {warc_path}")
 
     while queue and len(visited) < max_pages:
-        url, depth = queue.pop(0)
+        url, depth = queue.popleft()
+        pending.discard(url)
         if url in visited:
             continue
         visited.add(url)
@@ -219,23 +265,23 @@ def main():
             with urllib.request.urlopen(req, timeout=15) as resp:
                 elapsed_ms = int((time.time() - start_t) * 1000)
                 body = resp.read()
-                headers = dict(resp.headers)
+                headers = normalize_headers(resp.headers.items())
                 status = resp.status
                 writer.write_response(url, status, headers, body, request_headers=dict(req.header_items()))
                 print(f"[{status}] {url} ({len(body)} bytes, {elapsed_ms} ms)")
 
                 # Extract links if HTML and within depth
-                content_type = headers.get('Content-Type', '')
+                content_type = headers.get('content-type', '')
                 if 'text/html' in content_type and depth < max_depth:
                     text = body.decode('utf-8', errors='ignore')
-                    links = re.findall(r'href=["\']([^"\']+)["\']', text, re.IGNORECASE)
+                    links = re.findall(r'(?:href|src)=["\']([^"\']+)["\']', text, re.IGNORECASE)
                     for raw in links:
-                        full_url = urllib.parse.urljoin(url, raw)
-                        parsed = urllib.parse.urlparse(full_url)
-                        if parsed.scheme in ('http', 'https') and any(parsed.hostname == d or (parsed.hostname and parsed.hostname.endswith('.' + d)) for d in allowed_domains):
-                            clean_url = urllib.parse.urlunparse((parsed.scheme, parsed.netloc, parsed.path, '', '', ''))
-                            if clean_url not in visited and clean_url not in [q[0] for q in queue]:
-                                queue.append((clean_url, depth + 1))
+                        clean_url = canonicalize_url(raw, url)
+                        if not clean_url or not in_scope(clean_url, allowed_domains):
+                            continue
+                        if clean_url not in visited and clean_url not in pending:
+                            queue.append((clean_url, depth + 1))
+                            pending.add(clean_url)
         except Exception as e:
             print(f"[Error] {url}: {e}")
 
