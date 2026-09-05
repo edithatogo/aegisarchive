@@ -3,3 +3,5 @@
 {"recorded_at": "2026-09-05T12:29:54Z", "kind": "task_completed", "task_id": "T2", "summary": "Release workflow builds tagged source archive, writes SHA256SUMS, and uploads release assets."}
 {"recorded_at": "2026-09-05T12:29:54Z", "kind": "task_completed", "task_id": "T3", "summary": "Release workflow emits SLSA provenance statement whose subject digest matches the archive checksum and uploads it."}
 {"recorded_at": "2026-09-05T12:29:54Z", "kind": "verification", "task_id": "F1", "summary": "py_compile, cli/test_station_hardening.py, JSON and workflow acceptance checks passed."}
+{"recorded_at": "2026-09-05T12:32:36Z", "kind": "review", "status": "passed", "track_id": "release_and_packaging_20260905", "summary": "Post-implementation review passed; release artefact, provenance, permissions, and devcontainer requirements verified."}
+{"recorded_at": "2026-09-05T12:32:36Z", "kind": "archive", "status": "passed", "track_id": "release_and_packaging_20260905", "summary": "User-authorized archive after completed review; track moved to conductor/archive/release_and_packaging_20260905."}
