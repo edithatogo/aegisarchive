@@ -17,7 +17,7 @@
 
 - [x] **Track: Cross-Platform Native Launchers & Multi-OS Hardening**
   *Status: Completed*
-  *Link: [./tracks/cross_platform_hardening/index.md](./tracks/cross_platform_hardening/index.md)*
+  *Link: [./archive/cross_platform_hardening/index.md](./archive/cross_platform_hardening/index.md)*
   *Universal Python 3 stdlib launcher with port hunting and 1-click launchers for Mac, Windows, Linux.*
 
 - [x] **Track: Headless CLI & Model Context Protocol (MCP) Server**
