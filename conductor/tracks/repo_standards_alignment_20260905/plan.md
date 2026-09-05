@@ -506,7 +506,7 @@ Global drift guards (apply to every task):
 
 ## Phase 5 — README contract
 
-- [ ] **T9 README nine-section restructure with honest Status table** *(R9, AC8)*
+- [x] **T9 README nine-section restructure with honest Status table** *(R9, AC8)* (1a39f86)
 
   **Files**: modify `README.md` only.
 
