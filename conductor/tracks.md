@@ -57,8 +57,8 @@
   *Link: [./tracks/web_console_security_20260905/](./tracks/web_console_security_20260905/)*
   *Sandbox and CSP, blob replay, output encoding, generated profile bundle, OPFS/checkpoint honesty, `?profile=` consumer in `index.html` only.*
 
-- [~] **Track: Headless CLI Parity with the Browser Engine**
-  *Status: In Progress*
+- [x] **Track: Headless CLI Parity with the Browser Engine**
+  *Status: Completed*
   *Link: [./tracks/cli_parity_20260905/](./tracks/cli_parity_20260905/)*
   *Case-insensitive headers, query-string fidelity, stdlib politeness port, set-based queue, shared loopback fixture.*
 

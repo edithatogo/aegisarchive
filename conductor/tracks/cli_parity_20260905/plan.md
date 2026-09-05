@@ -488,5 +488,5 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
 ## Phase 5 — Completion
 
-- [ ] **F1** Final validation: all Verify commands of C1–C6; `python3 -m py_compile cli/aegis_cli.py cli/politeness.py cli/warc_verify.py cli/launch.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2) and CI wiring (G3: unittest step + `cli/politeness.py` in the `py_compile` list) to the integrator.
+- [x] **F1** Final validation: all Verify commands of C1–C6; `python3 -m py_compile cli/aegis_cli.py cli/politeness.py cli/warc_verify.py cli/launch.py mcp/server.py`; leak-prevention gate clean; append `checkpoint_validated` to `evidence.jsonl`.
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`); hand registry update (G2) and CI wiring (G3: unittest step + `cli/politeness.py` in the `py_compile` list) to the integrator.

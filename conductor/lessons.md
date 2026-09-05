@@ -38,4 +38,9 @@ Keep entries generic: no organisation names, hostnames, credentials, or personal
 - **Surprise**: Web console security assumptions relied on an iframe with `allow-scripts` and `allow-same-origin` on `srcdoc`, which completely bypasses the browser sandbox. Additionally, live origin `<base href>` tags leaked egress traffic during local replays, crawled string interpolations risked XSS, and client-side persistence (OPFS streaming, frontier checkpointing) was claimed in documentation but was unwired in `core_crawler.js`.
 - **Change for the next planner**: Web UI replay containers must enforce strict isolation from day one (flagless `sandbox=""`, default-src 'none' CSP, requisite rewriting to blobs/data URIs, and robust HTML entity escaping). All UI state persistence claims must be backed by concrete automated round-trip tests and static assertion test cases.
 
+## 2026-09-05 — cli_parity_20260905
+- **Surprise**: The headless CLI diverged sharply from the browser engine in subtle but critical ways: Python `http.client` preserves response header casing so checking `Content-Type` directly missed headers sent as `Content-type` (suppressing link discovery and emitting `application/octet-stream` in CDX), URL canonicalisation stripped query strings completely, queue membership tests were `O(N)` linear searches over full URL lists, and politeness was merely a naive uniform random sleep with no back-off or circuit breaker.
+- **Change for the next planner**: Multi-surface engines (CLI vs Web) must share algorithmic parity specs and integration test fixtures from inception (e.g. tracking param regex parity tests, ephemeral loopback servers asserting identical crawl frontiers and 11-field CDX records).
+
+
 
