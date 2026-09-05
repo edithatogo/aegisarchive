@@ -139,6 +139,23 @@ Add this to your `claude_desktop_config.json` or MCP settings:
 
 ---
 
+## 🗺️ Portable Ecosystem & Future Capabilities Roadmap
+
+AegisArchive is architected to integrate seamlessly with the **PortableApps.com** format and zero-admin USB environments. Future planned extensions include:
+
+| Capability | Architecture / Tool | Purpose |
+| :--- | :--- | :--- |
+| **Zero-Admin Windows Runtime** | Python Windows Embeddable (`runtime/python/`) | Guarantees 1-click execution on locked-down enterprise PCs lacking Python. |
+| **Portable Console** | Cmder Mini (`runtime/cmder/`) | Ergonomic, self-contained Unix-style console with Git branch prompts. |
+| **Offline Version Control** | Git for Windows Portable (MinGit) | Full Git history and submodule tracking without installation. |
+| **Local LLM Engine** | `llama.cpp` (Metal, Vulkan, AVX2) | Offline synthesis with tiered GGUF models (Scout 1-3B, General 3.8-8B, Deep 7-14B). |
+| **Voice-to-Text (ASR)** | `whisper.cpp` (OpenAI Whisper) | Fast, local offline transcription of meetings and interviews to timestamped text. |
+| **Text-to-Speech (TTS)** | `piper-tts` | High-fidelity local neural speech synthesis for audio briefings of captured docs. |
+| **Local Vector Embeddings** | `bge-small-en-v1.5` / ONNX Runtime | Dense semantic search operating in parallel with BM25 keyword search. |
+| **Local GraphRAG Memory** | Embedded SQLite / DuckDB Graph Memory | Entity-relationship knowledge graphs (committees, standards, policies, non-conformances). |
+
+---
+
 ## 📜 Ethical Archival Charter
 
 AegisArchive is designed for legitimate research, digital preservation, and institutional compliance. It embodies ethical principles:

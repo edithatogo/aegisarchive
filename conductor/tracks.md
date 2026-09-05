@@ -19,3 +19,7 @@
 - [x] **Track: Headless CLI & Model Context Protocol (MCP) Server**
   *Status: Completed*
   *Zero-dependency CLI runner and stdio JSON-RPC MCP server for AI agents.*
+
+- [ ] **Track: PortableApps Compatibility & Offline Intelligence Suite**
+  *Status: Roadmap Planned*
+  *Windows embeddable Python auto-detection, MinGit, Cmder Mini shell, local multi-tier LLMs (llama.cpp), Whisper transcription, Piper TTS, and local GraphRAG memory.*
