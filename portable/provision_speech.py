@@ -212,8 +212,8 @@ def provision(destination, python, cmake="cmake", jobs=2):
              "--no-compile", "--target", site, *wheel_paths], speech / "pip.log")
         # pip generates host-prefix console scripts; only our bundled entry is supported.
         omitted = []
-        for name in ("bin", "Scripts"):
-            generated = site / name
+        for generated_directory in ("bin", "Scripts"):
+            generated = site / generated_directory
             if generated.is_dir():
                 omitted.extend(path.relative_to(site).as_posix() for path in generated.rglob("*") if path.is_file())
                 shutil.rmtree(generated)
