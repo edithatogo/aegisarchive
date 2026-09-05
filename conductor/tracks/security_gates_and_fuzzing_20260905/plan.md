@@ -1124,7 +1124,7 @@ Global drift guards (apply to every task):
 
 ## Phase 5 — Handoff and checkpoint
 
-- [ ] **T11 Handoff note to the parallel agent** *(G2)*
+- [x] **T11 Handoff note to the parallel agent** *(G2)* (1d96884)
 
   **Files**: create `conductor/tracks/security_gates_and_fuzzing_20260905/handoff.md`.
 
@@ -1136,7 +1136,7 @@ Global drift guards (apply to every task):
 
   **Do not**: apply any of the three items yourself.
 
-- [ ] **T12 Checkpoint** *(AC1–AC7, AC9)*
+- [x] **T12 Checkpoint** *(AC1–AC7, AC9)* (2caa62b)
 
   **Verify** (all must pass): `python3 -m py_compile cli/aegis_cli.py cli/warc_verify.py mcp/server.py scripts/gate.py scripts/sarif_gate.py tests/fuzz/*.py`; `python3 scripts/gate.py` → `gate: PASS`; `python3 cli/test_station_hardening.py` passes; `git diff --stat origin/main -- .github/workflows/ci.yml cli/launch.py cli/verify_bundle.py cli/test_station_hardening.py` prints nothing; `python3 -c "import tomllib;assert tomllib.load(open('pyproject.toml','rb'))['project']['dependencies']==[]"` if `pyproject.toml` exists.
 
@@ -1144,5 +1144,5 @@ Global drift guards (apply to every task):
 
 ## Phase 6 — Completion (after G1 push by the integrator)
 
-- [ ] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
-- [ ] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11).
+- [x] **F1** Observe the first `security.yml` run on `main`; all seven checks green (AC8). If CodeQL reports medium-or-higher findings, fix the code (never the threshold) in a follow-up task recorded here with its rule ids.
+- [x] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md` and adds the seven check names to the ruleset (standards track T11).
