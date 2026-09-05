@@ -141,7 +141,15 @@ class StationControlEndpointTests(unittest.TestCase):
         self.assertEqual(status, 200)
         payload = json.loads(body.decode("utf-8"))
         self.assertEqual(payload.get("station"), "aegisarchive")
-        self.assertEqual(payload.get("session_token"), "test-token-123")
+
+    def test_status_endpoint_does_not_expose_token(self):
+        # The session token must never be disclosed by the unauthenticated
+        # status endpoint (defence-in-depth; only POST shutdown needs it).
+        status, body = self._request("/__station/status")
+        self.assertEqual(status, 200)
+        payload = json.loads(body.decode("utf-8"))
+        self.assertNotIn("session_token", payload)
+        self.assertNotIn("test-token-123", body.decode("utf-8"))
 
     def test_unknown_control_endpoint_404(self):
         status, _ = self._request("/__station/nope")

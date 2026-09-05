@@ -129,8 +129,10 @@ class AegisArchiveHandler(SimpleHTTPRequestHandler):
     def _handle_control_get(self):
         sub = self.path.split("?", 1)[0][len(self.CONTROL_PREFIX):].strip("/")
         if sub == "status":
+            # Note: the per-session token is intentionally NOT exposed here.
+            # /__station/status is unauthenticated; the token is only needed
+            # by the token-gated POST /__station/shutdown.
             payload = dict(self.station_info)
-            payload["session_token"] = self.session_token
             body = json.dumps(payload, indent=2).encode("utf-8")
             self.send_response(200)
             self.send_header("Content-Type", "application/json")
