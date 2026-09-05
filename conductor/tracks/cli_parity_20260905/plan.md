@@ -137,7 +137,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
 ## Phase 3 — Politeness engine port
 
-- [ ] **C4 Create `cli/politeness.py` (stdlib port of the browser engine)** *(AC4)*
+- [x] **C4 Create `cli/politeness.py` (stdlib port of the browser engine)** *(AC4)*
 
   **Files** (create): `cli/politeness.py`. Do not modify `web/lib/politeness_engine.js`.
 
@@ -369,7 +369,7 @@ Conventions: paths relative to the repository root; line numbers refer to `cli/a
 
   **Do not**: import anything outside the standard library; do not add a CLI entry point to this module; do not change the numeric constants (0.2, 10, 0.02, 1.35, 3.0, 30000, x10 cap) — they mirror the browser engine.
 
-- [ ] **C5 Wire the engine into `aegis_cli.py` with retry budget** *(AC5)*
+- [x] **C5 Wire the engine into `aegis_cli.py` with retry budget** *(AC5)*
 
   **Files**: `cli/aegis_cli.py` only. Requires C1–C4.
 

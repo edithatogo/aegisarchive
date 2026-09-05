@@ -11,15 +11,19 @@ import sys
 import os
 import json
 import time
-import random
 import uuid
 import hashlib
 import argparse
 import urllib.request
 import urllib.parse
+import urllib.error
 from datetime import datetime, timezone
 import re
 import collections
+import inspect
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
 
 def format_warc_date(dt=None):
     if dt is None:
@@ -232,8 +236,19 @@ def main():
     allowed_domains = profile.get('target', {}).get('allowed_domains', [])
     max_depth = args.depth or profile.get('target', {}).get('max_depth', 4)
     max_pages = args.max_pages or profile.get('target', {}).get('max_pages', 500)
-    min_delay = profile.get('politeness', {}).get('min_delay_ms', 1200) / 1000.0
-    max_delay = profile.get('politeness', {}).get('max_delay_ms', 3200) / 1000.0
+
+    politeness = PolitenessEngine(profile.get('politeness', {}))
+    MAX_RETRIES = 3
+    accepts_request_headers = 'request_headers' in inspect.signature(writer.write_response).parameters
+
+    def requeue(url, depth, retries):
+        if retries >= MAX_RETRIES:
+            print(f"[Retry] Abandoning {url} after {MAX_RETRIES} retries")
+            return
+        visited.discard(url)
+        queue.append((url, depth, retries + 1))
+        pending.add(url)
+        print(f"[Retry {retries + 1}/{MAX_RETRIES}] Re-queued {url}")
 
     queue = collections.deque()
     pending = set()
@@ -241,7 +256,7 @@ def main():
     for s in seeds:
         canon = canonicalize_url(s)
         if canon and canon not in pending:
-            queue.append((canon, 0))
+            queue.append((canon, 0, 0))
             pending.add(canon)
 
     visited = set()
@@ -249,15 +264,16 @@ def main():
     print(f"[AegisArchive CLI] Output target: {warc_path}")
 
     while queue and len(visited) < max_pages:
-        url, depth = queue.popleft()
+        url, depth, retries = queue.popleft()
         pending.discard(url)
         if url in visited:
             continue
         visited.add(url)
 
-        # Polite delay
-        delay = random.uniform(min_delay, max_delay)
-        time.sleep(delay)
+        gate = politeness.acquire_permission(url)
+        if gate['aborted']:
+            print("[AegisArchive CLI] Stop requested; finalizing.")
+            break
 
         req = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive/1.0 (Ethical Archival Preservation)'})
         start_t = time.time()
@@ -267,7 +283,11 @@ def main():
                 body = resp.read()
                 headers = normalize_headers(resp.headers.items())
                 status = resp.status
-                writer.write_response(url, status, headers, body, request_headers=dict(req.header_items()))
+                politeness.record_success(url, elapsed_ms)
+                if accepts_request_headers:
+                    writer.write_response(url, status, headers, body, request_headers=dict(req.header_items()))
+                else:
+                    writer.write_response(url, status, headers, body)
                 print(f"[{status}] {url} ({len(body)} bytes, {elapsed_ms} ms)")
 
                 # Extract links if HTML and within depth
@@ -280,10 +300,17 @@ def main():
                         if not clean_url or not in_scope(clean_url, allowed_domains):
                             continue
                         if clean_url not in visited and clean_url not in pending:
-                            queue.append((clean_url, depth + 1))
+                            queue.append((clean_url, depth + 1, 0))
                             pending.add(clean_url)
+        except urllib.error.HTTPError as e:
+            counted = politeness.record_failure(url, e.code, e.headers.get('Retry-After') if e.headers else None)
+            print(f"[HTTP {e.code}] {url}{' (counted toward breaker)' if counted else ''}")
+            if counted:
+                requeue(url, depth, retries)
         except Exception as e:
+            politeness.record_failure(url, 0)
             print(f"[Error] {url}: {e}")
+            requeue(url, depth, retries)
 
     writer.close()
     print(f"[AegisArchive CLI] Completed! Archived {len(visited)} pages to {warc_path}")
