@@ -69,6 +69,35 @@ WHEEL_PINS = {'piper-tts': {'version': '1.8.0',
                          'protobuf-7.36.1-py3-none-any.whl': '7d951e46b3f963d6c264c367c437921de9d5aedd9c3f9612b9077736b4e3ad5c'}}}
 
 
+PIPER_ENTRY = '''"""Bundle-owned Piper CLI that honors the separately verified voice config."""
+import argparse
+import os
+from pathlib import Path
+import sys
+import wave
+
+sys.dont_write_bytecode = True
+if os.name == "nt":
+    _dll_directory = os.add_dll_directory(str(Path(sys.executable).resolve().parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent / "piper-site"))
+from piper import PiperVoice
+
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument("--model", required=True, type=Path)
+parser.add_argument("--config", required=True, type=Path)
+parser.add_argument("--output_file", required=True, type=Path)
+args = parser.parse_args()
+sys.stdin.reconfigure(encoding="utf-8")
+text = sys.stdin.read()
+if not text.strip():
+    parser.error("Speech text must not be empty")
+voice = PiperVoice.load(str(args.model), config_path=str(args.config), use_cuda=False)
+with args.output_file.open("xb") as output:
+    with wave.open(output, "wb") as wav_file:
+        voice.synthesize_wav(text, wav_file)
+'''
+
+
 def digest(path):
     value = hashlib.sha256()
     with Path(path).open("rb") as stream:
@@ -181,6 +210,14 @@ def provision(destination, python, cmake="cmake", jobs=2):
         site = work / "site"
         run([python, "-I", "-m", "pip", "install", "--disable-pip-version-check", "--no-deps", "--no-index",
              "--no-compile", "--target", site, *wheel_paths], speech / "pip.log")
+        # pip generates host-prefix console scripts; only our bundled entry is supported.
+        omitted = []
+        for name in ("bin", "Scripts"):
+            generated = site / name
+            if generated.is_dir():
+                omitted.extend(path.relative_to(site).as_posix() for path in generated.rglob("*") if path.is_file())
+                shutil.rmtree(generated)
+        provenance["omitted_generated_entrypoints"] = sorted(omitted)
         normalize(site, speech / "piper-site")
         # Wheel bundles package and dependency licence files; expose Piper grant.
         copying = site / "COPYING"
@@ -191,11 +228,7 @@ def provision(destination, python, cmake="cmake", jobs=2):
             copying = candidates[0]
         shutil.copyfile(copying, speech / "PIPER-COPYING")
         entry = speech / "piper_entry.py"
-        entry.write_text("import os, runpy, sys\nfrom pathlib import Path\n"
-                         "sys.dont_write_bytecode = True\n"
-                         "if os.name == 'nt': _dll_directory = os.add_dll_directory(str(Path(sys.executable).resolve().parent))\n"
-                         "sys.path.insert(0, str(Path(__file__).resolve().parent / 'piper-site'))\n"
-                         "runpy.run_module('piper', run_name='__main__')\n", encoding="utf-8")
+        entry.write_text(PIPER_ENTRY, encoding="utf-8")
         run([python, "-X", "utf8", "-I", "-B", entry, "--help"], speech / "pip.log")
         for filename, expected in VOICE_FILES.items():
             url = f"https://huggingface.co/rhasspy/piper-voices/resolve/{VOICE_REVISION}/en/en_US/ljspeech/medium/{filename}"
