@@ -22,7 +22,7 @@
 
 - [x] **Track: Headless CLI & Model Context Protocol (MCP) Server**
   *Status: Completed*
-  *Link: [./tracks/headless_cli_mcp/index.md](./tracks/headless_cli_mcp/index.md)*
+  *Link: [./archive/headless_cli_mcp/index.md](./archive/headless_cli_mcp/index.md)*
   *Zero-dependency CLI runner and stdio JSON-RPC MCP server for AI agents.*
 
 - [x] **Track: CI/CD & Repository Security Hardening**
