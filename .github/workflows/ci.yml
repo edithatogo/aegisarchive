@@ -1,0 +1,100 @@
+name: CI & Integrity Hardening
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  validate:
+    name: Code & Schema Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Python Syntax & Compilation Check
+        run: |
+          python3 -m py_compile cli/launch.py cli/aegis_cli.py cli/warc_verify.py mcp/server.py
+          echo "All Python scripts compiled cleanly."
+
+      - name: Profile Schema Validation
+        run: |
+          python3 -c "
+          import json, os, glob
+
+          with open('profiles/schema.json', 'r') as sf:
+              schema = json.load(sf)
+
+          required_top = schema.get('required', [])
+
+          for pfile in glob.glob('profiles/*.json'):
+              if os.path.basename(pfile) == 'schema.json':
+                  continue
+              with open(pfile, 'r') as pf:
+                  data = json.load(pf)
+              for req in required_top:
+                  assert req in data, f'Missing required field {req} in {pfile}'
+              assert 'allowed_domains' in data['target'], f'Missing target.allowed_domains in {pfile}'
+              assert 'seed_urls' in data['target'], f'Missing target.seed_urls in {pfile}'
+              print(f'Valid profile: {pfile}')
+          "
+
+      - name: MCP Server Smoke Test
+        run: |
+          python3 -c "
+          import subprocess, json
+          proc = subprocess.Popen(['python3', 'mcp/server.py'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+          proc.stdin.write(json.dumps({'jsonrpc': '2.0', 'id': 1, 'method': 'initialize', 'params': {}}) + '\n')
+          proc.stdin.flush()
+          res = json.loads(proc.stdout.readline())
+          assert res.get('result', {}).get('serverInfo', {}).get('name') == 'aegisarchive-mcp'
+          proc.kill()
+          print('MCP server verified.')
+          "
+
+      - name: Shell Scripts Syntax Check
+        run: |
+          bash -n START_MAC.command
+          bash -n START_LINUX.sh
+          echo "Shell scripts verified."
+
+      - name: Strict Abstraction & Leak Prevention Gate
+        run: |
+          echo "Auditing codebase for private or organization-specific strings..."
+          FORBIDDEN_PATTERN=$(echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfGdsY3xwc3Fz" | base64 -d 2>/dev/null || echo "Y2hoaHN8Y2Fpcm5zfHFoZXBzfGdsY3xwc3Fz" | base64 --decode)
+          MATCHES=$(grep -rnI -E "$FORBIDDEN_PATTERN" --exclude-dir=".git" . || true)
+          if [ -n "$MATCHES" ]; then
+            echo "ERROR: Forbidden private identifiers detected in codebase:"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "Abstraction audit passed: Zero private strings detected."
+
+  matrix-test:
+    name: Multi-OS CLI Execution Test
+    needs: validate
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Test CLI Help Commands
+        run: |
+          python3 cli/launch.py --help
+          python3 cli/aegis_cli.py --help
+          python3 cli/warc_verify.py --help
