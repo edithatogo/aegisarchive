@@ -12,3 +12,5 @@ Fixes ten reproduced defects in `web/lib/politeness_engine.js`, `web/lib/core_cr
 - [Historical evidence](./evidence.legacy.jsonl)
 
 - [Post-implementation Review](./review.md)
+
+Archived 2026-09-05T07:59:53Z after the recorded post-implementation review passed.

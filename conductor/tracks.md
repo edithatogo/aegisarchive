@@ -44,7 +44,7 @@
 
 - [x] **Track: Politeness Engine & Crawler Correctness**
   *Status: Completed*
-  *Link: [./tracks/engine_correctness_20260905/](./tracks/engine_correctness_20260905/)*
+  *Link: [./archive/engine_correctness_20260905/](./archive/engine_correctness_20260905/)*
   *EWMA baseline warm-up, 404-safe breaker, retry budget, abortable waits, cache no-store, schema bounds, robots policy, requisite extraction, canonicalization fidelity.*
 
 - [x] **Track: WARC/CDX Interoperability & Integrity**
