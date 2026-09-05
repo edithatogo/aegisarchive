@@ -22,13 +22,16 @@ Runtime pins and acquisition/build provenance are in the native provisioners and
 - Extreme finite vectors use scaled normalization without overflow or underflow.
 - Native qualification requires semantically distinct embeddings and semantic-only retrieval, functional Git and console execution, and post-execution integrity.
 - Piper Python entrypoints use the verified bundled interpreter in isolated mode. Runtime invocations suppress bytecode and user-site loading.
-- Relocated launcher regression executes literal arguments through the explicit bundled interpreter.
+- Relocated launcher regression executes literal arguments through the explicit bundled interpreter on both POSIX launchers, and the Windows launcher script keeps the same isolated interpreter flags.
+- Semantic-only retrieval no longer fuses an empty lexical ranking; qualification fails if that score is mixed.
 - Model receipts use securely created temporary files and atomic replacement; 12 regression cases cover cache integrity, resume behavior, lock validation and malicious old receipt symlinks.
 
-Focused packaging/intelligence tests passed 16 cases; model-provisioning tests passed 12; the repository gate passed 47 Python and 36 Node cases. The 18 station-hardening tests passed. No native claim rests on these unit tests alone.
+Focused packaging/intelligence tests passed 18 cases; the repository gate passed 48 Python and 36 Node cases. The 18 station-hardening tests passed. No native claim rests on these unit tests alone. T4 stays in progress: Done-when still requires full native receipts on each target OS.
 
 ## Remaining acceptance and storage recovery
 
-The Python/SQLite/CLI foundation previously passed on all three hosted OS targets in run 33968041129. Full native Linux/Windows/macOS builds are running in the dispatch-only full native workflow; foundation success does not substitute for inference/speech/retrieval acceptance. Archive only after all full native receipts and applicable review fixes pass, and final runtime payloads/provenance are retained.
+T4 code review-fixes are in the tree. T4 is not complete: Linux and Windows full native qualification receipts are absent, and the hosted full native matrix remains pending (gate `full-native-platforms`). The existing Darwin ARM64 receipt is preserved as direct execution evidence for that one host; it does not close the OS matrix. Do not treat adapter tests or a single-platform receipt as complete native acceptance.
+
+The Python/SQLite/CLI foundation previously passed on all three hosted OS targets in run 33968041129. Foundation success does not substitute for inference/speech/retrieval acceptance. Archive only after all full native receipts and applicable review fixes pass, and final runtime payloads/provenance are retained.
 
 The DM ExFAT volume unmounted during an earlier native run and failed normal and read-only mount attempts. No disk repair was attempted. Source was recovered to an internal checkout from the sealed package and exact task transcripts, revalidated and pushed. The failed receipt write is not successful evidence. The complete macOS package and final receipts are retained under `/Users/doughnut/.codex/artifacts/aegisarchive-20260905/`; synchronization to the original DM checkout requires recovery of that volume.

@@ -123,8 +123,10 @@ def _vector(value):
     if scale == 0:
         raise ValueError("Embedding must have nonzero norm")
     scaled = [x / scale for x in value]
-    norm = math.sqrt(sum(x*x for x in scaled))
-    return [x/norm for x in scaled]
+    norm = math.sqrt(sum(x * x for x in scaled))
+    if not math.isfinite(norm) or norm == 0:
+        raise ValueError("Embedding must have nonzero norm")
+    return [x / norm for x in scaled]
 
 
 class Memory:
@@ -184,7 +186,9 @@ class Memory:
                 score += idf * count * 2.2/(count + 1.2*(0.25+0.75*len(tokens)/average))
             if score > 0:
                 lexical.append((row[0], score))
-        rankings = [sorted(lexical, key=lambda x: (-x[1], x[0]))]
+        rankings = []
+        if terms:
+            rankings.append(sorted(lexical, key=lambda x: (-x[1], x[0])))
         if embedding is not None:
             vector = _vector(embedding)
             semantic = []

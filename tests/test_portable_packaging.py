@@ -58,11 +58,28 @@ class PackagingTests(unittest.TestCase):
         relocated = self.root / 'relocated bundle with spaces'
         self.destination.rename(relocated)
         literal = '$(touch should-not-exist); "literal"'
-        output = subprocess.check_output([str(relocated / 'START_LINUX.sh'), literal],
-                                         text=True, env={'PATH': '/usr/bin:/bin'})
-        self.assertEqual(output.splitlines(), [str(relocated / 'app'), '-X', 'utf8', '-I', '-B',
-                                               'cli/launch.py', literal])
+        expected = [str(relocated / 'app'), '-X', 'utf8', '-I', '-B', 'cli/launch.py', literal]
+        for name in ('START_LINUX.sh', 'START_MAC.command'):
+            with self.subTest(name=name):
+                output = subprocess.check_output([str(relocated / name), literal],
+                                                 text=True, env={'PATH': '/usr/bin:/bin'})
+                self.assertEqual(output.splitlines(), expected)
         verify(relocated)
+
+    def test_windows_bundled_launcher_keeps_explicit_interpreter(self):
+        archive = self.root / 'python.zip'
+        with zipfile.ZipFile(archive, 'w') as output:
+            output.writestr('python.exe', 'native fixture')
+            output.writestr('LICENSE', 'Fixture licence')
+        asset = dict(id='python', platform='windows-x64', archive=str(archive),
+                     sha256=hashlib.sha256(archive.read_bytes()).hexdigest(),
+                     source_url='https://example.org/fixture', license='fixture-only',
+                     license_file='LICENSE', entrypoint='python.exe')
+        assemble(self.source, self.destination, [asset])
+        script = (self.destination / 'START_WINDOWS.cmd').read_text()
+        self.assertIn('runtime\\python\\python.exe', script)
+        self.assertIn('-X utf8 -I -B cli/launch.py %*', script)
+        verify(self.destination)
 
     def test_tamper_and_extra_file_fail(self):
         assemble(self.source, self.destination)
