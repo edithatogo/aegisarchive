@@ -111,7 +111,8 @@
           "maximum": 1,
           "deprecated": true,
           "description": "Deprecated and ignored: the engine is single-flight by design.",
-          "default": 2
+          "minimum": 1,
+          "default": 1
         },
         "burst_limit": {
           "type": "integer",

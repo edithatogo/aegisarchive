@@ -623,3 +623,12 @@ Global drift guards (apply to every task):
  
 - [x] **F1** Final validation: `python3 -m unittest discover -s tests -t . -p "test_*.py"`, `python3 cli/test_station_hardening.py`, `--help` smoke tests from `AGENTS.md`, leak grep, `git diff --stat origin/main -- .github/workflows/ci.yml cli/launch.py cli/verify_bundle.py cli/test_station_hardening.py` empty. *(AC7, AC10)*
 - [x] **F2** Update `metadata.json` (`status`, `updated_at`), append `track_completed` to `evidence.jsonl`; the integrator updates `conductor/tracks.md`.
+
+## Review Fixes
+
+- [ ] Rev-1 Reconcile capability documentation with the implemented browser and CLI.
+  - **Files**: `README.md`, `conductor/tech-stack.md`, `profiles/schema.json`.
+  - **Change**: separate gzip input from planned output, identify localStorage frontier-only resume, mark OPFS/request records implemented, use portable JS test expansion, correct deprecated concurrency default to its allowed value.
+  - **Verify**: `python3 scripts/build_profile_bundle.py --check`; `python3 -m unittest tests.test_profile_schema`; README nine-section check.
+  - **Done when**: documented scope matches the reviewed code. T11 and G2 remain external gates.
+  - **Do not**: claim hosted success, release, or ruleset activation.

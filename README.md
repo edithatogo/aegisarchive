@@ -24,9 +24,11 @@ Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic e
 | WARC/CDX integrity verifier (`cli/warc_verify.py`) | Implemented |
 | MCP server with `list_profiles`, `search_archive`, `validate_profile` | Implemented |
 | Hardened loopback station server, status page, bundle checksum verification | Implemented |
-| OPFS streaming of large archives to disk | Planned |
-| IndexedDB crawl checkpoint/resume | Planned |
-| WARC `request` records and `.warc.gz` output | Planned |
+| OPFS streaming of large archives to disk | Implemented; memory fallback when unavailable |
+| Frontier checkpoint/resume | Implemented with localStorage; earlier WARC bytes are not restored |
+| Synthesised WARC `request` records | Implemented |
+| `.warc.gz` input in verifier and viewer | Implemented |
+| `.warc.gz` output | Planned |
 | WACZ export and service-worker replay | Planned |
 | Bundled portable runtimes and offline AI features | Planned |
 
@@ -114,7 +116,7 @@ graph TD
         QUEUE[BFS Priority Queue & Scope Rules]
         POLITE[Server Preservation & Rate Limiter]
         WARC[ISO 28500 WARC/1.1 & CDX-11 Writer]
-        IDB[(IndexedDB State Persistence)]
+        IDB[(localStorage frontier checkpoints)]
     end
 
     subgraph Server Preservation Suite
@@ -155,10 +157,10 @@ python3 -m unittest discover -s tests -t . -p "test_*.py"
 # Run station hardening and loopback security tests
 python3 cli/test_station_hardening.py
 
-# Run browser engine tests (once the security track lands)
-node --test tests/js/
+# Run browser engine tests (security workflow implemented; hosted qualification pending)
+node --test tests/js/*.test.js
 
-# Run repository gate checks (once the security track lands)
+# Run repository gate checks (security workflow implemented; hosted qualification pending)
 python3 scripts/gate.py
 
 # Quick CLI verification
