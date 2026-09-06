@@ -57,3 +57,10 @@ engine execution, or that the portable suite acceptance criteria are complete.
 source URLs. `--verify-bundle` fail-closes on missing or mutated files.
 `--smoke-bundle` may claim inference only from a real native qualification
 receipt; it never records a passed model run for a missing package.
+
+`--acquire` downloads pinned runtime archives (Python, llama.cpp, Git, Bash,
+PortableGit, speech sources, Piper voice, and selected wheels) plus lock-file
+models and verifies SHA-256. `--max-bytes` skips oversized GGUF files and
+leaves `models_complete` false. A checksum mismatch records `status: failed`
+and a non-zero exit when runtimes are incomplete. Acquisition never sets
+`inference_claimed`.

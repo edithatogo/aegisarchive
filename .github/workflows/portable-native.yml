@@ -1,14 +1,61 @@
 name: Portable native platform probes
 
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+concurrency:
+  group: portable-native-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
+  acquire:
+    name: Acquire locked artefacts (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Write pinned licence and source inventory
+        shell: bash
+        run: python portable/provision_native.py --inventory artifacts/acquire/native-source-inventory.json
+      - name: Fail-closed audit of an empty model cache
+        shell: bash
+        run: |
+          if python portable/provision_models.py --audit --output artifacts/empty-model-cache; then
+            echo "empty cache must not verify" >&2
+            exit 1
+          fi
+          python -c "import json; r=json.load(open('artifacts/empty-model-cache/model-audit.json')); assert r['complete'] is False and r['inference_claimed'] is False"
+      - name: Acquire pinned runtimes and lock-sized models
+        shell: bash
+        run: |
+          python portable/provision_native.py --acquire artifacts/acquire --receipt artifacts/acquire/acquisition.json --max-bytes 120000000
+          python -c "import json,sys; r=json.load(open('artifacts/acquire/acquisition.json')); failed=any(f.get('status')=='failed' for f in r['files']); assert r['inference_claimed'] is False; assert r['runtimes_complete'] is True; sys.exit(1 if failed or not r['runtimes_complete'] else 0)"
+      - name: Retain acquisition receipts
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: locked-acquire-${{ matrix.os }}
+          path: |
+            artifacts/acquire/native-source-inventory.json
+            artifacts/acquire/acquisition.json
+            artifacts/empty-model-cache/model-audit.json
+          if-no-files-found: error
+          retention-days: 14
+
   platform:
     name: Foundation probe (${{ matrix.os }})
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
