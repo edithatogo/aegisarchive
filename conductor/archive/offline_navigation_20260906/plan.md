@@ -70,6 +70,6 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
 
 ## Review Fixes
 
-- [x] R1 Preserve safe metadata and continuous click interception. (AC1, AC2) — commit pending
+- [x] R1 Preserve safe metadata and continuous click interception. (AC1, AC2) — commit e4be6f7
   - **Change**: remove only refresh metadata during replay and keep the navigation listener active for the page lifetime.
   - **Verify**: `node --test tests/js/offline_navigation.test.js tests/js`; full repository gate and Conductor validation.
