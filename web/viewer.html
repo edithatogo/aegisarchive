@@ -166,7 +166,7 @@
               <button class="btn btn-secondary" onclick="openCurrentInNewTab()" style="padding: 4px 10px; font-size: 0.75rem;">Download record</button>
             </div>
           </div>
-          <iframe id="replayFrame" class="view-frame" sandbox=""></iframe>
+          <iframe id="replayFrame" class="view-frame" sandbox="allow-same-origin"></iframe>
         </div>
       </div>
     </div>
@@ -275,10 +275,10 @@
       renderUrlList(filtered);
     }
 
-    function selectUrl(url) {
+    function selectUrl(url, addHistory = true) {
       activeUrl = url;
       reader.releaseBlobUrls();
-      history.pushState({url}, '', `#${encodeURIComponent(url)}`);
+      if (addHistory) history.pushState({url}, '', `#${encodeURIComponent(url)}`);
       const rec = reader.getRecord(url);
       if (!rec) return;
 
@@ -315,7 +315,7 @@
         else announceMissing(destination.target || target);
       });
     }
-    window.addEventListener('popstate', event => { if (event.state && event.state.url) selectUrl(event.state.url); });
+    window.addEventListener('popstate', event => { if (event.state && event.state.url) selectUrl(event.state.url, false); });
 
     function announceMissing(target) {
       document.getElementById('activeUrlDisplay').textContent = `Missing archived resource: ${target}`;

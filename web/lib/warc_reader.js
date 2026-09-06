@@ -255,6 +255,10 @@
           return `<${tag}${before} data-archived-href="${attrSafe(abs)}" ${attr}="#"`;
         }
         const rec = this.getRecord(abs);
+        if (rec && rec.mimeType === 'text/css') {
+          const css = new TextDecoder('utf-8').decode(rec.bodyBytes);
+          rec.blobUrl = URL.createObjectURL(new Blob([this.rewriteStyles(css, rec.url)], {type:'text/css'}));
+        }
         const target = rec ? this.blobUrlFor(rec) : 'data:,';
         return `<${tag}${before} data-archived-${attr}="${attrSafe(abs)}" ${attr}="${target}"`;
       });
