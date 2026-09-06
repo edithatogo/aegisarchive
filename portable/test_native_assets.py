@@ -321,6 +321,16 @@ class PrefetchBashTests(unittest.TestCase):
             finally:
                 prefetch.BASH_SHA = original
 
+    def test_cli_entry_resolves_when_invoked_as_script(self):
+        import subprocess
+        import sys
+        completed = subprocess.run(
+            [sys.executable, 'portable/prefetch_bash.py', '--help'],
+            cwd=Path(__file__).resolve().parents[1],
+            capture_output=True, text=True, check=False)
+        self.assertEqual(completed.returncode, 0, completed.stderr)
+        self.assertIn('Stage the pinned GNU Bash source', completed.stdout)
+
 
 if __name__ == '__main__':
     unittest.main()
