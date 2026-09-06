@@ -67,3 +67,9 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.
 
 - [x] T8 Final acceptance and claim reconciliation. (AC1–AC3) — commit a452f1d
+
+## Review Fixes
+
+- [x] R1 Preserve safe metadata and continuous click interception. (AC1, AC2) — commit pending
+  - **Change**: remove only refresh metadata during replay and keep the navigation listener active for the page lifetime.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js tests/js`; full repository gate and Conductor validation.

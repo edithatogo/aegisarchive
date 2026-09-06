@@ -279,8 +279,8 @@
 
       // Never resolve against the live origin (V2); lock the document down with a CSP (V1).
       html = html.replace(/<base\b[^>]*>/gi, '');
-      // Prevent refresh navigation and place the restrictive policy before any archived markup.
-      html = html.replace(/<meta\b[^>]*>/gi, '');
+      // Prevent refresh navigation while preserving harmless security and viewport metadata.
+      html = html.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
       html = this.rewriteRequisites(html, record.url);
       html = html.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, start, css, end) => start + this.rewriteStyles(css, record.url) + end);
       const csp = WarcReader.REPLAY_CSP_META;

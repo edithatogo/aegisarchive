@@ -313,7 +313,7 @@
         const destination = OfflineNavigation.resolve(target, url, reader);
         if (destination.state === 'captured') selectUrl(destination.target);
         else announceMissing(destination.target || target);
-      }, {once:true});
+      });
     }
     window.addEventListener('popstate', event => { if (event.state && event.state.url) selectUrl(event.state.url); });
 
