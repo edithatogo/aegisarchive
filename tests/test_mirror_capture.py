@@ -63,5 +63,38 @@ class CliCaptureContract(unittest.TestCase):
         finally:
             server.shutdown();server.server_close();thread.join()
 
+class CliNegativeCoverage(unittest.TestCase):
+    def test_omissions_and_robots_fail_closed(self):
+        import subprocess, sys, tempfile, threading
+        from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+        for robots_status in (404,403):
+            with self.subTest(robots_status=robots_status):
+                hits=[]
+                class Handler(BaseHTTPRequestHandler):
+                    def log_message(self,*args): pass
+                    def do_GET(self):
+                        hits.append(self.path)
+                        if self.path == '/robots.txt':
+                            self.send_response(robots_status);self.end_headers();return
+                        if self.path == '/':
+                            self.send_response(200);self.send_header('Content-Type','text/html');self.end_headers()
+                            self.wfile.write(b'<img src=/missing><img src=/blocked><a href=https://outside.invalid/x>external</a>');return
+                        self.send_response(404);self.end_headers()
+                server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+                thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+                try:
+                    with tempfile.TemporaryDirectory() as td:
+                        p=Path(td)/'profile.json';p.write_text(json.dumps({'target':{'allowed_domains':['127.0.0.1'],'seed_urls':{'tier_1_core':[f'http://127.0.0.1:{server.server_port}/']},'path_blacklist_regex':'blocked'},'politeness':{'min_delay_ms':1,'max_delay_ms':1,'max_requests_per_minute':10000,'burst_limit':100}}))
+                        run=subprocess.run([sys.executable,'cli/aegis_cli.py','--profile',str(p),'--output-dir',td],capture_output=True,timeout=20)
+                        self.assertEqual(run.returncode,0,run.stderr)
+                        receipt=json.loads(next(Path(td).glob('*.coverage.json')).read_text());self.assertFalse(receipt['complete'])
+                        self.assertNotIn('/blocked',hits)
+                        if robots_status==403:
+                            self.assertEqual(hits,['/robots.txt']);self.assertEqual(receipt['counts']['excluded'],1)
+                        else:
+                            self.assertEqual(receipt['counts'],{'captured':1,'excluded':2,'failed':1,'pending':0,'unsupported':0})
+                finally:
+                    server.shutdown();server.server_close();thread.join()
+
 if __name__ == '__main__':
     unittest.main()

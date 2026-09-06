@@ -39,5 +39,15 @@
       "https://example.test/b.png",
       "https://example.test/c.png"
     ]
+  },
+  {
+    "mime": "text/html",
+    "url": "https://example.test/",
+    "text": "<img srcset=\"a.png,b.png\"><img srcset=\"data:image/png;base64,AAAA 1x, c.png 2x\">",
+    "expected": [
+      "https://example.test/a.png",
+      "https://example.test/b.png",
+      "https://example.test/c.png"
+    ]
   }
 ]

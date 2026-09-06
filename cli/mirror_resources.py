@@ -22,8 +22,20 @@ def resolve(raw, base):
 
 
 def srcset(value):
-    # Consume URL first (data URLs may contain commas), then descriptors.
-    return [m.group(1).rstrip(',') for m in re.finditer(r'(?:^|,)\s*(\S+)(?:\s+[^,]*)?', value)]
+    candidates = []
+    position = 0
+    while position < len(value):
+        while position < len(value) and (value[position].isspace() or value[position] == ','):
+            position += 1
+        start = position
+        data_url = value[position:position + 5].lower() == 'data:'
+        while position < len(value) and not value[position].isspace() and (data_url or value[position] != ','):
+            position += 1
+        if position > start:
+            candidates.append(value[start:position].rstrip(','))
+        while position < len(value) and value[position] != ',':
+            position += 1
+    return candidates
 
 
 class _HTML(HTMLParser):
@@ -36,7 +48,9 @@ class _HTML(HTMLParser):
         self.dynamic = False
 
     def handle_starttag(self, tag, attrs):
-        a = dict(attrs)
+        a = {}
+        for key, value in attrs:
+            a.setdefault(key, value)
         if tag == 'base' and self.base is None and a.get('href'):
             self.base = a['href']
         if tag in ('a', 'area', 'link') and a.get('href'):

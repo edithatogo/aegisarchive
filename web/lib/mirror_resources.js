@@ -38,7 +38,14 @@
       if (a.poster) links.push([a.poster, 'asset']);
       if (tag === 'object' && a.data) links.push([a.data, 'asset']);
       if (['img','source'].includes(tag) && a.srcset) {
-        for (const x of a.srcset.matchAll(/(?:^|,)\s*(\S+)(?:\s+[^,]*)?/g)) links.push([x[1].replace(/,+$/, ''), 'asset']);
+        let position = 0;
+        while (position < a.srcset.length) {
+          while (position < a.srcset.length && /[\s,]/.test(a.srcset[position])) position++;
+          const start = position, dataUrl = a.srcset.slice(position,position+5).toLowerCase() === 'data:';
+          while (position < a.srcset.length && !/\s/.test(a.srcset[position]) && (dataUrl || a.srcset[position] !== ',')) position++;
+          if (position > start) links.push([a.srcset.slice(start,position).replace(/,+$/,''),'asset']);
+          while (position < a.srcset.length && a.srcset[position] !== ',') position++;
+        }
       }
       if (a.style) styles.push(a.style);
       if (tag === 'style') styles.push(m[3] || '');

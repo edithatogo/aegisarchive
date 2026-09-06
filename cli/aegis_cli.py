@@ -69,7 +69,7 @@ def canonicalize_url(raw_url, base_url=None):
     try:
         full = urllib.parse.urljoin(base_url, raw_url) if base_url else raw_url
         u = urllib.parse.urlsplit(full)
-        if u.scheme not in ('http', 'https') or not u.hostname:
+        if u.scheme not in ('http', 'https') or not u.hostname or u.username or u.password:
             return None
         pairs = [(k, v) for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)
                  if k.lower() not in TRACKING_PARAMS and not k.lower().startswith('utm_')]

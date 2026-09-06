@@ -434,7 +434,7 @@
         } catch (e) { status = 0; }
         if (status === 0) this.politeness.recordFailure(robotsUrl, 0);
         // An unavailable robots policy must not silently grant access.
-        if (status === 0 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];
+        if (status === 0 || status === 401 || status === 403 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];
         this.robotsRules.set(origin, rules);
         this.auditLedger.push({ url: robotsUrl, status, mimeType: 'robots_txt', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, disallow_count: rules.length, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] ${robotsUrl} -> HTTP ${status}; ${rules.length} Disallow rule(s) honoured.`);
