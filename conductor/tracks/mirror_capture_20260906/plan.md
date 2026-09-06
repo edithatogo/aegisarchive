@@ -12,7 +12,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T2 Parse HTML requisites consistently. (AC1)
+- [x] T2 Parse HTML requisites consistently. (AC1) — commit 54bb55a
   - **Files**: `cli/mirror_resources.py`, `web/lib/mirror_resources.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
   - **Change**: Handle quoted/unquoted attributes, base URLs, srcset and canonical URL resolution using parity vectors.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -20,7 +20,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T3 Traverse CSS imports and resource URLs. (AC1)
+- [~] T3 Traverse CSS imports and resource URLs. (AC1)
   - **Files**: `cli/mirror_resources.py`, `web/lib/mirror_resources.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
   - **Change**: Resolve nested imports, escaped URLs and cycles with bounded recursion and MIME-aware parsing.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
