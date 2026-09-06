@@ -91,3 +91,23 @@
   *Status: Completed — ADR research set archived*
   *Link: [./archive/future_capabilities_20260905/index.md](./archive/future_capabilities_20260905/index.md)*
   *ADR spikes only (WACZ+CDXJ, Compression Streams, service-worker replay, MCP resources, in-browser PDF and embeddings later, OPFS wiring, task scheduling, provenance score). Depends on `warc_interop_20260905` before WACZ.*
+
+---
+- [ ] **Track: Complete static-site capture**
+  *Link: [./tracks/mirror_capture_20260906/index.md](./tracks/mirror_capture_20260906/index.md)*
+
+---
+- [ ] **Track: Safe offline page navigation and assets**
+  *Link: [./tracks/offline_navigation_20260906/index.md](./tracks/offline_navigation_20260906/index.md)*
+
+---
+- [ ] **Track: Explicit authenticated acquisition routes**
+  *Link: [./tracks/authenticated_acquisition_20260906/index.md](./tracks/authenticated_acquisition_20260906/index.md)*
+
+---
+- [ ] **Track: Durable mirror resume and incremental updates**
+  *Link: [./tracks/mirror_resume_20260906/index.md](./tracks/mirror_resume_20260906/index.md)*
+
+---
+- [ ] **Track: Cross-platform mirroring and capability acceptance**
+  *Link: [./tracks/mirroring_platform_acceptance_20260906/index.md](./tracks/mirroring_platform_acceptance_20260906/index.md)*
