@@ -194,7 +194,8 @@ class EmbedderLoopbackTests(unittest.TestCase):
             manifest.write_text(json.dumps({"assets": assets}))
             with patch("portable.gguf_embeddings.subprocess.Popen") as popen:
                 popen.return_value.poll.return_value = 1
-                with self.assertRaises(RuntimeError):
+                popen.return_value.returncode = 17
+                with self.assertRaisesRegex(RuntimeError, "code 17"):
                     GGUFEmbedder(manifest, startup_timeout=5)
                 command = popen.call_args[0][0]
                 self.assertEqual(command[command.index("--host") + 1], "127.0.0.1")

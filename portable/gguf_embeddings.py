@@ -36,7 +36,10 @@ class GGUFEmbedder:
         try:
             while time.monotonic() < deadline:
                 if self.process.poll() is not None:
-                    raise RuntimeError('Embedding server exited before readiness')
+                    self.log.seek(0)
+                    detail = self.log.read()[-6000:].decode('utf-8', errors='replace')
+                    raise RuntimeError(
+                        f'Embedding server exited before readiness (code {self.process.returncode}): {detail}')
                 try:
                     self._request('GET', '/health')
                     break
