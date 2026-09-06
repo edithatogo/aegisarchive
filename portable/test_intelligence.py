@@ -72,9 +72,11 @@ class ToolTests(unittest.TestCase):
             target = root / 'output.wav'
             with patch('portable.intelligence.run_tool',
                        side_effect=lambda *a, **k: target.write_bytes(b'0' * 44)) as run:
-                LocalTools(manifest).speak('archive', target)
+                LocalTools(manifest).speak('archive', target, seed=42)
             self.assertEqual(run.call_args.args[0], root / 'python')
             self.assertEqual(run.call_args.args[1][:5], ['-X', 'utf8', '-I', '-B', root / 'piper_entry.py'])
+            arguments = run.call_args.args[1]
+            self.assertEqual(arguments[arguments.index('--seed') + 1], 42)
 
     def test_real_subprocess_literal_argument_and_error(self):
         literal = '$(touch should-not-exist); "quoted"'

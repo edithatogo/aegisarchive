@@ -13,6 +13,31 @@ from portable import provision_speech as speech
 
 
 class SpeechProvisioningTests(unittest.TestCase):
+    def test_generated_wrapper_seeds_runtime_before_loading_voice(self):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            site = root / 'piper-site'
+            site.mkdir()
+            (site / 'onnxruntime.py').write_text(
+                'seed = None\ndef set_seed(value):\n    global seed\n    seed = value\n')
+            (site / 'piper.py').write_text(
+                'import onnxruntime\nclass PiperVoice:\n'
+                '    @staticmethod\n    def load(*args, **kwargs):\n'
+                '        assert onnxruntime.seed == 42\n        return PiperVoice()\n'
+                '    def synthesize_wav(self, text, output):\n'
+                '        output.setparams((1, 2, 16000, 0, "NONE", "PCM"))\n'
+                '        output.writeframes(b"\\0" * 32)\n')
+            entry = root / 'piper_entry.py'
+            entry.write_text(speech.PIPER_ENTRY)
+            result = subprocess.run([sys.executable, '-I', '-B', str(entry),
+                '--model', 'voice', '--config', 'config', '--seed', '42',
+                '--output_file', str(root / 'out.wav')], input='archive',
+                text=True, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertGreater((root / 'out.wav').stat().st_size, 44)
+
     def test_pruned_console_directories_do_not_replace_native_asset_path(self):
         """Exercise all staging steps while replacing network and build processes."""
         with tempfile.TemporaryDirectory() as directory:

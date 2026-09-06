@@ -79,7 +79,7 @@ class LocalTools:
         return run_tool(self.asset("whisper"), ["-m", self.asset("whisper_model"),
                         "-f", _file(audio), "-nt"])
 
-    def speak(self, text, output):
+    def speak(self, text, output, *, seed=None):
         output = Path(output).resolve()
         if output.exists():
             raise ValueError("Refusing to overwrite existing audio")
@@ -87,6 +87,12 @@ class LocalTools:
         executable, prefix = piper, []
         if piper.suffix == ".py":
             executable, prefix = self.asset("python"), ["-X", "utf8", "-I", "-B", piper]
+        if seed is not None:
+            if isinstance(seed, bool) or not isinstance(seed, int) or not 0 <= seed < 2**31:
+                raise ValueError("seed must be an integer between 0 and 2**31-1")
+            if piper.suffix != ".py":
+                raise ValueError("Seeded speech requires the bundle-owned Piper wrapper")
+            prefix.extend(["--seed", seed])
         run_tool(executable, [*prefix, "--model", self.asset("piper_model"),
                  "--config", self.asset("piper_config"), "--output_file", output], text=text)
         if not output.is_file() or output.stat().st_size < 44:

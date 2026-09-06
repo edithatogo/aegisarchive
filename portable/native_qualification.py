@@ -109,7 +109,7 @@ def main():
                 return {'generated_output': output[-2000:]}
             record(tier, generate)
         text = 'The archive is available offline. All evidence is stored locally.'
-        record('synthesis', lambda: str(tools.speak(text, data / 'speech.wav')))
+        record('synthesis', lambda: str(tools.speak(text, data / 'speech.wav', seed=42)))
         def transcribe():
             resample(data / 'speech.wav', data / 'speech16.wav')
             output = tools.transcribe(data / 'speech16.wav')

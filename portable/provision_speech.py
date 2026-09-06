@@ -86,11 +86,15 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument("--model", required=True, type=Path)
 parser.add_argument("--config", required=True, type=Path)
 parser.add_argument("--output_file", required=True, type=Path)
+parser.add_argument("--seed", type=int, help="Optional repeatable synthesis seed")
 args = parser.parse_args()
 sys.stdin.reconfigure(encoding="utf-8")
 text = sys.stdin.read()
 if not text.strip():
     parser.error("Speech text must not be empty")
+if args.seed is not None:
+    import onnxruntime
+    onnxruntime.set_seed(args.seed)
 voice = PiperVoice.load(str(args.model), config_path=str(args.config), use_cuda=False)
 with args.output_file.open("xb") as output:
     with wave.open(output, "wb") as wav_file:
