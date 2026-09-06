@@ -6,6 +6,7 @@
   <title>AegisArchive — In-Browser WARC Replay Viewer</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="lib/warc_reader.js"></script>
+  <script src="lib/offline_navigation.js"></script>
   <style>
     .viewer-layout {
       display: grid;
@@ -160,10 +161,12 @@
               <span id="activeUrlDisplay" style="font-family: var(--font-mono); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;"></span>
             </div>
             <div>
+              <button class="btn btn-secondary" onclick="history.back()" style="padding: 4px 10px; font-size: 0.75rem;">Back</button>
+              <button class="btn btn-secondary" onclick="history.forward()" style="padding: 4px 10px; font-size: 0.75rem;">Forward</button>
               <button class="btn btn-secondary" onclick="openCurrentInNewTab()" style="padding: 4px 10px; font-size: 0.75rem;">Download record</button>
             </div>
           </div>
-          <iframe id="replayFrame" class="view-frame" sandbox=""></iframe>
+          <iframe id="replayFrame" class="view-frame" sandbox="allow-same-origin"></iframe>
         </div>
       </div>
     </div>
@@ -173,6 +176,12 @@
     const reader = new WarcReader();
     let currentUrls = [];
     let activeUrl = null;
+    const navigationNonce = crypto.randomUUID ? crypto.randomUUID() : String(Math.random());
+    window.addEventListener('message', event => {
+      if (!OfflineNavigation.acceptNavigation(event, document.getElementById('replayFrame').contentWindow, navigationNonce)) return;
+      const result = OfflineNavigation.resolve(event.data.target, activeUrl, reader);
+      if (result.state === 'captured') selectUrl(result.target); else announceMissing(result.target || event.data.target);
+    });
 
     function escapeHtml(str) {
       return String(str == null ? '' : str)
@@ -266,8 +275,10 @@
       renderUrlList(filtered);
     }
 
-    function selectUrl(url) {
+    function selectUrl(url, addHistory = true) {
       activeUrl = url;
+      reader.releaseBlobUrls();
+      if (addHistory) history.pushState({url}, '', `#${encodeURIComponent(url)}`);
       const rec = reader.getRecord(url);
       if (!rec) return;
 
@@ -294,6 +305,20 @@
             ? `<img src="${blobUrl}" alt="Archived image">`
             : '<p>This record is available using Download record.</p>');
       }
+      frame.onload = () => frame.contentWindow && frame.contentWindow.addEventListener('click', event => {
+        const anchor = event.target.closest && event.target.closest('a[data-archived-href]');
+        if (!anchor) return;
+        event.preventDefault();
+        const target = anchor.dataset.archivedHref;
+        const destination = OfflineNavigation.resolve(target, url, reader);
+        if (destination.state === 'captured') selectUrl(destination.target);
+        else announceMissing(destination.target || target);
+      });
+    }
+    window.addEventListener('popstate', event => { if (event.state && event.state.url) selectUrl(event.state.url, false); });
+
+    function announceMissing(target) {
+      document.getElementById('activeUrlDisplay').textContent = `Missing archived resource: ${target}`;
     }
 
     function openCurrentInNewTab() {

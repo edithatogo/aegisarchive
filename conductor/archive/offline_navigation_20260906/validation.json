@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "result": "passed",
+  "implementation_revision": "a452f1d",
+  "commands": [
+    {"argv": ["node", "--test", "tests/js/offline_navigation.test.js"], "exit_code": 0, "tests": 4},
+    {"argv": ["npx", "--no-install", "playwright", "test", "--config", "tests/browser/playwright.config.js", "tests/browser/offline_replay.spec.js"], "exit_code": 0, "tests": 1},
+    {"argv": ["python3", "scripts/gate.py", "test"], "exit_code": 0, "python_tests": 52, "station_tests": 18, "javascript_tests": 45},
+    {"argv": ["python3", "scripts/gate.py", "leak"], "exit_code": 0},
+    {"argv": ["validate_conductor.py", "--root", ".", "--mode", "full", "--json"], "exit_code": 0, "errors": 0, "warnings": 0}
+  ],
+  "browser": {"fixture": "synthetic loopback", "disconnected_source": true, "unexpected_external_requests": 0}
+}

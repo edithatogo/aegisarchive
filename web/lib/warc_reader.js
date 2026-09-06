@@ -171,6 +171,22 @@
       return this.recordsByUrl.get(this.normalizeUrl(url)) || null;
     }
 
+    resolveArchiveUrl(raw, pageUrl) {
+      try {
+        const u = new URL(raw, pageUrl); u.hash = '';
+        if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return null;
+        return u.href;
+      } catch (_) { return null; }
+    }
+
+    releaseBlobUrls(keepUrls = new Set()) {
+      for (const record of this.recordsByUrl.values()) {
+        if (record.blobUrl && !keepUrls.has(record.blobUrl)) {
+          URL.revokeObjectURL(record.blobUrl); delete record.blobUrl;
+        }
+      }
+    }
+
     findSequence(uint8, seq, startOffset) {
       const len = uint8.length;
       const seqLen = seq.length;
@@ -229,7 +245,7 @@
      */
     rewriteRequisites(html, pageUrl) {
       const attrSafe = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-      const resolve = raw => { try { return new URL(raw, pageUrl).href; } catch (e) { return null; } };
+      const resolve = raw => this.resolveArchiveUrl(raw, pageUrl);
       html = html.replace(/\ssrcset\s*=\s*("[^"]*"|'[^']*')/gi, ' data-archived-srcset=$1');
       const re = /<(a|link|area|img|script|iframe|source|video|audio)\b([^>]*?)\s(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
       return html.replace(re, (m, tag, before, attr, v1, v2, v3) => {
@@ -239,8 +255,20 @@
           return `<${tag}${before} data-archived-href="${attrSafe(abs)}" ${attr}="#"`;
         }
         const rec = this.getRecord(abs);
+        if (rec && rec.mimeType === 'text/css') {
+          const css = new TextDecoder('utf-8').decode(rec.bodyBytes);
+          rec.blobUrl = URL.createObjectURL(new Blob([this.rewriteStyles(css, rec.url)], {type:'text/css'}));
+        }
         const target = rec ? this.blobUrlFor(rec) : 'data:,';
         return `<${tag}${before} data-archived-${attr}="${attrSafe(abs)}" ${attr}="${target}"`;
+      });
+    }
+
+    rewriteStyles(text, pageUrl) {
+      return String(text).replace(/url\(\s*(["']?)([^)"']+)\1\s*\)/gi, (m, quote, raw) => {
+        const target = this.resolveArchiveUrl(raw.trim(), pageUrl);
+        const record = target && this.getRecord(target);
+        return record ? `url(${quote}${this.blobUrlFor(record)}${quote})` : 'url(data:,)';
       });
     }
 
@@ -255,9 +283,10 @@
 
       // Never resolve against the live origin (V2); lock the document down with a CSP (V1).
       html = html.replace(/<base\b[^>]*>/gi, '');
-      // Prevent refresh navigation and place the restrictive policy before any archived markup.
-      html = html.replace(/<meta\b[^>]*>/gi, '');
+      // Prevent refresh navigation while preserving harmless security and viewport metadata.
+      html = html.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
       html = this.rewriteRequisites(html, record.url);
+      html = html.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, start, css, end) => start + this.rewriteStyles(css, record.url) + end);
       const csp = WarcReader.REPLAY_CSP_META;
       if (/<head[^>]*>/i.test(html)) {
         html = html.replace(/<head[^>]*>/i, m => m + csp);
