@@ -8,7 +8,7 @@ Select work using `conductor/implementation_contract.md`. Columns: `priority` (P
 
 Task ids are the first implementable checkbox in each `plan.md` (`T1`, `W1`, `S1`, `C1`, or `T0`). Remaining tasks stay in that plan; do not skip ahead.
 
-Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already recorded as satisfied on those packs is not a selectable blocker. G2 companion-program rows stay `blocked`.
+Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already recorded as satisfied on those packs is not a selectable blocker. Deployment-specific acquisition and acceptance belong outside this repository.
 
 ## Approved
 
@@ -34,20 +34,13 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
 
-All approved repository tasks are complete. Companion-program G2 delegations remain external and blocked.
+All approved repository tasks are complete. Deployment-specific work is not an AegisArchive completion gate.
 
-## G2 companion-program delegations
+## Scope boundary
 
-These items are not implemented in this repository. Status stays `blocked` here. No organisation or hostname names.
+AegisArchive is a general-purpose archival engine. Target selection, authentication, organisation-specific source registers, downstream document analysis and deployment acceptance belong in the consuming project. They must not appear as blocked engine tasks or carry client identities, internal hostnames or target lists into this repository.
 
-| priority | track_id | task | status | owner | blocked_by |
-| --- | --- | --- | --- | --- | --- |
-| P3 | companion_g2 | same-origin harvest | blocked | companion | G2 |
-| P3 | companion_g2 | harvest manifest | blocked | companion | G2 |
-| P3 | companion_g2 | text extraction | blocked | companion | G2 |
-| P3 | companion_g2 | privacy screen on extracted text | blocked | companion | G2 |
-
-In-browser harvest cannot rely on cross-origin CORS; same-origin harvest belongs in the companion program (G2), not in this engine.
+Issues #13–#16 are retained only as closed scope records. Their former deployment work is outside this repository. Historical generic coordination receipts do not create a current engine dependency.
 
 ## Proposed
 

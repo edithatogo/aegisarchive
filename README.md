@@ -192,3 +192,7 @@ AegisArchive is designed for legitimate research, digital preservation, and inst
 2. **Back Off on Congestion**: Automatically slows down when server response latencies spike.
 3. **Respect RFC 9110**: Complies immediately with HTTP 429 (`Too Many Requests`) and `Retry-After` headers.
 4. **Transparent Identity**: Sends polite, informative `User-Agent` metadata.
+
+## Deployment independence
+
+AegisArchive is a general-purpose archival engine. Keep organisation-specific URLs, credentials, source inventories, acceptance receipts and downstream analysis in the consuming project's private configuration. Examples use reserved domains or loopback addresses. A particular website's access or login state is not an engine completion gate. Upstream dependency, licence and standards references identify technical provenance, not deployment targets.
