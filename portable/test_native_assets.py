@@ -321,6 +321,56 @@ class PrefetchBashTests(unittest.TestCase):
             finally:
                 prefetch.BASH_SHA = original
 
+    def test_requests_and_redirects_are_gated_and_retry_after_is_observed(self):
+        import io
+        import urllib.error
+        from unittest.mock import patch
+        from cli.politeness import PolitenessEngine
+        from portable import prefetch_bash as prefetch
+        now = [0.0]
+        def sleep(seconds):
+            now[0] += seconds
+            return True
+        engine = PolitenessEngine(clock=lambda: now[0], sleeper=sleep)
+        payload = b'pinned-bash-archive'
+        requests = []
+        def open_url(request, **kwargs):
+            requests.append((request.full_url, now[0]))
+            if len(requests) == 1:
+                raise urllib.error.HTTPError(request.full_url, 429, 'busy',
+                                             {'Retry-After': '20'}, io.BytesIO())
+            if len(requests) == 2:
+                raise urllib.error.HTTPError(request.full_url, 302, 'redirect',
+                    {'Location': 'https://mirror.invalid/final'}, io.BytesIO())
+            return io.BytesIO(payload)
+        with tempfile.TemporaryDirectory() as directory, patch.object(prefetch, 'MIRRORS',
+                ('https://source.invalid/one', 'https://source.invalid/two')), \
+                patch.object(prefetch, 'BASH_SHA', hashlib.sha256(payload).hexdigest()):
+            target = prefetch.stage(Path(directory), opener=open_url, engine=engine)
+            self.assertEqual(target.read_bytes(), payload)
+        self.assertEqual(len(requests), 3)
+        self.assertGreaterEqual(requests[1][1] - requests[0][1], 20)
+        self.assertGreater(requests[2][1], requests[1][1])
+        self.assertEqual(requests[2][0], 'https://mirror.invalid/final')
+
+    def test_abort_and_https_downgrade_never_open_destination(self):
+        import io
+        import urllib.error
+        from unittest.mock import Mock
+        from portable.prefetch_bash import polite_open
+        engine = Mock()
+        engine.acquire_permission.return_value = {'aborted': True}
+        opener = Mock()
+        with self.assertRaises(InterruptedError):
+            polite_open('https://source.invalid', opener, engine)
+        opener.assert_not_called()
+        engine.acquire_permission.return_value = {'aborted': False}
+        opener.side_effect = urllib.error.HTTPError('https://source.invalid', 302,
+            'redirect', {'Location': 'http://mirror.invalid'}, io.BytesIO())
+        with self.assertRaisesRegex(ValueError, 'HTTPS'):
+            polite_open('https://source.invalid', opener, engine)
+        self.assertEqual(opener.call_count, 1)
+
     def test_cli_entry_resolves_when_invoked_as_script(self):
         import subprocess
         import sys
