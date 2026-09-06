@@ -145,9 +145,8 @@ class EmbedderLoopbackTests(unittest.TestCase):
     def test_numeric_http_loopback_works_while_external_egress_is_denied(self):
         import subprocess
         import textwrap
-        policy = ('(version 1)(allow default)(deny network*)'
-                  '(allow network-inbound (local ip "localhost:*"))'
-                  '(allow network-outbound (remote ip "localhost:*"))')
+        from portable.provision_native import DARWIN_NETWORK_POLICY
+        policy = DARWIN_NETWORK_POLICY
         script = textwrap.dedent("""\
             import errno, http.server, socket, threading
             from portable.gguf_embeddings import GGUFEmbedder, LOOPBACK_HOST
