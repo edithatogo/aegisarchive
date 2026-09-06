@@ -8,6 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 from portable.intelligence import LocalTools, Memory, run_tool, _vector
+from portable.gguf_embeddings import GGUFEmbedder, LOOPBACK_HOST
 
 
 class MemoryTests(unittest.TestCase):
@@ -134,6 +135,27 @@ class QualificationContractTests(unittest.TestCase):
         self.assertIn("git('fsck', '--full')", source)
         self.assertIn("git('show', 'HEAD:evidence.txt')", source)
         self.assertIn("printf \"%s\" \"$1\"", source)
+        self.assertIn("LOOPBACK_HOST", source)
+
+
+class EmbedderLoopbackTests(unittest.TestCase):
+    def test_embedder_binds_sandbox_localhost(self):
+        self.assertEqual(LOOPBACK_HOST, "localhost")
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for name in ("llama_server", "bge"):
+                (root / name).write_text(name)
+            manifest = root / "manifest.json"
+            assets = {name: {"path": name, "sha256": hashlib.sha256((root / name).read_bytes()).hexdigest()}
+                      for name in ("llama_server", "bge")}
+            manifest.write_text(json.dumps({"assets": assets}))
+            with patch("portable.gguf_embeddings.subprocess.Popen") as popen:
+                popen.return_value.poll.return_value = 1
+                with self.assertRaises(RuntimeError):
+                    GGUFEmbedder(manifest, startup_timeout=5)
+                command = popen.call_args[0][0]
+                self.assertEqual(command[command.index("--host") + 1], "localhost")
+                self.assertNotIn("127.0.0.1", command)
 
 
 if __name__ == "__main__":

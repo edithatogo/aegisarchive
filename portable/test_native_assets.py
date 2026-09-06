@@ -113,7 +113,6 @@ class NativeAssetAuditTests(unittest.TestCase):
         self.assertIn('llama/Windows', targets)
         self.assertIn('llama/Darwin', targets)
         self.assertIn('win_git/portable', targets)
-        self.assertIn('127.0.0.1', native.DARWIN_NETWORK_POLICY)
         for item in targets.values():
             self.assertEqual(len(item['sha256']), 64)
             self.assertTrue(item['url'].startswith('https://'))
@@ -257,6 +256,83 @@ class NativeAssetAuditTests(unittest.TestCase):
             self.assertEqual(removed, ['runtime/python/__pycache__/x.cpython-312.pyc'])
             self.assertFalse(cache.exists())
             self.assertTrue((root / 'app' / 'keep.py').is_file())
+
+
+class NativeReceiptGateTests(unittest.TestCase):
+    def test_missing_receipt_is_blocked_not_passed(self):
+        from portable.check_native_receipt import evaluate, main
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'native-qualification.json'
+            report, code = evaluate(path)
+            self.assertEqual(code, 1)
+            self.assertEqual(report['status'], 'blocked')
+            self.assertFalse(report['inference_claimed'])
+            self.assertEqual(report['status'], json.loads(path.read_text())['status'])
+            self.assertEqual(main([str(path)]), 1)
+
+    def test_passed_receipt_exits_zero(self):
+        from portable.check_native_receipt import evaluate
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'native-qualification.json'
+            path.write_text(json.dumps({
+                'status': 'passed',
+                'checks': {'scout': {'status': 'passed'}},
+            }))
+            report, code = evaluate(path)
+            self.assertEqual(code, 0)
+            self.assertEqual(report['status'], 'passed')
+
+    def test_failed_receipt_does_not_become_passed(self):
+        from portable.check_native_receipt import evaluate
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'native-qualification.json'
+            original = {'status': 'failed', 'checks': {'scout': {'status': 'failed'}}}
+            path.write_text(json.dumps(original))
+            report, code = evaluate(path)
+            self.assertEqual(code, 1)
+            self.assertEqual(report['status'], 'failed')
+            self.assertEqual(json.loads(path.read_text())['status'], 'failed')
+
+
+class PrefetchBashTests(unittest.TestCase):
+    def test_stage_accepts_matching_bytes_from_mirror(self):
+        from portable.prefetch_bash import stage
+        from portable.provision_native import BASH_SHA
+
+        class Transport:
+            def __init__(self, payload):
+                self.payload = payload
+            def __call__(self, request, timeout=0):
+                class Response:
+                    def __init__(self, payload):
+                        self._payload = payload
+                    def read(self, size=-1):
+                        data, self._payload = self._payload, b''
+                        return data
+                    def __enter__(self):
+                        return self
+                    def __exit__(self, *_):
+                        return False
+                return Response(self.payload)
+
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            payload = b'pinned-bash-archive'
+            digest = hashlib.sha256(payload).hexdigest()
+            self.assertNotEqual(digest, BASH_SHA)
+            with self.assertRaises(RuntimeError):
+                stage(work, opener=Transport(payload))
+            target = work / 'downloads' / 'bash.tar.gz'
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(payload)
+            # Cached matching pin is not re-fetched; mismatch above already failed closed.
+            from portable import prefetch_bash as prefetch
+            original = prefetch.BASH_SHA
+            try:
+                prefetch.BASH_SHA = digest
+                self.assertEqual(stage(work, opener=Transport(b'ignored')), target)
+            finally:
+                prefetch.BASH_SHA = original
 
 
 if __name__ == '__main__':

@@ -30,13 +30,18 @@ jobs:
       - name: Write pinned licence and source inventory
         shell: bash
         run: python portable/provision_native.py --inventory artifacts/full-native/native-source-inventory.json
-      - name: Provision pinned assets and qualify relocated offline bundle
+      - name: Stage pinned Bash source from HTTPS mirrors
         shell: bash
+        continue-on-error: true
+        run: python portable/prefetch_bash.py --work "$RUNNER_TEMP/aegis-full-native"
+      - name: Provision pinned assets and qualify relocated offline bundle
+        id: provision
+        shell: bash
+        continue-on-error: true
         run: python portable/provision_native.py --work "$RUNNER_TEMP/aegis-full-native" --output artifacts/full-native
       - name: Fail closed unless native qualification passed
         shell: bash
-        run: |
-          python -c "import json,sys; r=json.load(open('artifacts/full-native/native-qualification.json')); print({k:v.get('status') for k,v in r.get('checks',{}).items()}); sys.exit(0 if r.get('status')=='passed' else 1)"
+        run: python portable/check_native_receipt.py artifacts/full-native/native-qualification.json
       - name: Retain native receipts and provisioning logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
