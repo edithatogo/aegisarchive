@@ -32,3 +32,7 @@ offline_navigation_20260906, authenticated_acquisition_20260906, mirror_resume_2
 ## Out of scope
 
 General JavaScript application emulation, server-side business logic, bypassing access controls, automatic browser-cookie extraction, source publication, and claiming all websites are supported. Optional AI functionality is not a mirroring acceptance substitute.
+
+## Extended capability tiers
+
+Core static mirroring acceptance remains the first milestone. Report additional copying controls, document lifecycle, rendered capture, scheduled jobs and portable exports as separate capability tiers using their track receipts. An extended feature cannot be advertised as supported until its own platform acceptance passes; extensions do not silently expand the static replacement claim.

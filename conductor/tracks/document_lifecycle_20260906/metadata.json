@@ -1,0 +1,13 @@
+{
+  "track_id": "document_lifecycle_20260906",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-09-06T13:45:30Z",
+  "updated_at": "2026-09-06T13:45:30Z",
+  "description": "Generic document lifecycle, extraction and search",
+  "evidence_schema": "1.0",
+  "dependencies": [
+    "mirror_capture_20260906",
+    "mirror_resume_20260906"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "track_id": "rendered_capture_20260906",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-09-06T13:45:30Z",
+  "updated_at": "2026-09-06T13:45:30Z",
+  "description": "Optional rendered-browser capture and headless automation",
+  "evidence_schema": "1.0",
+  "dependencies": [
+    "authenticated_acquisition_20260906",
+    "crawl_controls_reports_20260906"
+  ]
+}

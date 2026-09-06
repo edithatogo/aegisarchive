@@ -111,3 +111,23 @@
 ---
 - [ ] **Track: Cross-platform mirroring and capability acceptance**
   *Link: [./tracks/mirroring_platform_acceptance_20260906/index.md](./tracks/mirroring_platform_acceptance_20260906/index.md)*
+
+---
+- [ ] **Track: Crawl controls, previews and site reports**
+  *Link: [./tracks/crawl_controls_reports_20260906/index.md](./tracks/crawl_controls_reports_20260906/index.md)*
+
+---
+- [ ] **Track: Generic document lifecycle, extraction and search**
+  *Link: [./tracks/document_lifecycle_20260906/index.md](./tracks/document_lifecycle_20260906/index.md)*
+
+---
+- [ ] **Track: Optional rendered-browser capture and headless automation**
+  *Link: [./tracks/rendered_capture_20260906/index.md](./tracks/rendered_capture_20260906/index.md)*
+
+---
+- [ ] **Track: Headless jobs, scheduling and automation contracts**
+  *Link: [./tracks/headless_jobs_20260906/index.md](./tracks/headless_jobs_20260906/index.md)*
+
+---
+- [ ] **Track: Portable mirror exports and interoperability**
+  *Link: [./tracks/portable_exports_20260906/index.md](./tracks/portable_exports_20260906/index.md)*

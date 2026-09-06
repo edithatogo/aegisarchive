@@ -25,3 +25,9 @@ Tasks are sequential. Dependencies must complete first. This contract explicitly
   - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
   - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
 
+
+- [ ] T4 Reconcile the extended capability matrix with each extension track's receipt. (AC3)
+  - **Files**: `docs/MIRRORING_COMPATIBILITY.md`; this track's records.
+  - **Change**: List core and extension tiers with implemented/tested/pending/unsupported states. Pending extensions do not block a truthfully scoped static-only assessment.
+  - **Verify**: Review every supported claim against a hash-bound platform receipt; full Conductor validation.
+  - **Done when**: No extension support is inferred from core tests.
