@@ -60,12 +60,6 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T8 Final acceptance and claim reconciliation. (AC1–AC3)
-  - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
-  - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
-  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`; `python3 scripts/gate.py test`; full Conductor validation.
-  - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.
-
 - [x] T8 Final acceptance and claim reconciliation. (AC1–AC3) — commit a452f1d
 
 ## Review Fixes
