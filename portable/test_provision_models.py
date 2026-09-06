@@ -174,6 +174,16 @@ class ModelProvisioningTests(unittest.TestCase):
                          ['lock.json', 'model-receipt.json', 'model-receipt.json.part',
                           'outside-important.txt', 'scout'])
 
+    def test_offline_provision_writes_provenance_sidecar_without_inference(self):
+        self.model.write_bytes(self.content)
+        lock = self.lock()
+        self.assertEqual(main(['--lock', str(lock), '--output', str(self.root), '--offline']), 0)
+        sidecar = json.loads(self.model.with_name(self.model.name + '.provenance.json').read_text())
+        self.assertEqual(sidecar['kind'], 'locked_asset_provenance')
+        self.assertFalse(sidecar['inference_claimed'])
+        self.assertEqual(sidecar['sha256'], self.entry['sha256'])
+        self.assertEqual(sidecar['url'], self.entry['url'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -168,6 +168,13 @@ class NativeAssetAuditTests(unittest.TestCase):
             self.assertEqual(statuses['embeddings/bge.gguf'], 'verified')
             self.assertFalse(json.loads(receipt.read_text())['inference_claimed'])
             self.assertFalse(native.acquisition_failed(report))
+            self.assertTrue(native.acquisition_failed(report, require_complete=True))
+            sidecar = root / 'cache' / 'models' / 'embeddings' / 'bge.gguf.provenance.json'
+            payload = json.loads(sidecar.read_text())
+            self.assertEqual(payload['kind'], 'locked_asset_provenance')
+            self.assertFalse(payload['inference_claimed'])
+            self.assertEqual(payload['sha256'], hashlib.sha256(b'small-model').hexdigest())
+            self.assertFalse((root / 'cache' / 'models' / 'scout' / 'model.gguf.provenance.json').exists())
 
     def test_acquire_fail_closed_on_checksum_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
