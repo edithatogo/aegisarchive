@@ -1,0 +1,13 @@
+{
+  "track_id": "portable_exports_20260906",
+  "type": "feature",
+  "status": "new",
+  "created_at": "2026-09-06T13:45:30Z",
+  "updated_at": "2026-09-06T13:49:10Z",
+  "description": "Portable mirror exports and interoperability",
+  "evidence_schema": "1.0",
+  "dependencies": [
+    "offline_navigation_20260906",
+    "mirror_resume_20260906"
+  ]
+}

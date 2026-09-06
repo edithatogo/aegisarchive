@@ -14,6 +14,16 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 
 | priority | track_id | task | status | owner | blocked_by |
 | --- | --- | --- | --- | --- | --- |
+| P0 | mirror_capture_20260906 | T1 | open | - | - |
+| P0 | offline_navigation_20260906 | T1 | open | - | mirror_capture_20260906/T7 |
+| P1 | authenticated_acquisition_20260906 | T1 | open | - | mirror_capture_20260906/T7, crawl_controls_reports_20260906/T7 |
+| P1 | mirror_resume_20260906 | T1 | open | - | mirror_capture_20260906/T7, authenticated_acquisition_20260906/T7 |
+| P0 | mirroring_platform_acceptance_20260906 | T1 | open | - | offline_navigation_20260906/T8, authenticated_acquisition_20260906/T7, mirror_resume_20260906/T8 |
+| P1 | crawl_controls_reports_20260906 | T1 | open | - | mirror_capture_20260906/T7 |
+| P1 | document_lifecycle_20260906 | T1 | open | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
+| P1 | rendered_capture_20260906 | T1 | open | - | authenticated_acquisition_20260906/T7, crawl_controls_reports_20260906/T7, offline_navigation_20260906/T8 |
+| P1 | headless_jobs_20260906 | T1 | open | - | mirror_resume_20260906/T8, crawl_controls_reports_20260906/T7 |
+| P2 | portable_exports_20260906 | T1 | open | - | offline_navigation_20260906/T8, mirror_resume_20260906/T8 |
 | P0 | portable_intelligence_suite | T3 | done | - | - |
 | P0 | portable_intelligence_suite | T4 | done | - | portable_intelligence_suite/T3 |
 | P0 | engine_correctness_20260905 | T1 | done | - | - |
@@ -34,7 +44,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
 
-All approved repository tasks are complete. Deployment-specific work is not an AegisArchive completion gate.
+The archived baseline is complete. The ten mirroring and extension tracks above are pending; deployment-specific work remains outside the engine completion gates.
 
 ## Scope boundary
 
