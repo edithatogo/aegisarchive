@@ -8,9 +8,11 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 import shutil
+import sys
 import urllib.error
 import urllib.request
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from portable.provision_native import BASH_SHA, BASH_URL, digest
 
 MIRRORS = (
