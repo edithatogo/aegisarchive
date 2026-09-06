@@ -15,7 +15,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | priority | track_id | task | status | owner | blocked_by |
 | --- | --- | --- | --- | --- | --- |
 | P0 | portable_intelligence_suite | T3 | done | - | - |
-| P0 | portable_intelligence_suite | T4 | done | - | portable_intelligence_suite/T3 |
+| P0 | portable_intelligence_suite | T4 | in_progress | - | portable_intelligence_suite/T3 |
 | P0 | engine_correctness_20260905 | T1 | done | - | - |
 | P0 | warc_interop_20260905 | W1 | done | - | - |
 | P0 | web_console_security_20260905 | S1 | done | - | - |
@@ -34,7 +34,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
 
-All approved repository tasks are complete. Companion-program G2 delegations remain external and blocked.
+T4 reopened after final-head macOS embeddings failed with EPERM. Companion-program G2 delegations remain external and blocked.
 
 ## G2 companion-program delegations
 

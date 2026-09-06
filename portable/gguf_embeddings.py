@@ -7,8 +7,9 @@ import tempfile
 import time
 from .intelligence import LocalTools, _vector
 
-# Darwin sandbox-exec accepts only "*" or "localhost" in network address filters.
-LOOPBACK_HOST = 'localhost'
+# Use a numeric loopback address for sockets and the server. Darwin sandbox
+# policy syntax still uses "localhost"; socket addresses need not use DNS.
+LOOPBACK_HOST = '127.0.0.1'
 
 
 class GGUFEmbedder:

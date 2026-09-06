@@ -1,6 +1,6 @@
 # Track: Portable Platform Compatibility & Offline Intelligence Suite
 
-Status: completed (2026-09-06).
+Status: in progress (2026-09-06 — final macOS qualification reopened).
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

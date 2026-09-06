@@ -1,6 +1,6 @@
 # Track Plan: Portable Platform Compatibility & Offline Intelligence Suite
 
-## Status: COMPLETED (2026-09-06 — native matrix and review closeout verified)
+## Status: IN PROGRESS
 
 ### Objectives
 - [x] Package into a portable application format (app directory, data directory, and package manifest).
@@ -36,7 +36,7 @@
 
 ## Review fixes
 
-- [x] T4 Close native qualification findings and preserve direct execution evidence. — commit c48a8f6
+- [~] T4 Close native qualification findings and preserve direct execution evidence. — commit c48a8f6
   - **Files**: `portable/intelligence.py`, `portable/native_qualification.py`, `portable/test_intelligence.py`, `tests/test_portable_packaging.py`, `portable/test_provision_models.py`, native provisioning/workflow files and this track's evidence/review records.
   - **Change**: invalidate graph edges when source text changes, normalize extreme vectors safely, require semantic-only retrieval and functional Git/console checks, verify immutable files after execution, and test relocated bundled launchers.
   - **Verify**: `python3 -m unittest tests.test_portable_packaging portable.test_intelligence`; `python3 scripts/gate.py test`; full native qualification receipts on each target OS.

@@ -139,8 +139,50 @@ class QualificationContractTests(unittest.TestCase):
 
 
 class EmbedderLoopbackTests(unittest.TestCase):
-    def test_embedder_binds_sandbox_localhost(self):
-        self.assertEqual(LOOPBACK_HOST, "localhost")
+    @unittest.skipUnless(sys.platform == 'darwin', 'Darwin sandbox integration')
+    def test_numeric_http_loopback_works_while_external_egress_is_denied(self):
+        import subprocess
+        import textwrap
+        policy = ('(version 1)(allow default)(deny network*)'
+                  '(allow network-inbound (local ip "localhost:*"))'
+                  '(allow network-outbound (remote ip "localhost:*"))')
+        script = textwrap.dedent("""\
+            import errno, http.server, socket, threading
+            from portable.gguf_embeddings import GGUFEmbedder, LOOPBACK_HOST
+            class Handler(http.server.BaseHTTPRequestHandler):
+                def do_GET(self):
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b'{"status":"ok"}')
+                def log_message(self, *args):
+                    pass
+            server = http.server.HTTPServer((LOOPBACK_HOST, 0), Handler)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            client = GGUFEmbedder.__new__(GGUFEmbedder)
+            client.port = server.server_port
+            try:
+                for _ in range(20):
+                    assert client._request('GET', '/health') == {'status': 'ok'}
+                with socket.socket() as probe:
+                    probe.settimeout(1)
+                    try:
+                        probe.connect(('1.1.1.1', 443))
+                    except OSError as error:
+                        assert error.errno in (errno.EPERM, errno.EACCES, errno.ENETUNREACH)
+                    else:
+                        raise AssertionError('External egress was permitted')
+            finally:
+                server.shutdown()
+                server.server_close()
+            """)
+        result = subprocess.run(['/usr/bin/sandbox-exec', '-p', policy,
+                                 sys.executable, '-B', '-c', script],
+                                cwd=Path(__file__).resolve().parents[1],
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_embedder_binds_numeric_loopback(self):
+        self.assertEqual(LOOPBACK_HOST, "127.0.0.1")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("llama_server", "bge"):
@@ -154,8 +196,8 @@ class EmbedderLoopbackTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     GGUFEmbedder(manifest, startup_timeout=5)
                 command = popen.call_args[0][0]
-                self.assertEqual(command[command.index("--host") + 1], "localhost")
-                self.assertNotIn("127.0.0.1", command)
+                self.assertEqual(command[command.index("--host") + 1], "127.0.0.1")
+                self.assertNotIn("localhost", command)
 
 
 if __name__ == "__main__":

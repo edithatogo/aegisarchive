@@ -1,9 +1,9 @@
 {
   "track_id": "portable_intelligence_suite",
   "type": "feature",
-  "status": "completed",
+  "status": "in_progress",
   "created_at": "2026-09-05T07:50:07Z",
-  "updated_at": "2026-09-06T02:22:44Z",
+  "updated_at": "2026-09-06T02:34:36Z",
   "description": "Portable Platform Compatibility & Offline Intelligence Suite",
   "metadata_origin": "Reconstructed during retrospective review; original plan retained in Git history.",
   "evidence_schema": "1.0",
@@ -19,6 +19,12 @@
       "kind": "hosted_validation",
       "status": "satisfied",
       "evidence": "native-evidence/hosted-34005505093/index.json; all three platforms passed all 14 checks."
+    },
+    {
+      "id": "final-head-native",
+      "kind": "hosted_validation",
+      "status": "pending",
+      "evidence": "Run 34006333417 macOS embeddings failed with EPERM; track reopened pending correction and qualification."
     }
   ]
 }

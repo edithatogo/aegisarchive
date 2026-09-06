@@ -1,6 +1,6 @@
 # Native implementation and review checkpoint
 
-**Completed:** final native qualification and review closeout passed. The dated sections below preserve earlier checkpoint limitations; this final decision supersedes their pending status.
+**Reopened:** final-head native run 34006333417 repeated macOS embeddings EPERM. Earlier passing matrices are retained but do not clear the new failure. The dated sections below preserve earlier checkpoint limitations; this final decision supersedes their pending status.
 
 ## Issue #11 acquire session (2026-09-06)
 

@@ -30,9 +30,9 @@
   *Link: [./archive/ci_cd_repo_hardening/index.md](./archive/ci_cd_repo_hardening/index.md)*
   *GitHub Actions CI matrix, compilation checks, schema validation, and leak prevention gate.*
 
-- [x] **Track: Portable Platform Compatibility & Offline Intelligence Suite**
-  *Status: Completed* | *Archived*
-  *Link: [./archive/portable_intelligence_suite/index.md](./archive/portable_intelligence_suite/index.md)*
+- [~] **Track: Portable Platform Compatibility & Offline Intelligence Suite**
+  *Status: In Progress*
+  *Link: [./tracks/portable_intelligence_suite/index.md](./tracks/portable_intelligence_suite/index.md)*
   *Windows embeddable Python auto-detection, portable Git and console runtimes, local multi-tier LLMs (llama.cpp), Whisper transcription, Piper TTS, and local GraphRAG memory.*
 
 - [x] **Track: Portable Station Hardening & Diagnostics**

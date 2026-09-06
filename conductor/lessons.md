@@ -100,3 +100,7 @@ Maintenance rules:
 ## 2026-09-06 — portable_intelligence_suite
 - **Surprise**: Passing adapter tests and asset hashes did not establish offline platform acceptance; a script import failure could also be hidden by a continue-on-error step.
 - **Change for the next planner**: Require retained native receipts for every target OS, inspect prerequisite steps, test redirected downloads against the politeness contract, and preserve receipt line endings before hashing committed evidence.
+
+## 2026-09-06 — repo
+- **Surprise**: A later native run repeated the macOS embeddings permission failure after passing matrices. The Portable Intelligence completion was reopened before merge.
+- **Change for the next planner**: Preserve failed receipts and require the final-head result; keep diagnostics sufficient to identify the failed operation.
