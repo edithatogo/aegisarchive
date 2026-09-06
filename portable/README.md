@@ -85,11 +85,14 @@ python3 portable/provision_native.py --verify-bundle /path/to/package --receipt 
 ```
 
 Download and checksum pinned runtimes (Linux, Windows, and Darwin archives)
-without running inference. Large GGUF files can be skipped by size; the receipt
-then records `models_complete: false`:
+without running inference. Each verified file gets a `.provenance.json` sidecar
+with source URL, licence, SHA-256, and byte size. Large GGUF files can be
+skipped by size; the receipt then records `models_complete: false`. Use
+`--require-complete` to fail closed unless every locked file verifies:
 
 ```sh
 python3 portable/provision_native.py --acquire /path/to/native-cache --receipt /path/to/acquisition.json --max-bytes 120000000
+python3 portable/provision_native.py --acquire /path/to/native-cache --receipt /path/to/acquisition.json --require-complete
 ```
 
 `--smoke-bundle` runs native qualification only after package integrity succeeds. A missing bundle writes `status: blocked` with `inference_claimed: false` and `smoke: not_run`.

@@ -126,6 +126,18 @@ def audit_cache(lock: dict, root: Path, selected: set) -> dict:
             "inference_claimed": False, "files": files}
 
 
+def write_provenance(destination: Path, payload: dict) -> Path:
+    """Write a sidecar receipt next to a verified file. Never claims inference."""
+    sidecar = destination.with_name(destination.name + ".provenance.json")
+    body = {"schema_version": 1, "kind": "locked_asset_provenance",
+            "inference_claimed": False}
+    body.update(payload)
+    if body.get("inference_claimed"):
+        raise ValueError("Provenance must not claim inference")
+    write_json(sidecar, body)
+    return sidecar
+
+
 def write_json(path: Path, payload: dict) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
@@ -305,6 +317,12 @@ def main(argv=None) -> int:
                 raise ValueError(f"Asset destination escapes output directory: {entry['path']}")
             result = fetch(entry, destination, offline=args.offline, attempts=args.attempts)
             receipt["files"].append({**entry, "status": result})
+            write_provenance(destination, {
+                "path": entry["path"], "url": entry["url"], "sha256": entry["sha256"],
+                "size_bytes": entry["size_bytes"], "license": model.get("license"),
+                "repo": model.get("repo"), "revision": model.get("revision"),
+                "status": result,
+            })
             print(f"{result}: {entry['path']}", flush=True)
     receipt["verified_at"] = datetime.datetime.now(datetime.timezone.utc).isoformat()
     write_json(root / "model-receipt.json", receipt)

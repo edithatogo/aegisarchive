@@ -4,9 +4,11 @@ The track remains **in progress** and is **not archive eligible**. T3 stays `[~]
 
 ## Issue #11 acquire session (2026-09-06)
 
-`--acquire` downloaded and SHA-256-verified 58 locked artefacts on a Darwin host, including Python and llama.cpp archives for Darwin, Linux, and Windows, Git/Bash sources, PortableGit, speech sources, Piper voice, selected wheels, lock-file licences, and sub-120MB models. Scout/General/Deep GGUF weights were skipped by `--max-bytes 120000000`. Receipt: [t3-locked-acquire.json](native-evidence/t3-locked-acquire.json) (`runtimes_complete: true`, `models_complete: false`, `inference_claimed: false`). This is checksum acquisition, not inference.
+Earlier `--acquire` with `--max-bytes 120000000` verified 58 locked artefacts on Darwin and size-skipped Scout/General/Deep GGUF weights. Receipt: [t3-locked-acquire.json](native-evidence/t3-locked-acquire.json).
 
-Hosted `portable-native.yml` now runs the same acquire job on `ubuntu-latest` and `windows-latest` for pull requests.
+A later Darwin `--acquire --require-complete` verified **61/61** locked files, including the three GGUF weight files, against `portable/model-lock.json`. Host: Darwin arm64. `runtimes_complete: true`, `models_complete: true`, `complete: true`, `inference_claimed: false`. Weight `fetch_result` values are `cached`: bytes were already present from a prior Darwin package cache and were re-hashed this session; this is not a fresh upstream download and is not native inference. Fail-closed empty-cache audit remains in [t3-empty-cache-audit.json](native-evidence/t3-empty-cache-audit.json). Receipts: [t3-locked-acquire-complete.json](native-evidence/t3-locked-acquire-complete.json), [t3-lock-cache-audit.json](native-evidence/t3-lock-cache-audit.json) (15/15 lock files verified). Linux/Windows native *execution* was not run.
+
+Hosted `portable-native.yml` still uses `--max-bytes 120000000` on `ubuntu-latest` and `windows-latest` for pull requests. That job is checksum acquisition of smaller pins, not full GGUF intake and not OS-matrix execution.
 
 ## T3 session (2026-09-06)
 
