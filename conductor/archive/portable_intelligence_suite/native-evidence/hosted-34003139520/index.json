@@ -1,0 +1,42 @@
+{
+  "run_url": "https://github.com/edithatogo/aegisarchive/actions/runs/34003139520",
+  "event": "pull_request",
+  "head_sha": "6e9753d5f458c675675539fc47b322ecb6b1fe9d",
+  "tested_merge_sha": "3a5ac20edadbbc76e8924f784c209dd91a63df8b",
+  "integrated_main_sha": "80864a0",
+  "retrieved_at": "2026-09-06T01:37:01Z",
+  "artifacts": [
+    {
+      "artifact_id": 9980366837,
+      "artifact_name": "full-native-windows-latest",
+      "github_archive_digest": "sha256:bc4c5129a68ec09a5c86e7b283e075ad317fe142fa7389cf0115f7ee4c3db652",
+      "receipt": "full-native-windows-latest.json",
+      "receipt_sha256": "a53b24a25c2024af68236c5a389a5ba48e0e244446bb5dc5031b49bc80335545",
+      "checks_passed": 14,
+      "machine": "AMD64"
+    },
+    {
+      "artifact_id": 9980246710,
+      "artifact_name": "full-native-ubuntu-latest",
+      "github_archive_digest": "sha256:113471d2259e4a80fc6bdd1294f7c519107d893e22b221e4e2f2afeb6b3f705d",
+      "receipt": "full-native-ubuntu-latest.json",
+      "receipt_sha256": "611b6dbd74ee6bcd0bbb70d2d19d0489dbef9d5a3b28519e0cfaf5bdfe705db4",
+      "checks_passed": 14,
+      "machine": "x86_64"
+    },
+    {
+      "artifact_id": 9980208894,
+      "artifact_name": "full-native-macos-14",
+      "github_archive_digest": "sha256:d7743b2440f114b548d047d872a0bb685d5dc606d1fd4e88a2b032842b92de81",
+      "receipt": "full-native-macos-14.json",
+      "receipt_sha256": "9f23575e8a7ecd665b0bf02e96b3a889de40e83bf209c86219cf045fbb6287e1",
+      "checks_passed": 14,
+      "machine": "arm64"
+    }
+  ],
+  "limitations": [
+    "Receipts are unmodified JSON extracted by ZIP CRC-checked reads from authenticated GitHub artifacts. Full archive digests are GitHub-reported, not independently recomputed.",
+    "Run tested the PR merge revision, not the later integrated main tree. PR 23 added acquisition provenance; PR 24 Bash-prefetch entrypoint fix remains under qualification.",
+    "No release or publication authorization is inferred."
+  ]
+}

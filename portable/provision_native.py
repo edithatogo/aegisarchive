@@ -223,6 +223,16 @@ def retain_linux_libraries(root, receipts):
                      'relocation':'ELF RUNPATH=$ORIGIN; non-glibc shared libraries copied'})
 
 
+# Darwin treats binding as a distinct sandbox operation. Permit the local
+# server's bind explicitly while retaining loopback-only traffic rules.
+DARWIN_NETWORK_POLICY = (
+    '(version 1)(allow default)(deny network*)'
+    '(allow network-bind (local ip "localhost:*"))'
+    '(allow network-inbound (local ip "localhost:*"))'
+    '(allow network-outbound (remote ip "localhost:*"))'
+)
+
+
 def qualify(bundle, receipt, work, system):
     python=bundle/'runtime/python'/('python.exe' if system=='Windows' else 'bin/python3')
     command=[str(python),'-I','-B','-X','utf8',str(bundle/'app/portable/native_qualification.py'),str(bundle),str(receipt)]
@@ -241,7 +251,7 @@ def qualify(bundle, receipt, work, system):
         policy_evidence['rule_count']=len(policy_evidence['executables'])
     policy_receipt.write_text(json.dumps(policy_evidence,indent=2)+'\n')
     if system=='Darwin':
-        policy='(version 1)(allow default)(deny network*)(allow network-inbound (local ip "localhost:*"))(allow network-outbound (remote ip "localhost:*"))'
+        policy=DARWIN_NETWORK_POLICY
         policy_evidence['policy']=policy;policy_receipt.write_text(json.dumps(policy_evidence,indent=2)+'\n')
         subprocess.run(['/usr/bin/sandbox-exec','-p',policy,*command],env=env,check=True,timeout=3000)
     elif system=='Linux':

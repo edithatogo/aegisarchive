@@ -7,8 +7,9 @@ import tempfile
 import time
 from .intelligence import LocalTools, _vector
 
-# Darwin sandbox-exec accepts only "*" or "localhost" in network address filters.
-LOOPBACK_HOST = 'localhost'
+# Use a numeric loopback address for sockets and the server. Darwin sandbox
+# policy syntax still uses "localhost"; socket addresses need not use DNS.
+LOOPBACK_HOST = '127.0.0.1'
 
 
 class GGUFEmbedder:
@@ -35,7 +36,10 @@ class GGUFEmbedder:
         try:
             while time.monotonic() < deadline:
                 if self.process.poll() is not None:
-                    raise RuntimeError('Embedding server exited before readiness')
+                    self.log.seek(0)
+                    detail = self.log.read()[-6000:].decode('utf-8', errors='replace')
+                    raise RuntimeError(
+                        f'Embedding server exited before readiness (code {self.process.returncode}): {detail}')
                 try:
                     self._request('GET', '/health')
                     break

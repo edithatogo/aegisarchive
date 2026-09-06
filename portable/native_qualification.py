@@ -17,6 +17,7 @@ import socket
 import subprocess
 import sys
 import tempfile
+import traceback
 import time
 import wave
 
@@ -64,7 +65,9 @@ def main():
             report['checks'][name] = {'status': 'passed', 'result': result}
             return result
         except Exception as error:
-            report['checks'][name] = {'status': 'failed', 'error': str(error)}
+            report['checks'][name] = {'status': 'failed', 'error': str(error),
+                                      'error_type': type(error).__name__,
+                                      'traceback': traceback.format_exc(limit=12)}
             if isinstance(error, (subprocess.CalledProcessError, subprocess.TimeoutExpired)):
                 for field in ('stdout', 'stderr'):
                     value = getattr(error, field, None)
@@ -106,7 +109,7 @@ def main():
                 return {'generated_output': output[-2000:]}
             record(tier, generate)
         text = 'The archive is available offline. All evidence is stored locally.'
-        record('synthesis', lambda: str(tools.speak(text, data / 'speech.wav')))
+        record('synthesis', lambda: str(tools.speak(text, data / 'speech.wav', seed=42)))
         def transcribe():
             resample(data / 'speech.wav', data / 'speech16.wav')
             output = tools.transcribe(data / 'speech16.wav')

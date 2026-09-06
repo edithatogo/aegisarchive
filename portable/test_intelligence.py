@@ -72,9 +72,11 @@ class ToolTests(unittest.TestCase):
             target = root / 'output.wav'
             with patch('portable.intelligence.run_tool',
                        side_effect=lambda *a, **k: target.write_bytes(b'0' * 44)) as run:
-                LocalTools(manifest).speak('archive', target)
+                LocalTools(manifest).speak('archive', target, seed=42)
             self.assertEqual(run.call_args.args[0], root / 'python')
             self.assertEqual(run.call_args.args[1][:5], ['-X', 'utf8', '-I', '-B', root / 'piper_entry.py'])
+            arguments = run.call_args.args[1]
+            self.assertEqual(arguments[arguments.index('--seed') + 1], 42)
 
     def test_real_subprocess_literal_argument_and_error(self):
         literal = '$(touch should-not-exist); "quoted"'
@@ -139,8 +141,49 @@ class QualificationContractTests(unittest.TestCase):
 
 
 class EmbedderLoopbackTests(unittest.TestCase):
-    def test_embedder_binds_sandbox_localhost(self):
-        self.assertEqual(LOOPBACK_HOST, "localhost")
+    @unittest.skipUnless(sys.platform == 'darwin', 'Darwin sandbox integration')
+    def test_numeric_http_loopback_works_while_external_egress_is_denied(self):
+        import subprocess
+        import textwrap
+        from portable.provision_native import DARWIN_NETWORK_POLICY
+        policy = DARWIN_NETWORK_POLICY
+        script = textwrap.dedent("""\
+            import errno, http.server, socket, threading
+            from portable.gguf_embeddings import GGUFEmbedder, LOOPBACK_HOST
+            class Handler(http.server.BaseHTTPRequestHandler):
+                def do_GET(self):
+                    self.send_response(200)
+                    self.end_headers()
+                    self.wfile.write(b'{"status":"ok"}')
+                def log_message(self, *args):
+                    pass
+            server = http.server.HTTPServer((LOOPBACK_HOST, 0), Handler)
+            threading.Thread(target=server.serve_forever, daemon=True).start()
+            client = GGUFEmbedder.__new__(GGUFEmbedder)
+            client.port = server.server_port
+            try:
+                for _ in range(20):
+                    assert client._request('GET', '/health') == {'status': 'ok'}
+                with socket.socket() as probe:
+                    probe.settimeout(1)
+                    try:
+                        probe.connect(('1.1.1.1', 443))
+                    except OSError as error:
+                        assert error.errno in (errno.EPERM, errno.EACCES, errno.ENETUNREACH)
+                    else:
+                        raise AssertionError('External egress was permitted')
+            finally:
+                server.shutdown()
+                server.server_close()
+            """)
+        result = subprocess.run(['/usr/bin/sandbox-exec', '-p', policy,
+                                 sys.executable, '-B', '-c', script],
+                                cwd=Path(__file__).resolve().parents[1],
+                                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_embedder_binds_numeric_loopback(self):
+        self.assertEqual(LOOPBACK_HOST, "127.0.0.1")
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name in ("llama_server", "bge"):
@@ -151,11 +194,12 @@ class EmbedderLoopbackTests(unittest.TestCase):
             manifest.write_text(json.dumps({"assets": assets}))
             with patch("portable.gguf_embeddings.subprocess.Popen") as popen:
                 popen.return_value.poll.return_value = 1
-                with self.assertRaises(RuntimeError):
+                popen.return_value.returncode = 17
+                with self.assertRaisesRegex(RuntimeError, "code 17"):
                     GGUFEmbedder(manifest, startup_timeout=5)
                 command = popen.call_args[0][0]
-                self.assertEqual(command[command.index("--host") + 1], "localhost")
-                self.assertNotIn("127.0.0.1", command)
+                self.assertEqual(command[command.index("--host") + 1], "127.0.0.1")
+                self.assertNotIn("localhost", command)
 
 
 if __name__ == "__main__":

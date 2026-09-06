@@ -1,0 +1,10 @@
+{
+  "original_sha256": "ab79969fd0728340fe1b0aad1b318fdc8e359885d0db820a42f6789bb6b4dfa8",
+  "original_file": "evidence.pre-repair-20260906.jsonl",
+  "valid_prefix_entries": 1,
+  "first_error": {
+    "line": 2,
+    "error": "invalid kind; entry hash mismatch"
+  },
+  "method": "Preserve original file; retain validated prefix; append recovery provenance. No historical authorization or completion claim is re-attested."
+}

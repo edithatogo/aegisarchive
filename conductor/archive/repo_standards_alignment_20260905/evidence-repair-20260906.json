@@ -1,0 +1,10 @@
+{
+  "original_sha256": "fd85d37fd88cbb71433120484a201ff92ef0626537b01b3ca50df075a52860d0",
+  "original_file": "evidence.pre-repair-20260906.jsonl",
+  "valid_prefix_entries": 3,
+  "first_error": {
+    "line": 4,
+    "error": "Expecting value: line 2 column 1 (char 1)"
+  },
+  "method": "Preserve original file; retain validated prefix; append recovery provenance. No historical authorization or completion claim is re-attested."
+}

@@ -1,0 +1,10 @@
+{
+  "original_sha256": "3f0d095c95e309210e00f2740c49e80458e5d44c9506fa445b579d26bed2b03d",
+  "original_file": "evidence.pre-repair-20260906.jsonl",
+  "valid_prefix_entries": 2,
+  "first_error": {
+    "line": 3,
+    "error": "invalid kind; entry hash mismatch; command argv must be a string array; invalid artifact path or SHA-256; invalid artifact path or SHA-256; invalid artifact path or SHA-256; invalid artifact path or SHA-256"
+  },
+  "method": "Preserve original file; retain validated prefix; append recovery provenance. No historical authorization or completion claim is re-attested."
+}

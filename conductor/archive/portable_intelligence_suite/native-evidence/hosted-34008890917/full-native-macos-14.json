@@ -1,0 +1,140 @@
+{
+  "platform": "macOS-14.8.9-arm64-arm-64bit",
+  "machine": "arm64",
+  "python": "/Users/runner/work/_temp/aegis-full-native/relocated package with spaces/runtime/python/bin/python3",
+  "bundle": "/Users/runner/work/_temp/aegis-full-native/relocated package with spaces",
+  "checks": {
+    "external_egress_denied": {
+      "status": "passed",
+      "result": {
+        "blocked_errno": 1
+      },
+      "seconds": 0.0013873749999220308
+    },
+    "bundled_python": {
+      "status": "passed",
+      "result": "/Users/runner/work/_temp/aegis-full-native/relocated package with spaces/runtime/python/bin/python3",
+      "seconds": 0.00021887499997319537
+    },
+    "integrity": {
+      "status": "passed",
+      "result": {
+        "immutable_files": 5736
+      },
+      "seconds": 17.425332457999957
+    },
+    "scout": {
+      "status": "passed",
+      "result": {
+        "generated_output": "\n\nLoading model... \n\n\u2584\u2584 \u2584\u2584\n\u2588\u2588 \u2588\u2588\n\u2588\u2588 \u2588\u2588  \u2580\u2580\u2588\u2584 \u2588\u2588\u2588\u2584\u2588\u2588\u2588\u2584  \u2580\u2580\u2588\u2584    \u2584\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2584 \u2588\u2588\u2588\u2588\u2584\n\u2588\u2588 \u2588\u2588 \u2584\u2588\u2580\u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2584\u2588\u2580\u2588\u2588    \u2588\u2588    \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588\n\u2588\u2588 \u2588\u2588 \u2580\u2588\u2584\u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2580\u2588\u2584\u2588\u2588 \u2588\u2588 \u2580\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2580 \u2588\u2588\u2588\u2588\u2580\n                                    \u2588\u2588    \u2588\u2588\n                                    \u2580\u2580    \u2580\u2580\n\nbuild      : b10819-6a1a922d2\nmodel      : /Users/runner/work/_temp/aegis-full-native/relocated package with spaces/runtime/scout/qwen2.5-1.5b-instruct-q4_k_m.gguf\nftype      : Q4_K - Medium\nmodalities : text\n\navailable commands:\n  /exit or Ctrl+C     stop or exit\n  /regen              regenerate the last response\n  /clear              clear the chat history\n  /read <file>        add a text file\n  /glob <pattern>     add text files using globbing pattern\n\n\n\n> Reply with the word ARCHIVE only. /no_think\nARCHIVE\n\n[ Prompt: 19.4 t/s | Generation: 16.8 t/s ]\n\n\nExiting...\n"
+      },
+      "seconds": 60.604523750000226
+    },
+    "general": {
+      "status": "passed",
+      "result": {
+        "generated_output": "\n\nLoading model... \n\n\u2584\u2584 \u2584\u2584\n\u2588\u2588 \u2588\u2588\n\u2588\u2588 \u2588\u2588  \u2580\u2580\u2588\u2584 \u2588\u2588\u2588\u2584\u2588\u2588\u2588\u2584  \u2580\u2580\u2588\u2584    \u2584\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2584 \u2588\u2588\u2588\u2588\u2584\n\u2588\u2588 \u2588\u2588 \u2584\u2588\u2580\u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2584\u2588\u2580\u2588\u2588    \u2588\u2588    \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588\n\u2588\u2588 \u2588\u2588 \u2580\u2588\u2584\u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2580\u2588\u2584\u2588\u2588 \u2588\u2588 \u2580\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2580 \u2588\u2588\u2588\u2588\u2580\n                                    \u2588\u2588    \u2588\u2588\n                                    \u2580\u2580    \u2580\u2580\n\nbuild      : b10819-6a1a922d2\nmodel      : /Users/runner/work/_temp/aegis-full-native/relocated package with spaces/runtime/general/Qwen3-4B-Q4_K_M.gguf\nftype      : Q4_K - Medium\nmodalities : text\n\navailable commands:\n  /exit or Ctrl+C     stop or exit\n  /regen              regenerate the last response\n  /clear              clear the chat history\n  /read <file>        add a text file\n  /glob <pattern>     add text files using globbing pattern\n\n\n\n> Reply with the word ARCHIVE only. /no_think\nARCHIVE\n\n[ Prompt: 11.3 t/s | Generation: 6.7 t/s ]\n\n\nExiting...\n"
+      },
+      "seconds": 11.243537667000055
+    },
+    "deep": {
+      "status": "passed",
+      "result": {
+        "generated_output": "\n\nLoading model... \n\n\u2584\u2584 \u2584\u2584\n\u2588\u2588 \u2588\u2588\n\u2588\u2588 \u2588\u2588  \u2580\u2580\u2588\u2584 \u2588\u2588\u2588\u2584\u2588\u2588\u2588\u2584  \u2580\u2580\u2588\u2584    \u2584\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2584 \u2588\u2588\u2588\u2588\u2584\n\u2588\u2588 \u2588\u2588 \u2584\u2588\u2580\u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2584\u2588\u2580\u2588\u2588    \u2588\u2588    \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588\n\u2588\u2588 \u2588\u2588 \u2580\u2588\u2584\u2588\u2588 \u2588\u2588 \u2588\u2588 \u2588\u2588 \u2580\u2588\u2584\u2588\u2588 \u2588\u2588 \u2580\u2588\u2588\u2588\u2588 \u2588\u2588\u2588\u2588\u2580 \u2588\u2588\u2588\u2588\u2580\n                                    \u2588\u2588    \u2588\u2588\n                                    \u2580\u2580    \u2580\u2580\n\nbuild      : b10819-6a1a922d2\nmodel      : /Users/runner/work/_temp/aegis-full-native/relocated package with spaces/runtime/deep/Qwen3-8B-Q4_K_M.gguf\nftype      : Q4_K - Medium\nmodalities : text\n\navailable commands:\n  /exit or Ctrl+C     stop or exit\n  /regen              regenerate the last response\n  /clear              clear the chat history\n  /read <file>        add a text file\n  /glob <pattern>     add text files using globbing pattern\n\n\n\n> Reply with the word ARCHIVE only. /no_think\nARCHIVE\n\n[ Prompt: 3.0 t/s | Generation: 2.8 t/s ]\n\n\nExiting...\n"
+      },
+      "seconds": 51.6390759169999
+    },
+    "synthesis": {
+      "status": "passed",
+      "result": "/Users/runner/work/_temp/aegis-full-native/relocated package with spaces/data/qualification-1788665645244217000/speech.wav",
+      "seconds": 3.2665883330000725
+    },
+    "transcription": {
+      "status": "passed",
+      "result": "\n The archive is available offline. All evidence is stored locally.",
+      "seconds": 0.7805429170002753
+    },
+    "embeddings_hybrid_graph": {
+      "status": "passed",
+      "result": {
+        "dimensions": 384,
+        "results": [
+          {
+            "id": "water",
+            "text": "The archive preserves water reports.",
+            "score": 0.03278688524590164
+          },
+          {
+            "id": "trees",
+            "text": "The forest contains trees.",
+            "score": 0.016129032258064516
+          }
+        ],
+        "semantic_only": [
+          {
+            "id": "water",
+            "text": "The archive preserves water reports.",
+            "score": 0.01639344262295082
+          },
+          {
+            "id": "trees",
+            "text": "The forest contains trees.",
+            "score": 0.016129032258064516
+          }
+        ],
+        "graph": [
+          {
+            "source": "archive",
+            "relation": "preserves",
+            "target": "water reports",
+            "document": "water"
+          }
+        ]
+      },
+      "seconds": 46.32454116700001
+    },
+    "git": {
+      "status": "passed",
+      "result": {
+        "version": "git version 2.55.0\n",
+        "commit": "ae98075be73c91f55ed33e5a4e22dd00cf72a6f7"
+      },
+      "seconds": 0.23272999999971944
+    },
+    "console": {
+      "status": "passed",
+      "result": "ARCHIVE",
+      "seconds": 0.010205250000126398
+    },
+    "relocated_launcher": {
+      "status": "passed",
+      "result": "usage: launch.py [-h] [--port PORT] [--no-browser] [--profile PROFILE]\n                 [--idle-timeout IDLE_TIMEOUT] [--verify]\n\nAegisArchive Web Console Launcher\n\noptions:\n  -h, --help            show this help message and exit\n  --port PORT           Initial port to bind (default: 8000)\n  --no-browser          Do not automatically open the default web browser\n  --profile PROFILE     Optional path to preset profile JSON to load\n  --idle-timeout IDLE_TIMEOUT\n                        Minutes of inactivity before automatic shutdown (0 =\n                        disabled)\n  --verify              Verify the bundle checksum manifest before starting\n                        (fail-closed)\n",
+      "seconds": 0.5107384579996506
+    },
+    "relocated_station": {
+      "status": "passed",
+      "result": {
+        "station": {
+          "station": "aegisarchive",
+          "version": "1.1",
+          "python": "3.12.14",
+          "platform": "Darwin",
+          "port": 49642,
+          "started_utc": "2026-09-06T03:37:00Z",
+          "idle_timeout_min": 0.1
+        },
+        "index_sha256": "c190908136d9fd0082536b1e131262218b9cdcb48a9a7b7249d662ac793811b1",
+        "idle_shutdown": "passed"
+      },
+      "seconds": 10.914302542000314
+    },
+    "integrity_after": {
+      "status": "passed",
+      "result": {
+        "immutable_files": 5736
+      },
+      "seconds": 22.311852958000145
+    }
+  },
+  "status": "passed"
+}
