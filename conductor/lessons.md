@@ -108,3 +108,7 @@ Maintenance rules:
 ## 2026-09-07 — mirror_capture_20260906
 - **Surprise**: Real browser Fetch makes manual redirects opaque even when the same redirect is readable in a mocked response or the CLI. Counting attempted requests can therefore hide missing archive bytes.
 - **Change for the next planner**: freeze URL/hash fixtures and retain a real-browser negative case alongside deterministic tests. Scope completeness to captured resource outcomes and explicitly record opaque, excluded and pending entries.
+
+## 2026-09-07 — offline_navigation_20260906
+- **Surprise**: A browser test package can be installed while its bundled browser is absent or mismatched with the local runtime.
+- **Change for the next planner**: pin the test package, explicitly select a verified browser executable in the test configuration, and exercise disconnected requests before treating browser acceptance as complete.

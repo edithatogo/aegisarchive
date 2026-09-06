@@ -1,6 +1,6 @@
 # Plan: Safe offline page navigation and assets
 
-## Status: IN PROGRESS
+## Status: COMPLETED (2026-09-07 — archive-local navigation and disconnected replay verified)
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
@@ -65,3 +65,5 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`; `python3 scripts/gate.py test`; full Conductor validation.
   - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.
+
+- [x] T8 Final acceptance and claim reconciliation. (AC1–AC3) — commit a452f1d
