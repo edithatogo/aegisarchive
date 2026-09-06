@@ -396,6 +396,24 @@ def main():
             requeue(url, depth, retries)
 
     writer.close()
+    resources = sorted(outcomes.values(), key=lambda item: item['url'])
+    counts = {state: sum(item['state'] == state for item in resources) for state in ('captured','excluded','failed','pending','unsupported')}
+    def file_digest(path):
+        digest = hashlib.sha256()
+        with open(path, 'rb') as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(chunk)
+        return digest.hexdigest()
+    receipt = {'schema_version':1, 'extractor_version':DISCOVERY_VERSION,
+               'scope':'discovered_static_resource_graph', 'complete':bool(resources) and counts['captured'] == len(resources) and not limitations,
+               'counts':counts, 'discovered':len(resources), 'resources':resources,
+               'limitations':limitations, 'robots_policy':policy,
+               'archives':{'warc':{'file':os.path.basename(warc_path),'sha256':file_digest(warc_path)},
+                           'cdx':{'file':os.path.basename(writer.cdx_filepath),'sha256':file_digest(writer.cdx_filepath)}}}
+    receipt_path = warc_path.replace('.warc', '.coverage.json')
+    with open(receipt_path, 'w', encoding='utf-8') as stream:
+        json.dump(receipt, stream, indent=2); stream.write('\n')
+    print('[Coverage] ' + ('COMPLETE' if receipt['complete'] else 'INCOMPLETE') + f' static graph; receipt: {receipt_path}')
     captured_count = sum(item['state'] == 'captured' for item in outcomes.values())
     print(f'[AegisArchive CLI] Captured {captured_count} responses to {warc_path}')
 

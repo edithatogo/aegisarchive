@@ -40,3 +40,28 @@ test('browser engine captures the frozen graph including CSS and readable redire
     assert.equal(hits.length,9);
   } finally {global.fetch = original;}
 });
+
+test('coverage distinguishes missing, excluded and opaque resources', async () => {
+  const original = global.fetch;
+  const crawler = new CoreCrawler({target:{allowed_domains:['mirror.test'],seed_urls:{tier_1_core:['http://mirror.test/']},max_depth:2},politeness:{robots_policy:'ignore_authorised'},archival:{enable_opfs_streaming:false}});
+  crawler.politeness.acquirePermission = async () => ({aborted:false});
+  global.fetch = async url => {
+    if (url.endsWith('/')) return new Response('<img src=/missing><img src=https://outside.invalid/x><a href=/opaque>o</a>',{headers:{'content-type':'text/html'}});
+    if (url.endsWith('/opaque')) return {type:'opaqueredirect',status:0};
+    return new Response('',{status:404});
+  };
+  try {
+    await crawler.start();
+    const r = await crawler.getFinalResults();
+    assert.equal(r.coverage.complete,false);
+    assert.deepEqual(r.coverage.counts,{captured:1,excluded:1,failed:1,pending:0,unsupported:1});
+    assert.equal(r.coverage.archives.warc.sha256,createHash('sha256').update(Buffer.from(await r.warcBlob.arrayBuffer())).digest('hex'));
+  } finally {global.fetch = original;}
+});
+
+test('no seeds and page ceilings never report complete', async () => {
+  const empty = new CoreCrawler({target:{allowed_domains:['mirror.test']},politeness:{robots_policy:'ignore_authorised'}});
+  assert.equal((await empty.getFinalResults()).coverage.complete,false);
+  empty.enqueueReference('http://mirror.test/a',null,0,1);
+  assert.equal((await empty.getFinalResults()).coverage.counts.pending,1);
+});

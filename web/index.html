@@ -491,6 +491,10 @@
     function handleComplete(results) {
       finalResults = results;
       currentReportMd = SelfReflectionEngine.generateMarkdownReport(results.selfReflection, activeProfile);
+      if (results.coverage) {
+        currentReportMd += '\n\n## Static capture coverage\n\n```json\n' + JSON.stringify(results.coverage, null, 2) + '\n```\n';
+        log(`[Coverage] ${results.coverage.complete ? 'COMPLETE' : 'INCOMPLETE'} static graph: ${results.coverage.counts.captured}/${results.coverage.discovered} responses captured. Export the report for hashes and omissions.`);
+      }
       log(`[AegisArchive] Archival session finalized. Output: ${results.warcStats.recordCount} WARC records (${(results.warcStats.totalBytes / 1024).toFixed(1)} KB).`);
     }
 

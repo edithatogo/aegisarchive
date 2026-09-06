@@ -61,3 +61,5 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
 ## Integration refinements
 
 T4 also owns `tests/test_cli_review.py`: the existing exact request-list expectation omitted robots.txt because the old CLI lacked policy fetching. The regression now requires the robots request before the same redirect sequence; no assertion about scope or bytes is removed. T5 also owns `web/index.html` to load the new discovery module before the crawler. This is required runtime wiring, not a new UI feature.
+
+T6 also owns `web/index.html` to expose coverage JSON in the existing downloadable diagnostic report. Chrome UI acceptance observed 8/8 readable static responses complete, and a separate redirect fixture explicitly incomplete because manual redirects are opaque. No cross-origin or authenticated browser capability is claimed.

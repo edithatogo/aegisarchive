@@ -53,6 +53,10 @@ class CliCaptureContract(unittest.TestCase):
                 captured = {urlsplit(l.split()[2]).path + ('?' + urlsplit(l.split()[2]).query if urlsplit(l.split()[2]).query else ''):l.split()[5] for l in lines}
                 self.assertEqual(captured,{x['path']:x['sha256'] for x in MANIFEST['resources']})
                 self.assertTrue(all(hits.count(x)==1 for x in routes), hits)
+                receipt = json.loads(next(Path(td).glob('*.coverage.json')).read_text())
+                self.assertTrue(receipt['complete'])
+                self.assertEqual(receipt['counts']['captured'],9)
+                self.assertEqual(receipt['archives']['warc']['sha256'],hashlib.sha256(next(Path(td).glob('*.warc')).read_bytes()).hexdigest())
                 warc = next(Path(td).glob('*.warc'))
                 check = subprocess.run([sys.executable,'cli/warc_verify.py',str(warc)],capture_output=True)
                 self.assertEqual(check.returncode,0,check.stderr)

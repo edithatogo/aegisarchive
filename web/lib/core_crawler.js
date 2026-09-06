@@ -178,10 +178,7 @@
       const seeds = this.targetConfig.seed_urls || {};
       const addTier = (urls, tier) => {
         for (const raw of urls || []) {
-          const canon = this.canonicalizeUrl(raw);
-          if (canon && this.isUrlInScope(canon) && !this.visited.has(canon)) {
-            this.queue.push({ url: canon, tier, depth: 0, parentUrl: 'root' });
-          }
+          this.enqueueReference(raw, null, 0, tier);
         }
       };
 
@@ -262,6 +259,7 @@
           this.queue.unshift(task);
           return;
         }
+        this.resourceOutcomes.set(url,{url,state:'excluded',reason:'robots_policy'});
         this.auditLedger.push({ url, status: -1, mimeType: 'robots_disallow', latency_ms: 0, size_bytes: 0, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] Skipped (Disallow): ${url}`);
         return;
@@ -292,6 +290,7 @@
         }
         const isRedirect = [301,302,303,307,308].includes(resp.status);
         if (!resp.ok && !isRedirect) {
+          this.resourceOutcomes.set(url,{url,state:'failed',reason:'http_error',status:resp.status});
           const retryAfter = resp.headers.get('retry-after');
           this.politeness.recordFailure(url, resp.status, retryAfter);
           this.auditLedger.push({
@@ -320,6 +319,7 @@
         // Append to WARC / CDX writer (with automatic SHA-256 deduplication revisit records)
         const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: { method: 'GET', headers: REQUEST_HEADERS } });
 
+        this.resourceOutcomes.set(url,{url,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length});
         this.auditLedger.push({
           url,
           status: resp.status,
@@ -362,6 +362,7 @@
         }
 
       } catch (err) {
+        this.resourceOutcomes.set(url,{url,state:'failed',reason:'network_or_decode_error'});
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
         this.politeness.recordFailure(url, 0, null);
@@ -452,6 +453,7 @@
         return false;
       }
       this.visited.delete(task.url);
+      this.resourceOutcomes.set(task.url,{url:task.url,state:'pending',reason:'retry'});
       this.queue.push({ ...task, retries });
       this.callbacks.onLog(`[Retry ${retries}/${this.maxRetries}] Re-queued ${task.url}`);
       return true;
@@ -527,6 +529,7 @@
           this.canonicalizeUrl(task.url) === task.url && this.isUrlInScope(task.url) &&
           Number.isInteger(task.depth) && task.depth >= 0 && Number.isInteger(task.tier) && task.tier >= 1)) return false;
       if (!cp.visited.every(url => typeof url === 'string' && this.isUrlInScope(url))) return false;
+      this.discoveryLimitations.push({source:null,reason:'frontier_checkpoint_does_not_restore_archive_bytes'});
       this.queue = cp.queue.slice();
       this.visited = new Set(cp.visited || []);
       return true;
@@ -552,9 +555,19 @@
         endTime: this.endTime
       }, this.profile);
 
+      const warcBlob = await this.warc.getWarcBlob();
+      const cdxBlob = this.warc.getCdxBlob();
+      const hashBlob = async blob => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), b => b.toString(16).padStart(2,'0')).join('');
+      const resources = [...this.resourceOutcomes.values()].sort((a,b) => a.url.localeCompare(b.url));
+      const counts = Object.fromEntries(['captured','excluded','failed','pending','unsupported'].map(state => [state,resources.filter(x => x.state === state).length]));
+      const coverage = {schema_version:1,extractor_version:MirrorResources.VERSION,scope:'discovered_static_resource_graph',
+        complete:resources.length > 0 && counts.captured === resources.length && this.discoveryLimitations.length === 0,
+        counts,discovered:resources.length,resources,limitations:this.discoveryLimitations,robots_policy:this.robotsPolicy,
+        archives:{warc:{sha256:await hashBlob(warcBlob)},cdx:{sha256:await hashBlob(cdxBlob)}}};
       return {
-        warcBlob: await this.warc.getWarcBlob(),
-        cdxBlob: this.warc.getCdxBlob(),
+        coverage,
+        warcBlob,
+        cdxBlob,
         cdxText: this.warc.getCdxContent(),
         warcStats: this.warc.getStats(),
         documents: this.documents,
