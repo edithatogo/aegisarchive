@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "implementation_revision": "495c0be20fe5528cac1974b498a766d86af54366",
+  "result": "passed",
+  "commands": [
+    {
+      "command": "python3 -m unittest tests.test_mirror_capture",
+      "exit_code": 0,
+      "tests": 4
+    },
+    {
+      "command": "node --test tests/js/mirror_capture.test.js",
+      "exit_code": 0,
+      "tests": 5
+    },
+    {
+      "command": "python3 scripts/gate.py test",
+      "exit_code": 0,
+      "python_tests": 52,
+      "station_tests": 18,
+      "javascript_tests": 41
+    },
+    {
+      "command": "python3 scripts/gate.py leak",
+      "exit_code": 0
+    },
+    {
+      "command": "Python compilation, three CLI --help entry points and profile required-field schema check",
+      "exit_code": 0
+    },
+    {
+      "command": "validate_conductor.py --root . --mode full --json",
+      "exit_code": 0,
+      "errors": 0,
+      "warnings": 0
+    }
+  ],
+  "browser_acceptance": {
+    "environment": "local macOS Chrome, same-origin loopback synthetic server",
+    "readable_variant": {
+      "captured": 8,
+      "discovered": 8,
+      "complete": true
+    },
+    "opaque_redirect_variant": {
+      "captured": 9,
+      "discovered": 10,
+      "unsupported": 1,
+      "complete": false
+    }
+  },
+  "external_acceptance": "Windows and broad mirroring qualification are owned by mirroring_platform_acceptance_20260906, not claimed by this track."
+}

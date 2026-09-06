@@ -13,13 +13,13 @@
  */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
-    define([], factory);
+    define(['./mirror_resources'], factory);
   } else if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./mirror_resources.js'));
   } else {
-    root.CoreCrawler = factory();
+    root.CoreCrawler = factory(root.MirrorResources);
   }
-}(typeof self !== 'undefined' ? self : this, function () {
+}(typeof self !== 'undefined' ? self : this, function (MirrorResources) {
 
   const TRACKING_PARAMS = new Set([
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
@@ -55,6 +55,8 @@
       this.queue = [];       // [{ url, tier, depth, parentUrl, retries }]
       this.visited = new Set();
       this.documents = [];   // [{ url, title, mimeType, size, hash, date }]
+      this.discoveryLimitations = [];
+      this.resourceOutcomes = new Map();
       this.auditLedger = []; // [{ url, status, mimeType, latency_ms, size_bytes, timestamp }]
 
       // Submodules
@@ -75,8 +77,8 @@
       this.assetExtensions = new Set((this.targetConfig.asset_extensions || [
         '.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.zip'
       ]).map(ext => ext.toLowerCase()));
-      this.maxDepth = this.targetConfig.max_depth || 5;
-      this.maxPages = this.targetConfig.max_pages || 5000;
+      this.maxDepth = this.targetConfig.max_depth ?? 5;
+      this.maxPages = this.targetConfig.max_pages ?? 5000;
       this.maxRetries = 3;
 
       // robots.txt (D8): 'respect' (default) or 'ignore_authorised'
@@ -92,6 +94,7 @@
       try {
         const u = baseUrl ? new URL(rawUrl, baseUrl) : new URL(rawUrl);
         if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+        if (u.username || u.password) return null;
 
         // Clean tracking parameters
         const searchParams = new URLSearchParams(u.search);
@@ -175,10 +178,7 @@
       const seeds = this.targetConfig.seed_urls || {};
       const addTier = (urls, tier) => {
         for (const raw of urls || []) {
-          const canon = this.canonicalizeUrl(raw);
-          if (canon && this.isUrlInScope(canon) && !this.visited.has(canon)) {
-            this.queue.push({ url: canon, tier, depth: 0, parentUrl: 'root' });
-          }
+          this.enqueueReference(raw, null, 0, tier);
         }
       };
 
@@ -259,6 +259,7 @@
           this.queue.unshift(task);
           return;
         }
+        this.resourceOutcomes.set(url,{url,state:'excluded',reason:'robots_policy'});
         this.auditLedger.push({ url, status: -1, mimeType: 'robots_disallow', latency_ms: 0, size_bytes: 0, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] Skipped (Disallow): ${url}`);
         return;
@@ -282,7 +283,14 @@
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
 
-        if (!resp.ok) {
+        if (resp.type === 'opaque' || resp.type === 'opaqueredirect' || resp.status === 0) {
+          this.discoveryLimitations.push({source:url, reason:'unreadable_response_or_redirect'});
+          this.resourceOutcomes.set(url, {url,state:'unsupported',reason:'unreadable_response_or_redirect'});
+          return;
+        }
+        const isRedirect = [301,302,303,307,308].includes(resp.status);
+        if (!resp.ok && !isRedirect) {
+          this.resourceOutcomes.set(url,{url,state:'failed',reason:'http_error',status:resp.status});
           const retryAfter = resp.headers.get('retry-after');
           this.politeness.recordFailure(url, resp.status, retryAfter);
           this.auditLedger.push({
@@ -301,7 +309,8 @@
         this.politeness.recordSuccess(url, latencyMs);
 
         const contentType = resp.headers.get('content-type') || '';
-        const isHtml = contentType.includes('text/html');
+        const mime = contentType.split(';')[0].trim().toLowerCase();
+        const isHtml = ['text/html','application/xhtml+xml'].includes(mime);
         const isAsset = this.isAssetUrl(url) || !isHtml;
 
         const arrayBuffer = await resp.arrayBuffer();
@@ -310,6 +319,7 @@
         // Append to WARC / CDX writer (with automatic SHA-256 deduplication revisit records)
         const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: { method: 'GET', headers: REQUEST_HEADERS } });
 
+        this.resourceOutcomes.set(url,{url,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length});
         this.auditLedger.push({
           url,
           status: resp.status,
@@ -335,13 +345,24 @@
           this.callbacks.onDocumentFound(docEntry);
         }
 
-        // If HTML and within depth limit, parse links for BFS
-        if (isHtml && depth < this.maxDepth) {
-          const htmlText = new TextDecoder('utf-8').decode(uint8);
-          this.extractLinks(htmlText, url, depth + 1, tier);
+        if (isRedirect) {
+          const location = resp.headers.get('location');
+          if (location) this.enqueueReference(location, url, depth, tier);
+          else this.discoveryLimitations.push({source:url,reason:'redirect_without_location'});
+        } else if (isHtml || mime === 'text/css') {
+          const charset = /charset\s*=\s*["']?([^;\s"']+)/i.exec(contentType)?.[1] || 'utf-8';
+          try {
+            const text = new TextDecoder(charset, {fatal:true}).decode(uint8);
+            const found = MirrorResources.discover(text, contentType, url);
+            this.discoveryLimitations.push(...found.unsupported.map(reason => ({source:url,reason})));
+            for (const reference of found.resources) this.enqueueReference(reference.url, url, depth + 1, tier);
+          } catch (_) {
+            this.discoveryLimitations.push({source:url,reason:'unsupported_or_invalid_charset'});
+          }
         }
 
       } catch (err) {
+        this.resourceOutcomes.set(url,{url,state:'failed',reason:'network_or_decode_error'});
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
         this.politeness.recordFailure(url, 0, null);
@@ -413,7 +434,7 @@
         } catch (e) { status = 0; }
         if (status === 0) this.politeness.recordFailure(robotsUrl, 0);
         // An unavailable robots policy must not silently grant access.
-        if (status === 0 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];
+        if (status === 0 || status === 401 || status === 403 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];
         this.robotsRules.set(origin, rules);
         this.auditLedger.push({ url: robotsUrl, status, mimeType: 'robots_txt', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, disallow_count: rules.length, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] ${robotsUrl} -> HTTP ${status}; ${rules.length} Disallow rule(s) honoured.`);
@@ -432,6 +453,7 @@
         return false;
       }
       this.visited.delete(task.url);
+      this.resourceOutcomes.set(task.url,{url:task.url,state:'pending',reason:'retry'});
       this.queue.push({ ...task, retries });
       this.callbacks.onLog(`[Retry ${retries}/${this.maxRetries}] Re-queued ${task.url}`);
       return true;
@@ -442,49 +464,27 @@
      * Uses DOMParser in browsers; falls back to a tolerant regex (handles unquoted values).
      */
     collectCandidateUrls(html) {
-      const out = [];
-      const pushSrcset = (value) => {
-        for (const part of String(value || '').split(',')) {
-          const candidate = part.trim().split(/\s+/)[0];
-          if (candidate) out.push(candidate);
-        }
-      };
-      if (typeof DOMParser !== 'undefined') {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        doc.querySelectorAll('a[href], link[href], area[href]').forEach(el => out.push(el.getAttribute('href')));
-        doc.querySelectorAll('img[src], script[src], iframe[src], source[src], video[src], audio[src]')
-          .forEach(el => out.push(el.getAttribute('src')));
-        doc.querySelectorAll('img[srcset], source[srcset]').forEach(el => pushSrcset(el.getAttribute('srcset')));
-        return out;
+      return MirrorResources.discover(html, 'text/html', 'http://discovery.invalid/').resources.map(x => x.url);
+    }
+
+    enqueueReference(raw, baseUrl, nextDepth, tier) {
+      const url = this.canonicalizeUrl(raw, baseUrl);
+      if (!url) {
+        this.discoveryLimitations.push({source:baseUrl,reason:'unsupported_seed_or_reference'});
+        return;
       }
-      const attrRegex = /<(?:a|link|area|img|script|iframe|source|video|audio)\b[^>]*?\s(?:href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
-      let m;
-      while ((m = attrRegex.exec(html)) !== null) out.push(m[1] || m[2] || m[3]);
-      const srcsetRegex = /\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
-      while ((m = srcsetRegex.exec(html)) !== null) pushSrcset(m[1] || m[2]);
-      return out;
+      if (!this.isUrlInScope(url) || nextDepth > this.maxDepth) {
+        if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'excluded',reason:nextDepth > this.maxDepth ? 'depth_limit' : 'scope'});
+        return;
+      }
+      if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'pending',reason:null});
+      if (!this.visited.has(url) && !this.queue.some(q => q.url === url)) this.queue.push({url,tier,depth:nextDepth,parentUrl:baseUrl});
     }
 
     extractLinks(html, baseUrl, nextDepth, tier) {
-      for (const candidate of this.collectCandidateUrls(html)) {
-        const rawHref = String(candidate || '').trim();
-        if (!rawHref || /^(#|javascript:|mailto:|tel:|data:|blob:)/i.test(rawHref)) {
-          continue;
-        }
-
-        const canonical = this.canonicalizeUrl(rawHref, baseUrl);
-        if (canonical && this.isUrlInScope(canonical) && !this.visited.has(canonical)) {
-          // Avoid duplicate entries in pending queue
-          if (!this.queue.some(q => q.url === canonical)) {
-            this.queue.push({
-              url: canonical,
-              tier,
-              depth: nextDepth,
-              parentUrl: baseUrl
-            });
-          }
-        }
-      }
+      const found = MirrorResources.discover(html, 'text/html', baseUrl);
+      this.discoveryLimitations.push(...found.unsupported.map(reason => ({source:baseUrl,reason})));
+      for (const reference of found.resources) this.enqueueReference(reference.url, baseUrl, nextDepth, tier);
     }
 
     pause() {
@@ -529,6 +529,7 @@
           this.canonicalizeUrl(task.url) === task.url && this.isUrlInScope(task.url) &&
           Number.isInteger(task.depth) && task.depth >= 0 && Number.isInteger(task.tier) && task.tier >= 1)) return false;
       if (!cp.visited.every(url => typeof url === 'string' && this.isUrlInScope(url))) return false;
+      this.discoveryLimitations.push({source:null,reason:'frontier_checkpoint_does_not_restore_archive_bytes'});
       this.queue = cp.queue.slice();
       this.visited = new Set(cp.visited || []);
       return true;
@@ -554,9 +555,19 @@
         endTime: this.endTime
       }, this.profile);
 
+      const warcBlob = await this.warc.getWarcBlob();
+      const cdxBlob = this.warc.getCdxBlob();
+      const hashBlob = async blob => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), b => b.toString(16).padStart(2,'0')).join('');
+      const resources = [...this.resourceOutcomes.values()].sort((a,b) => a.url.localeCompare(b.url));
+      const counts = Object.fromEntries(['captured','excluded','failed','pending','unsupported'].map(state => [state,resources.filter(x => x.state === state).length]));
+      const coverage = {schema_version:1,extractor_version:MirrorResources.VERSION,scope:'discovered_static_resource_graph',
+        complete:resources.length > 0 && counts.captured === resources.length && this.discoveryLimitations.length === 0,
+        counts,discovered:resources.length,resources,limitations:this.discoveryLimitations,robots_policy:this.robotsPolicy,
+        archives:{warc:{sha256:await hashBlob(warcBlob)},cdx:{sha256:await hashBlob(cdxBlob)}}};
       return {
-        warcBlob: await this.warc.getWarcBlob(),
-        cdxBlob: this.warc.getCdxBlob(),
+        coverage,
+        warcBlob,
+        cdxBlob,
         cdxText: this.warc.getCdxContent(),
         warcStats: this.warc.getStats(),
         documents: this.documents,

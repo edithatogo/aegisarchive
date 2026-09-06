@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "resources": [
+    {
+      "path": "/",
+      "mime": "text/html; charset=utf-8",
+      "file": "resource-0.bin",
+      "sha256": "01b79cc3e345a25e9e1c505b739a7003a5d425f43cf09462e6625084e14f3d85",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/page.html",
+      "mime": "text/html; charset=windows-1252",
+      "file": "resource-1.bin",
+      "sha256": "93d15d3db41581e74ca8a425ee357440d086096f748dccbe6b9033d518937b3d",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/main.css",
+      "mime": "text/css",
+      "file": "resource-2.bin",
+      "sha256": "2fb2f32a7faacd692cc86779b8b3f5726741d2be716d771297ac49b896ebc564",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/nested/second.css",
+      "mime": "text/css",
+      "file": "resource-3.bin",
+      "sha256": "d7cc5779140807dfc0a20f28716e679110723a394cf322851f19ad82a03e361e",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/image.svg",
+      "mime": "image/svg+xml",
+      "file": "resource-4.bin",
+      "sha256": "ffc9f5e4fdeea83920c171e2bd17577127c5d1a2c3c76f07440e10d387132280",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/image2.svg",
+      "mime": "image/svg+xml",
+      "file": "resource-5.bin",
+      "sha256": "9d28dee08f78ce9e6b1acd09e4bec3e40b110be65cebf862e353e16f046972d9",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/font.woff2",
+      "mime": "font/woff2",
+      "file": "resource-6.bin",
+      "sha256": "8429f48e36a1a25ba53ed47855085ae7645806f0eb6e299837de34e1f066f69d",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/site/download.txt?edition=2",
+      "mime": "text/plain",
+      "file": "resource-7.bin",
+      "sha256": "6cb496a9cdc9f87f9149123e01f4691fed090e43c85eee6c9195f2eac51e0ab7",
+      "status": 200,
+      "location": null
+    },
+    {
+      "path": "/redirect",
+      "mime": "text/plain",
+      "file": "resource-8.bin",
+      "sha256": "115076a79efa54ecaf0389630627240edbe7d7a7fc07f0d9f0600b187a4740f4",
+      "status": 302,
+      "location": "/site/page.html"
+    }
+  ],
+  "negative_cases": {
+    "missing": "/missing.png",
+    "external": "https://outside.invalid/asset",
+    "unsupported": "javascript:alert(1)",
+    "depth_limit": "explicit excluded",
+    "css_cycle": "each resource once"
+  }
+}
