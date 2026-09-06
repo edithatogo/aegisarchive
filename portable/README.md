@@ -84,6 +84,14 @@ python3 portable/provision_models.py --audit --output /path/to/models
 python3 portable/provision_native.py --verify-bundle /path/to/package --receipt /path/to/receipt.json
 ```
 
+Download and checksum pinned runtimes (Linux, Windows, and Darwin archives)
+without running inference. Large GGUF files can be skipped by size; the receipt
+then records `models_complete: false`:
+
+```sh
+python3 portable/provision_native.py --acquire /path/to/native-cache --receipt /path/to/acquisition.json --max-bytes 120000000
+```
+
 `--smoke-bundle` runs native qualification only after package integrity succeeds. A missing bundle writes `status: blocked` with `inference_claimed: false` and `smoke: not_run`.
 
 Provision the locked model set with `python3 portable/provision_models.py --output

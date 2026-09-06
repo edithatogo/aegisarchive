@@ -1,6 +1,12 @@
 # Native implementation and review checkpoint
 
-The track remains **in progress** and is **not archive eligible**. T3 stays `[~]`: Darwin complete-package integrity now verifies after bytecode purge, but Linux/Windows native receipts are still absent. Adapter tests are not native acceptance evidence.
+The track remains **in progress** and is **not archive eligible**. T3 stays `[~]`: Darwin complete-package integrity now verifies after bytecode purge, Linux/Windows native *execution* receipts are still absent. Adapter tests are not native acceptance evidence.
+
+## Issue #11 acquire session (2026-09-06)
+
+`--acquire` downloaded and SHA-256-verified 58 locked artefacts on a Darwin host, including Python and llama.cpp archives for Darwin, Linux, and Windows, Git/Bash sources, PortableGit, speech sources, Piper voice, selected wheels, lock-file licences, and sub-120MB models. Scout/General/Deep GGUF weights were skipped by `--max-bytes 120000000`. Receipt: [t3-locked-acquire.json](native-evidence/t3-locked-acquire.json) (`runtimes_complete: true`, `models_complete: false`, `inference_claimed: false`). This is checksum acquisition, not inference.
+
+Hosted `portable-native.yml` now runs the same acquire job on `ubuntu-latest` and `windows-latest` for pull requests.
 
 ## T3 session (2026-09-06)
 

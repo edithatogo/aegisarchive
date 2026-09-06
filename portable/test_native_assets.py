@@ -104,6 +104,97 @@ class NativeAssetAuditTests(unittest.TestCase):
             self.assertFalse(report['inference_claimed'])
             self.assertEqual(report.get('smoke'), 'not_run')
 
+    def test_locked_runtime_targets_cover_three_os_without_inference(self):
+        targets = {item['id']: item for item in native.locked_runtime_targets()}
+        self.assertIn('python/Linux/x86_64', targets)
+        self.assertIn('python/Windows/AMD64', targets)
+        self.assertIn('python/Darwin/arm64', targets)
+        self.assertIn('llama/Linux', targets)
+        self.assertIn('llama/Windows', targets)
+        self.assertIn('llama/Darwin', targets)
+        self.assertIn('win_git/portable', targets)
+        for item in targets.values():
+            self.assertEqual(len(item['sha256']), 64)
+            self.assertTrue(item['url'].startswith('https://'))
+
+    def test_acquire_verifies_pins_and_skips_large_models_without_inference(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def runtime(url, target, sha, receipt):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b'ok')
+                if hashlib.sha256(b'ok').hexdigest() != sha:
+                    raise ValueError('Upstream checksum mismatch: ' + url)
+                receipt.append({'url': url, 'sha256': sha, 'bytes': 2})
+                return target
+
+            def fake_model(entry, destination, **_kwargs):
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                destination.write_bytes(b'small-model')
+                return 'downloaded'
+
+            original_targets = native.locked_runtime_targets
+            original_lock = native.load_lock
+            native.locked_runtime_targets = lambda: [{
+                'id': 'git/source', 'url': 'https://example.invalid/git.tar.gz',
+                'sha256': hashlib.sha256(b'ok').hexdigest(), 'license': 'GPL-2.0-only',
+            }]
+            native.load_lock = lambda _path: {'schema_version': 1, 'models': [
+                {'role': 'scout', 'license': 'apache-2.0',
+                 'files': [{'path': 'scout/model.gguf', 'url': 'https://example.invalid/big.gguf',
+                            'sha256': 'a' * 64, 'size_bytes': 5000}]},
+                {'role': 'embeddings', 'license': 'MIT',
+                 'files': [{'path': 'embeddings/bge.gguf', 'url': 'https://example.invalid/bge.gguf',
+                            'sha256': hashlib.sha256(b'small-model').hexdigest(),
+                            'size_bytes': 11}]},
+            ]}
+            try:
+                receipt = root / 'acquisition.json'
+                report = native.acquire_locked_assets(
+                    root / 'cache', receipt, max_bytes=100, wheels=False,
+                    fetch_runtime=runtime, fetch_model_file=fake_model)
+            finally:
+                native.locked_runtime_targets = original_targets
+                native.load_lock = original_lock
+
+            self.assertTrue(report['runtimes_complete'])
+            self.assertFalse(report['models_complete'])
+            self.assertFalse(report['complete'])
+            self.assertFalse(report['inference_claimed'])
+            statuses = {item.get('id') or item.get('path'): item['status'] for item in report['files']}
+            self.assertEqual(statuses['git/source'], 'verified')
+            self.assertEqual(statuses['scout/model.gguf'], 'skipped_size')
+            self.assertEqual(statuses['embeddings/bge.gguf'], 'verified')
+            self.assertFalse(json.loads(receipt.read_text())['inference_claimed'])
+
+    def test_acquire_fail_closed_on_checksum_mismatch(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def bad_fetch(url, target, sha, receipt):
+                raise ValueError('Upstream checksum mismatch: ' + url)
+
+            original = native.locked_runtime_targets
+            native.locked_runtime_targets = lambda: [{
+                'id': 'llama/Linux', 'url': 'https://example.invalid/llama.tar.gz',
+                'sha256': 'b' * 64, 'license': 'MIT',
+            }]
+            native_load = native.load_lock
+            native.load_lock = lambda _path: {'schema_version': 1, 'models': []}
+            try:
+                report = native.acquire_locked_assets(
+                    root / 'cache', root / 'receipt.json', wheels=False,
+                    fetch_runtime=bad_fetch,
+                    fetch_model_file=lambda *args, **kwargs: 'downloaded')
+            finally:
+                native.locked_runtime_targets = original
+                native.load_lock = native_load
+            self.assertFalse(report['runtimes_complete'])
+            self.assertFalse(report['complete'])
+            self.assertFalse(report['inference_claimed'])
+            self.assertEqual(report['files'][0]['status'], 'failed')
+
     def test_purge_removes_only_undeclared_bytecode(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / 'bundle'

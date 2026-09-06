@@ -16,6 +16,8 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import urllib.error
+import urllib.parse
 import urllib.request
 import zipfile
 
@@ -23,7 +25,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from portable.native_platform_probe import ASSETS, RELEASE, VERSION
 from portable.packaging import assemble, digest, verify as verify_package
 from portable.provision_models import (
-    main as models_main, load_lock, source_inventory as model_source_inventory, write_json)
+    main as models_main, load_lock, source_inventory as model_source_inventory, write_json,
+    fetch as fetch_model)
 from portable.provision_speech import (
     provision as speech_provision, normalize, WHISPER_REVISION, WHISPER_SOURCE_SHA256,
     PIPER_REVISION, PIPER_SOURCE_SHA256, VOICE_REVISION, VOICE_FILES, WHEEL_PINS)
@@ -41,6 +44,13 @@ WIN_GIT_URL = 'https://github.com/git-for-windows/git/releases/download/v2.55.0.
 WIN_GIT_SHA = '5aa8a20f6e9abb2c755f0e73c91c687701a46b309ad84a0ca6509380fa4ae290'
 
 PYTHON_LICENSES = {'LICENSE': '1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5', 'LICENSE.bzip2.txt': '1f38bbc7caacafd65169276d759c0d88c991b753b643ce35d0e45ea1971dd441', 'LICENSE.cpython.txt': '86e61415828a8b5b06ec8d024e6f086ce155a8b85fd0c419c0ba4dc004e74fdd', 'LICENSE.expat.txt': '122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534', 'LICENSE.libedit.txt': '29cea33c32bbc9785142386377915612a2fa786482c46843383384aded2e09b1', 'LICENSE.libffi.txt': 'deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0', 'LICENSE.liblzma.txt': '9a4062de0a2c388a98cf35a35d348b62fa97c838a71c3c28ee1a2d7d0a565b02', 'LICENSE.mpdecimal.txt': '669512af7219f58be03a398766d7c9da11a3b3df9d3f05cb74c5ceca25c8da3b', 'LICENSE.ncurses.txt': '87a4c4442337b8968ef956031c406b74f9cb7149b7ba87311bdaba534816201c', 'LICENSE.openssl-3.txt': '7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a', 'LICENSE.sqlite.txt': '38bef3d28b24f145ea293bd3b6eb4b20396982abc8303128fb493986ea5bc719', 'LICENSE.tcl.txt': 'c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16', 'LICENSE.tix.txt': '3ac5cdd0bef6c43ce34c6a7ced452081d9e5a0bf94082b9f9147d23ec9e214f5', 'LICENSE.zlib.txt': '818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c'}
+QUALIFIED_PYTHON = (('Darwin', 'arm64'), ('Linux', 'x86_64'), ('Windows', 'AMD64'))
+PYTHON_LICENSE_BASE = 'https://raw.githubusercontent.com/astral-sh/python-build-standalone/4bb01f09aaf362c71e891be4a41cb6d6ddf830b3/'
+WHEEL_PLATFORM_MARKERS = (
+    'macosx_14_0_arm64', 'macosx_11_0_arm64', 'macosx_10_9_x86_64',
+    'manylinux_2_28_x86_64', 'manylinux_2_27_x86_64', 'manylinux_2_17_x86_64',
+    'win_amd64', 'none-any', 'universal2',
+)
 
 
 def fetch(url, target, sha, receipt):
@@ -337,6 +347,139 @@ def source_inventory():
     }
 
 
+def python_install_url(target):
+    return (f'https://github.com/astral-sh/python-build-standalone/releases/download/'
+            f'{RELEASE}/cpython-{VERSION}%2B{RELEASE}-{target}-install_only.tar.gz')
+
+
+def wheel_wanted(filename):
+    name = filename.lower()
+    return any(marker in name for marker in WHEEL_PLATFORM_MARKERS)
+
+
+def locked_runtime_targets():
+    """Pinned runtime archives and licences. Presence is not native inference."""
+    items = []
+    for system, machine in QUALIFIED_PYTHON:
+        target, sha = ASSETS[(system, machine)]
+        items.append({'id': f'python/{system}/{machine}', 'url': python_install_url(target),
+                      'sha256': sha, 'license': 'Python-2.0'})
+    for name, sha in PYTHON_LICENSES.items():
+        items.append({'id': 'python-license/' + name, 'url': PYTHON_LICENSE_BASE + name,
+                      'sha256': sha, 'license': 'Python-2.0'})
+    for system, (name, sha) in LLAMA.items():
+        items.append({'id': 'llama/' + system,
+                      'url': 'https://github.com/ggml-org/llama.cpp/releases/download/b10819/' + name,
+                      'sha256': sha, 'license': 'MIT'})
+    items.append({'id': 'llama/LICENSE',
+                  'url': 'https://raw.githubusercontent.com/ggml-org/llama.cpp/6a1a922d269908a29cbd4b49c27e6a8e7fd10fae/LICENSE',
+                  'sha256': '94f29bbed6a22c35b992c5c6ebf0e7c92f13b836b90f36f461c9cf2f0f1d010d',
+                  'license': 'MIT'})
+    items.append({'id': 'git/source', 'url': GIT_URL, 'sha256': GIT_SHA, 'license': 'GPL-2.0-only'})
+    items.append({'id': 'bash/source', 'url': BASH_URL, 'sha256': BASH_SHA, 'license': 'GPL-3.0-or-later'})
+    items.append({'id': 'win_git/portable', 'url': WIN_GIT_URL, 'sha256': WIN_GIT_SHA,
+                  'license': 'GPL-2.0-only'})
+    items.append({'id': 'whisper/source',
+                  'url': f'https://api.github.com/repos/ggml-org/whisper.cpp/tarball/{WHISPER_REVISION}',
+                  'sha256': WHISPER_SOURCE_SHA256, 'license': 'MIT'})
+    items.append({'id': 'piper/source',
+                  'url': f'https://api.github.com/repos/OHF-Voice/piper1-gpl/tarball/{PIPER_REVISION}',
+                  'sha256': PIPER_SOURCE_SHA256, 'license': 'GPL-3.0'})
+    for filename, sha in VOICE_FILES.items():
+        items.append({'id': 'piper-voice/' + filename,
+                      'url': (f'https://huggingface.co/rhasspy/piper-voices/resolve/'
+                              f'{VOICE_REVISION}/en/en_US/ljspeech/medium/{filename}'),
+                      'sha256': sha, 'license': 'Public-Domain' if filename.endswith('.onnx') else 'MIT'})
+    return items
+
+
+def pypi_wheel_targets(opener=None):
+    opener = opener or urllib.request.build_opener()
+    items = []
+    for package, record in WHEEL_PINS.items():
+        url = f'https://pypi.org/pypi/{package}/{record["version"]}/json'
+        request = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive-provisioner/1'})
+        with opener.open(request, timeout=60) as response:
+            payload = json.loads(response.read().decode('utf-8'))
+        files = {entry['filename']: entry for entry in payload.get('urls', [])}
+        for filename, sha in record['wheels'].items():
+            if not wheel_wanted(filename):
+                continue
+            entry = files.get(filename)
+            if entry is None:
+                raise ValueError('Pinned wheel missing from index: ' + filename)
+            digest = entry.get('digests', {}).get('sha256')
+            if digest != sha:
+                raise ValueError('PyPI digest does not match lock: ' + filename)
+            href = entry.get('url', '')
+            if urllib.parse.urlsplit(href).scheme != 'https':
+                raise ValueError('Wheel URL must use HTTPS: ' + filename)
+            items.append({'id': 'wheel/' + filename, 'url': href, 'sha256': sha,
+                          'license': 'GPL-3.0' if package == 'piper-tts' else 'bundled'})
+    return items
+
+
+def acquire_locked_assets(output, receipt, *, max_bytes=None, wheels=True, opener=None,
+                          fetch_runtime=None, fetch_model_file=None):
+    """Download pinned archives and verify SHA-256. Never claims inference."""
+    output = Path(output).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    fetch_runtime = fetch_runtime or fetch
+    fetch_model_file = fetch_model_file or fetch_model
+    files = []
+    runtime_receipts = []
+    runtimes_complete = True
+    models_complete = True
+    for item in locked_runtime_targets() + (pypi_wheel_targets(opener) if wheels else []):
+        relative = 'runtimes/' + item['id'].replace('/', '_')
+        destination = (output / relative).resolve()
+        if not destination.is_relative_to(output):
+            raise ValueError('Acquisition path escapes output: ' + item['id'])
+        try:
+            fetch_runtime(item['url'], destination, item['sha256'], runtime_receipts)
+            record = dict(item, status='verified', bytes=destination.stat().st_size, path=relative)
+        except (OSError, ValueError, urllib.error.URLError) as error:
+            runtimes_complete = False
+            record = dict(item, status='failed', error=str(error), path=relative)
+        files.append(record)
+    lock = load_lock(Path(__file__).with_name('model-lock.json'))
+    for model in lock['models']:
+        for entry in model['files']:
+            record = {key: entry[key] for key in ('path', 'url', 'sha256', 'size_bytes')}
+            record['role'] = model['role']
+            record['license'] = model['license']
+            if max_bytes is not None and entry['size_bytes'] > max_bytes:
+                models_complete = False
+                record['status'] = 'skipped_size'
+                files.append(record)
+                continue
+            destination = (output / 'models' / entry['path']).resolve()
+            if not destination.is_relative_to(output):
+                raise ValueError('Model path escapes output: ' + entry['path'])
+            try:
+                result = fetch_model_file(entry, destination)
+                record['status'] = 'verified' if result in ('cached', 'downloaded') else result
+            except (OSError, ValueError, urllib.error.URLError) as error:
+                models_complete = False
+                record['status'] = 'failed'
+                record['error'] = str(error)
+            if record['status'] != 'verified':
+                models_complete = False
+            files.append(record)
+    report = {
+        'schema_version': 1,
+        'kind': 'locked_asset_acquisition',
+        'inference_claimed': False,
+        'runtimes_complete': runtimes_complete,
+        'models_complete': models_complete,
+        'complete': runtimes_complete and models_complete,
+        'max_bytes': max_bytes,
+        'files': files,
+    }
+    write_json(Path(receipt), report)
+    return report
+
+
 def verify_or_smoke(bundle, receipt, *, smoke=False):
     """Integrity/licence check, then optional native qualification. Never invent inference."""
     bundle = Path(bundle)
@@ -450,7 +593,10 @@ def main():
     parser.add_argument('--purge-undeclared-bytecode',type=Path,
                         help='Delete extra bytecode files only, then fail closed on other extras')
     parser.add_argument('--smoke-bundle',type=Path,help='Verify then run native qualification')
-    parser.add_argument('--receipt',type=Path,help='Receipt path for verify/smoke modes')
+    parser.add_argument('--receipt',type=Path,help='Receipt path for verify/smoke/acquire modes')
+    parser.add_argument('--acquire',type=Path,help='Download pinned runtimes/models and verify SHA-256')
+    parser.add_argument('--max-bytes',type=int,help='Skip locked model files larger than this; receipt stays incomplete')
+    parser.add_argument('--no-wheels',action='store_true',help='Skip pinned PyPI wheels during --acquire')
     args=parser.parse_args()
     if args.inventory:
         write_json(args.inventory.resolve(), source_inventory())
@@ -460,12 +606,19 @@ def main():
         removed = purge_undeclared_bytecode(args.purge_undeclared_bytecode)
         print(json.dumps({'purged_bytecode': len(removed), 'inference_claimed': False}))
         return
+    if args.acquire:
+        receipt = args.receipt or (args.acquire.resolve() / 'acquisition.json')
+        report = acquire_locked_assets(args.acquire, receipt, max_bytes=args.max_bytes,
+                                       wheels=not args.no_wheels)
+        print(json.dumps({key: report[key] for key in
+                          ('complete', 'runtimes_complete', 'models_complete', 'inference_claimed')}))
+        raise SystemExit(0 if report['runtimes_complete'] else 1)
     if args.verify_bundle or args.smoke_bundle:
         bundle = args.smoke_bundle or args.verify_bundle
         receipt = args.receipt or Path('native-bundle-receipt.json')
         raise SystemExit(verify_or_smoke(bundle, receipt, smoke=bool(args.smoke_bundle)))
     if args.work is None or args.output is None:
-        parser.error('--work and --output are required unless --inventory, --verify-bundle, or --smoke-bundle is set')
+        parser.error('--work and --output are required unless --inventory, --verify-bundle, --smoke-bundle, or --acquire is set')
 
     work=args.work.resolve();work.mkdir(parents=True,exist_ok=True)
     if (work/'provisioning.json').exists():raise ValueError('Use a fresh native provisioning directory')
