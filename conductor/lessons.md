@@ -96,3 +96,7 @@ Maintenance rules:
 ## 2026-09-05 — contributor_experience_20260905
 - **Surprise**: planned sibling tasks were archived before issue seeding, requiring archive links in the entry-level issue bodies.
 - **Change for the next planner**: resolve cross-track task locations immediately before creating external issue links.
+
+## 2026-09-06 — portable_intelligence_suite
+- **Surprise**: Passing adapter tests and asset hashes did not establish offline platform acceptance; a script import failure could also be hidden by a continue-on-error step.
+- **Change for the next planner**: Require retained native receipts for every target OS, inspect prerequisite steps, test redirected downloads against the politeness contract, and preserve receipt line endings before hashing committed evidence.

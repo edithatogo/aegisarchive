@@ -1,0 +1,40 @@
+{
+  "run": {
+    "conclusion": "success",
+    "event": "pull_request",
+    "headSha": "95d69b6eca205731b59a317d0963652352b0c4b6",
+    "url": "https://github.com/edithatogo/aegisarchive/actions/runs/34005505093"
+  },
+  "retrieved_at": "2026-09-06T02:21:45Z",
+  "artifacts": [
+    {
+      "artifact_id": 9981006043,
+      "name": "full-native-windows-latest",
+      "github_archive_digest": "sha256:e035cdfc4e0f48deaf5cc4604b4d75d15e5a16dfda7aca4b627329b7f3510aa9",
+      "receipt": "full-native-windows-latest.json",
+      "receipt_sha256": "cb9b69d75f801176f78a6023ae901abac056a5e9967012bcdcbce3efa977ec60",
+      "machine": "AMD64",
+      "checks_passed": 14
+    },
+    {
+      "artifact_id": 9980959065,
+      "name": "full-native-macos-14",
+      "github_archive_digest": "sha256:9954fc41daedd15839f32f040226add13eb7e5c5ca39301a8fd90a3ffa39c491",
+      "receipt": "full-native-macos-14.json",
+      "receipt_sha256": "9d0a1d07f70fab781250b7260ce2190a439225dd92c15e91ec0950324d9853e6",
+      "machine": "arm64",
+      "checks_passed": 14
+    },
+    {
+      "artifact_id": 9980955862,
+      "name": "full-native-ubuntu-latest",
+      "github_archive_digest": "sha256:2df5f237eb1a419ced99d3efdcac46c319f4df5f5f852b9bc7bc0124a17dcd99",
+      "receipt": "full-native-ubuntu-latest.json",
+      "receipt_sha256": "961b5a2756fc596193a1fc399c26bcd22f39457f9fb52e14497a0f1e7f55288f",
+      "machine": "x86_64",
+      "checks_passed": 14
+    }
+  ],
+  "verification": "Original receipt bytes extracted via authenticated GitHub artifact ZIP reads with CRC validation. Archive SHA-256 digests are reported by GitHub, not independently recomputed. Application and workflow content matches the closeout branch.",
+  "release_claimed": false
+}

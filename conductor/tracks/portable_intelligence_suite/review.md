@@ -1,6 +1,6 @@
 # Native implementation and review checkpoint
 
-The track remains **in progress** pending T4 follow-up qualification. T3 is complete: original hosted receipts are retained for all three platforms, with all 14 native checks passed on each. Historical checkpoint statements below describe the evidence available at those times.
+**Completed:** final native qualification and review closeout passed. The dated sections below preserve earlier checkpoint limitations; this final decision supersedes their pending status.
 
 ## Issue #11 acquire session (2026-09-06)
 
@@ -46,3 +46,9 @@ See [provenance index](native-evidence/hosted-34003139520/index.json). Windows A
 Local verification on integrated main `80864a0`: focused packaging/intelligence 19 tests; portable suite 35 tests; repository gate passed (48 unit tests, station-hardening tests, 36 JavaScript tests); all three CLI help smokes passed. Code review confirmed source-change graph invalidation, safe extreme-vector normalization and the required semantic, functional and post-execution checks.
 
 T4 remains open: PR #24 fixes the Bash-prefetch script import failure masked by continue-on-error. Its run 34004202702 is pending. Historical statements that Linux/Windows receipts are absent are superseded by the retained receipts above. No release is claimed.
+
+## Final review and acceptance
+
+Run [34005505093](https://github.com/edithatogo/aegisarchive/actions/runs/34005505093) passed on Linux x86_64, Windows AMD64 and Darwin arm64. [Retained receipts](native-evidence/hosted-34005505093/index.json) each record 14/14 passing checks. Application and workflow bytes match the tested revision. The Bash-prefetch entrypoint now gates requests and HTTPS redirects through PolitenessEngine, with Retry-After, backoff and cancellation tests. The prior macOS embeddings EPERM failure was preserved in hosted run 34004202702; its root cause was not established. Five local sandboxed embedding runs and this final hosted matrix passed without relaxing the sandbox or assertions.
+
+Review covered graph invalidation, extreme-vector normalization, semantic-only retrieval, real Git/console operations, relocated launchers, post-execution integrity, request pacing and original receipt hashes. Local baseline passed: 48 Python tests, 18 station tests, 36 JavaScript tests; focused tests and claims audit passed. All 18 canonical ledgers validate; four recovered ledgers retain their original bytes without re-attesting historical claims. No release or companion-program authorization is implied.
