@@ -260,6 +260,14 @@
       });
     }
 
+    rewriteStyles(text, pageUrl) {
+      return String(text).replace(/url\(\s*(["']?)([^)"']+)\1\s*\)/gi, (m, quote, raw) => {
+        const target = this.resolveArchiveUrl(raw.trim(), pageUrl);
+        const record = target && this.getRecord(target);
+        return record ? `url(${quote}${this.blobUrlFor(record)}${quote})` : 'url(data:,)';
+      });
+    }
+
     /**
      * Renders a captured HTML page with inlined or rewritten assets.
      */
@@ -274,6 +282,7 @@
       // Prevent refresh navigation and place the restrictive policy before any archived markup.
       html = html.replace(/<meta\b[^>]*>/gi, '');
       html = this.rewriteRequisites(html, record.url);
+      html = html.replace(/(<style\b[^>]*>)([\s\S]*?)(<\/style>)/gi, (m, start, css, end) => start + this.rewriteStyles(css, record.url) + end);
       const csp = WarcReader.REPLAY_CSP_META;
       if (/<head[^>]*>/i.test(html)) {
         html = html.replace(/<head[^>]*>/i, m => m + csp);

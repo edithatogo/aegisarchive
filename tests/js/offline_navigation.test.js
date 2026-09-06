@@ -17,3 +17,12 @@ test('navigation messages require source and nonce binding', () => {
   assert.equal(nav.acceptNavigation({source:{}, data:msg}, source, 'n'), false);
   assert.equal(nav.acceptNavigation({source, data:{...msg, nonce:'x'}}, source, 'n'), false);
 });
+test('replay rewrites captured style resources and never falls back live', () => {
+  const WarcReader = require('../../web/lib/warc_reader.js');
+  const reader = new WarcReader();
+  const image = {url:'https://archive.test/image.svg', bodyBytes:new Uint8Array([1]), mimeType:'image/svg+xml'};
+  reader.recordsByUrl.set(reader.normalizeUrl(image.url), image);
+  const css = reader.rewriteStyles('body{background:url("/image.svg")}x{background:url(/missing.svg)}','https://archive.test/index.html');
+  assert.match(css, /blob:/);
+  assert.match(css, /data:,/);
+});
