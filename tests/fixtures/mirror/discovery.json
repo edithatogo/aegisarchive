@@ -1,0 +1,4 @@
+[
+ {"mime":"text/html","url":"https://example.test/root/index.html","text":"<!-- <img src=bad> --><base href='/assets/'><a href='p?a=1&amp;b=2#top'>a</a><img src=x.png srcset='small.png 1x, large.png 2x'><script>let x='<img src=evil>'</script>","expected":["https://example.test/assets/p?a=1&b=2","https://example.test/assets/x.png","https://example.test/assets/small.png","https://example.test/assets/large.png"]},
+ {"mime":"text/html","url":"https://example.test/","text":"<a href='#top'>top</a><img src='data:image/png;base64,AAAA'><a href='mailto:x@example.test'>mail</a><object data=file.pdf></object><video poster=poster.jpg><source src=video.mp4></video>","expected":["https://example.test/file.pdf","https://example.test/poster.jpg","https://example.test/video.mp4"]}
+]

@@ -1,0 +1,97 @@
+"""Static HTML/CSS discovery. No execution, fetching or third-party dependencies."""
+from html.parser import HTMLParser
+from urllib.parse import urljoin, urlsplit, urlunsplit
+import re
+
+VERSION = '1.0'
+MAX_TEXT = 8 * 1024 * 1024
+MAX_REFERENCES = 20000
+
+
+def resolve(raw, base):
+    raw = str(raw or '').strip()
+    if not raw or raw.startswith('#'):
+        return None
+    try:
+        url = urlsplit(urljoin(base, raw))
+        if url.scheme not in ('http', 'https') or not url.hostname or url.username or url.password:
+            return None
+        return urlunsplit((url.scheme, url.netloc, url.path or '/', url.query, ''))
+    except ValueError:
+        return None
+
+
+def srcset(value):
+    # Consume URL first (data URLs may contain commas), then descriptors.
+    return [m.group(1).rstrip(',') for m in re.finditer(r'(?:^|,)\s*(\S+)(?:\s+[^,]*)?', value)]
+
+
+class _HTML(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.links = []
+        self.base = None
+        self.styles = []
+        self.in_style = False
+        self.dynamic = False
+
+    def handle_starttag(self, tag, attrs):
+        a = dict(attrs)
+        if tag == 'base' and self.base is None and a.get('href'):
+            self.base = a['href']
+        if tag in ('a', 'area', 'link') and a.get('href'):
+            self.links.append((a['href'], 'page' if tag in ('a', 'area') else 'asset'))
+        if tag in ('img', 'script', 'iframe', 'source', 'video', 'audio', 'input', 'embed', 'track') and a.get('src'):
+            self.links.append((a['src'], 'page' if tag == 'iframe' else 'asset'))
+        for attr in ('poster', 'data' if tag == 'object' else ''):
+            if attr and a.get(attr):
+                self.links.append((a[attr], 'asset'))
+        if tag in ('img', 'source') and a.get('srcset'):
+            self.links.extend((s, 'asset') for s in srcset(a['srcset']))
+        if a.get('style'):
+            self.styles.append(a['style'])
+        if tag == 'style':
+            self.in_style = True
+        if tag == 'script':
+            self.dynamic = True
+
+    def handle_endtag(self, tag):
+        if tag == 'style':
+            self.in_style = False
+
+    def handle_data(self, data):
+        if self.in_style:
+            self.styles.append(data)
+
+
+def discover(text, mime, url):
+    """Return resolved references and explicit static-analysis limitations."""
+    result = {'resources': [], 'unsupported': []}
+    if len(text) > MAX_TEXT:
+        result['unsupported'].append('discovery_text_limit')
+        return result
+    mime = mime.split(';')[0].strip().lower()
+    if mime not in ('text/html', 'application/xhtml+xml', 'text/css'):
+        return result
+    links = []
+    base = url
+    if mime != 'text/css':
+        parser = _HTML()
+        parser.feed(text)
+        base = resolve(parser.base, url) or url
+        links = parser.links
+        if parser.dynamic:
+            result['unsupported'].append('script_generated_content_not_evaluated')
+    seen = set()
+    for raw, kind in links:
+        target = resolve(raw, base)
+        if target and target not in seen:
+            if len(seen) >= MAX_REFERENCES:
+                result['unsupported'].append('discovery_reference_limit')
+                break
+            seen.add(target)
+            result['resources'].append({'url': target, 'kind': kind})
+        elif target is None and raw and not raw.strip().startswith(('#', 'data:')):
+            result['unsupported'].append('unsupported_reference_scheme')
+    result['unsupported'] = sorted(set(result['unsupported']))
+    return result

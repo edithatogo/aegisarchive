@@ -15,5 +15,11 @@ class FixtureContract(unittest.TestCase):
         for resource in resources:
             self.assertEqual(hashlib.sha256((FIXTURES / resource['file']).read_bytes()).hexdigest(), resource['sha256'])
 
+class DiscoveryContract(unittest.TestCase):
+    def test_html_parity_vectors(self):
+        from cli.mirror_resources import discover
+        for v in json.loads((FIXTURES / 'discovery.json').read_text()):
+            self.assertEqual([x['url'] for x in discover(v['text'], v['mime'], v['url'])['resources']], v['expected'])
+
 if __name__ == '__main__':
     unittest.main()
