@@ -3,7 +3,7 @@
   "type": "feature",
   "status": "in_progress",
   "created_at": "2026-09-05T07:50:07Z",
-  "updated_at": "2026-09-06T01:14:00Z",
+  "updated_at": "2026-09-06T01:37:01Z",
   "description": "Portable Platform Compatibility & Offline Intelligence Suite",
   "metadata_origin": "Reconstructed during retrospective review; original plan retained in Git history.",
   "evidence_schema": "1.0",
@@ -11,8 +11,8 @@
     {
       "id": "full-native-platforms",
       "kind": "native_acceptance",
-      "status": "pending",
-      "evidence": "native-evidence/darwin-full-native.json; native-evidence/t3-locked-acquire-complete.json (Darwin host: 61 locked files SHA-256 verified including Scout/General/Deep GGUF; inference_claimed false); native-evidence/t3-lock-cache-audit.json; hosted full-native execution matrix pending"
+      "status": "satisfied",
+      "evidence": "native-evidence/hosted-34003139520/index.json; three retained receipts with 14/14 checks each. Final T4 follow-up qualification remains pending."
     }
   ]
 }

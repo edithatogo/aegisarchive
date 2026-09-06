@@ -1,6 +1,6 @@
 # Native implementation and review checkpoint
 
-The track remains **in progress** and is **not archive eligible**. T3 stays `[~]`: Darwin complete-package integrity now verifies after bytecode purge, Linux/Windows native *execution* receipts are still absent. Adapter tests are not native acceptance evidence.
+The track remains **in progress** pending T4 follow-up qualification. T3 is complete: original hosted receipts are retained for all three platforms, with all 14 native checks passed on each. Historical checkpoint statements below describe the evidence available at those times.
 
 ## Issue #11 acquire session (2026-09-06)
 
@@ -38,3 +38,11 @@ The internally stored macOS ARM64 package previously recorded a complete relocat
 T3 is not complete until Linux and Windows have direct native execution receipts. T4 still owns remaining review-fix closeout on the hosted matrix. Archive only after those receipts pass.
 
 Hosted `portable-full-native.yml` runs on pull requests for `ubuntu-latest`, `windows-latest`, and `macos-14`. Missing or unreadable `native-qualification.json` is recorded as `blocked` with `inference_claimed: false` and the job fails. A prior hosted Ubuntu job on this matrix completed provision and qualification with status `passed`; Windows died on ftp.gnu.org before models, and macOS sandbox-exec rejected a `127.0.0.1` filter (host must be `*` or `localhost`). Embeddings and station probes now use `localhost` so Darwin can stay inside the existing provisioner policy. GNU Bash is staged from HTTPS mirrors before provision so Windows does not depend on ftp.gnu.org. T3 and T4 stay incomplete until passing receipts exist on `main`.
+
+## Retained hosted matrix and T3 acceptance (2026-09-06)
+
+See [provenance index](native-evidence/hosted-34003139520/index.json). Windows AMD64, Linux x86_64 and Darwin arm64 each passed 14/14 checks: external network denial, bundled Python, pre/post integrity, three inference tiers, synthesis, transcription, 384-dimensional semantic/hybrid/graph retrieval, functional Git and console, relocated launcher and station. These map directly to all seven objectives. Receipts preserve original bytes; hosted archive digests are reported rather than independently rehashed.
+
+Local verification on integrated main `80864a0`: focused packaging/intelligence 19 tests; portable suite 35 tests; repository gate passed (48 unit tests, station-hardening tests, 36 JavaScript tests); all three CLI help smokes passed. Code review confirmed source-change graph invalidation, safe extreme-vector normalization and the required semantic, functional and post-execution checks.
+
+T4 remains open: PR #24 fixes the Bash-prefetch script import failure masked by continue-on-error. Its run 34004202702 is pending. Historical statements that Linux/Windows receipts are absent are superseded by the retained receipts above. No release is claimed.
