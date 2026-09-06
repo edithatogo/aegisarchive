@@ -64,6 +64,28 @@ class _HTML(HTMLParser):
             self.styles.append(data)
 
 
+def css_urls(text):
+    """Scan comments, strings and URL/import tokens without treating strings as code."""
+    string = r'"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\''
+    tokens = re.compile(r'/\*[\s\S]*?(?:\*/|$)|url\(\s*(' + string + r'|(?:\\.|[^)\\])*)\s*\)|@import\s+(' + string + r')|' + string, re.I)
+    out = []
+    for m in tokens.finditer(text):
+        raw = m.group(1) if m.group(1) is not None else m.group(2)
+        if raw is None:
+            continue
+        raw = raw.strip()
+        if raw[:1] in ('"', "'"):
+            raw = raw[1:-1]
+        def unescape(match):
+            token = match.group(1)
+            if re.fullmatch(r'[0-9a-fA-F]{1,6}\s?', token):
+                number = int(token.strip(), 16)
+                return chr(number) if 0 < number <= 0x10ffff else '\ufffd'
+            return '' if token in ('\n', '\r') else token
+        out.append(re.sub(r'\\([0-9a-fA-F]{1,6}\s?|[\s\S])', unescape, raw))
+    return out
+
+
 def discover(text, mime, url):
     """Return resolved references and explicit static-analysis limitations."""
     result = {'resources': [], 'unsupported': []}
@@ -80,8 +102,12 @@ def discover(text, mime, url):
         parser.feed(text)
         base = resolve(parser.base, url) or url
         links = parser.links
+        for style in parser.styles:
+            links.extend((raw, 'asset') for raw in css_urls(style))
         if parser.dynamic:
             result['unsupported'].append('script_generated_content_not_evaluated')
+    if mime == 'text/css':
+        links = [(raw, 'asset') for raw in css_urls(text)]
     seen = set()
     for raw, kind in links:
         target = resolve(raw, base)

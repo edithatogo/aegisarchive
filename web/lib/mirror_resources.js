@@ -46,6 +46,20 @@
     }
     return {links, styles, base, dynamic};
   }
+
+  function cssUrls(text) {
+    const out = [];
+    const tokens = /\/\*[\s\S]*?(?:\*\/|$)|url\(\s*("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|(?:\\.|[^)\\])*)\s*\)|@import\s+("(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/gi;
+    for (const m of text.matchAll(tokens)) {
+      let raw = m[1] ?? m[2]; if (raw === undefined) continue;
+      raw = raw.trim(); if (/^["']/.test(raw)) raw = raw.slice(1, -1);
+      out.push(raw.replace(/\\([\da-f]{1,6}\s?|[\s\S])/gi, (_, x) => {
+        if (/^[\da-f]{1,6}\s?$/i.test(x)) { const n = parseInt(x.trim(), 16); return n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : '\ufffd'; }
+        return /[\r\n]/.test(x) ? '' : x;
+      }));
+    }
+    return out;
+  }
   function discover(text, mime, url) {
     const result = {resources:[], unsupported:[]};
     if (text.length > MAX_TEXT) { result.unsupported.push('discovery_text_limit'); return result; }
@@ -54,8 +68,10 @@
     let links = [], base = url;
     if (mime !== 'text/css') {
       const parsed = html(text); base = resolve(parsed.base, url) || url; links = parsed.links;
+      for (const style of parsed.styles) links.push(...cssUrls(style).map(raw => [raw, 'asset']));
       if (parsed.dynamic) result.unsupported.push('script_generated_content_not_evaluated');
     }
+    if (mime === 'text/css') links = cssUrls(text).map(raw => [raw, 'asset']);
     const seen = new Set();
     for (const [raw, kind] of links) {
       const target = resolve(raw, base);
