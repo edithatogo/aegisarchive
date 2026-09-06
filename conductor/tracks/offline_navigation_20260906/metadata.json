@@ -3,7 +3,7 @@
   "type": "feature",
   "status": "in_progress",
   "created_at": "2026-09-06T13:42:07Z",
-  "updated_at": "2026-09-06T14:29:02.451866Z",
+  "updated_at": "2026-09-06T14:31:05.344464Z",
   "description": "Safe offline page navigation and assets",
   "evidence_schema": "1.0",
   "dependencies": [
