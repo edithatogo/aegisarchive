@@ -98,7 +98,7 @@
   *Link: [./archive/mirror_capture_20260906/index.md](./archive/mirror_capture_20260906/index.md)*
 
 ---
-- [ ] **Track: Safe offline page navigation and assets**
+- [~] **Track: Safe offline page navigation and assets**
   *Link: [./tracks/offline_navigation_20260906/index.md](./tracks/offline_navigation_20260906/index.md)*
 
 ---

@@ -1,6 +1,6 @@
 # Plan: Safe offline page navigation and assets
 
-## Status: NEW
+## Status: IN PROGRESS
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
