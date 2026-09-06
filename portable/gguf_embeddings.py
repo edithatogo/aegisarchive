@@ -7,6 +7,9 @@ import tempfile
 import time
 from .intelligence import LocalTools, _vector
 
+# Darwin sandbox-exec accepts only "*" or "localhost" in network address filters.
+LOOPBACK_HOST = 'localhost'
+
 
 class GGUFEmbedder:
     """Use pinned bundle assets; never resolve a model name over the network.
@@ -20,11 +23,11 @@ class GGUFEmbedder:
         executable = self.tools.asset('llama_server')
         model = self.tools.asset('bge')
         with socket.socket() as probe:
-            probe.bind(('127.0.0.1', 0))
+            probe.bind((LOOPBACK_HOST, 0))
             self.port = probe.getsockname()[1]
         self.log = tempfile.TemporaryFile()
         self.process = subprocess.Popen([str(executable), '-m', str(model),
-            '--embedding', '--pooling', 'cls', '--host', '127.0.0.1',
+            '--embedding', '--pooling', 'cls', '--host', LOOPBACK_HOST,
             '--port', str(self.port), '--offline', '-c', '512', '-ngl', '0',
             '--device', 'none', '--no-repack'],
             stdin=subprocess.DEVNULL, stdout=self.log, stderr=self.log)
@@ -45,7 +48,7 @@ class GGUFEmbedder:
             raise
 
     def _request(self, method, path, value=None):
-        connection = http.client.HTTPConnection('127.0.0.1', self.port, timeout=30)
+        connection = http.client.HTTPConnection(LOOPBACK_HOST, self.port, timeout=30)
         try:
             connection.request(method, path,
                 body=None if value is None else json.dumps(value),

@@ -1,16 +1,21 @@
 name: Portable full native qualification
 on:
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: portable-full-native-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   native:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, macos-14, windows-2022]
+        os: [ubuntu-latest, windows-latest, macos-14]
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 60
+    timeout-minutes: 180
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -25,9 +30,18 @@ jobs:
       - name: Write pinned licence and source inventory
         shell: bash
         run: python portable/provision_native.py --inventory artifacts/full-native/native-source-inventory.json
-      - name: Provision pinned assets and qualify relocated offline bundle
+      - name: Stage pinned Bash source from HTTPS mirrors
         shell: bash
+        continue-on-error: true
+        run: python portable/prefetch_bash.py --work "$RUNNER_TEMP/aegis-full-native"
+      - name: Provision pinned assets and qualify relocated offline bundle
+        id: provision
+        shell: bash
+        continue-on-error: true
         run: python portable/provision_native.py --work "$RUNNER_TEMP/aegis-full-native" --output artifacts/full-native
+      - name: Fail closed unless native qualification passed
+        shell: bash
+        run: python portable/check_native_receipt.py artifacts/full-native/native-qualification.json
       - name: Retain native receipts and provisioning logs
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -38,5 +52,5 @@ jobs:
             ${{ runner.temp }}/aegis-full-native/*.log
             ${{ runner.temp }}/aegis-full-native/speech/*.log
           if-no-files-found: warn
-          retention-days: 1
+          retention-days: 14
           compression-level: 0

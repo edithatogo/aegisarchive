@@ -265,5 +265,62 @@ class NativeAssetAuditTests(unittest.TestCase):
             self.assertTrue((root / 'app' / 'keep.py').is_file())
 
 
+class NativeReceiptGateTests(unittest.TestCase):
+    def test_missing_receipt_is_blocked_not_passed(self):
+        from portable.check_native_receipt import evaluate, main
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'native-qualification.json'
+            report, code = evaluate(path)
+            self.assertEqual(code, 1)
+            self.assertEqual(report['status'], 'blocked')
+            self.assertFalse(report['inference_claimed'])
+            self.assertEqual(json.loads(path.read_text())['status'], 'blocked')
+            self.assertEqual(main([str(path)]), 1)
+
+    def test_passed_receipt_exits_zero(self):
+        from portable.check_native_receipt import evaluate
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'native-qualification.json'
+            path.write_text(json.dumps({
+                'status': 'passed',
+                'checks': {'scout': {'status': 'passed'}},
+            }))
+            report, code = evaluate(path)
+            self.assertEqual(code, 0)
+            self.assertEqual(report['status'], 'passed')
+
+    def test_failed_receipt_does_not_become_passed(self):
+        from portable.check_native_receipt import evaluate
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'native-qualification.json'
+            path.write_text(json.dumps({
+                'status': 'failed',
+                'checks': {'scout': {'status': 'failed'}},
+            }))
+            report, code = evaluate(path)
+            self.assertEqual(code, 1)
+            self.assertEqual(report['status'], 'failed')
+            self.assertEqual(json.loads(path.read_text())['status'], 'failed')
+
+
+class PrefetchBashTests(unittest.TestCase):
+    def test_stage_accepts_matching_cached_pin(self):
+        from portable import prefetch_bash as prefetch
+        from portable.prefetch_bash import stage
+        payload = b'pinned-bash-archive'
+        digest = hashlib.sha256(payload).hexdigest()
+        with tempfile.TemporaryDirectory() as directory:
+            work = Path(directory)
+            target = work / 'downloads' / 'bash.tar.gz'
+            target.parent.mkdir(parents=True)
+            target.write_bytes(payload)
+            original = prefetch.BASH_SHA
+            try:
+                prefetch.BASH_SHA = digest
+                self.assertEqual(stage(work, opener=lambda *_a, **_k: None), target)
+            finally:
+                prefetch.BASH_SHA = original
+
+
 if __name__ == '__main__':
     unittest.main()

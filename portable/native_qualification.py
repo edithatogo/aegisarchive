@@ -22,7 +22,7 @@ import wave
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from portable.intelligence import LocalTools, Memory
-from portable.gguf_embeddings import GGUFEmbedder
+from portable.gguf_embeddings import GGUFEmbedder, LOOPBACK_HOST
 from portable.packaging import verify
 
 
@@ -177,7 +177,7 @@ def main():
         record('relocated_launcher', lambda: subprocess.check_output(launcher_command, text=True, timeout=60))
         def station_check():
             with socket.socket() as probe:
-                probe.bind(('127.0.0.1', 0))
+                probe.bind((LOOPBACK_HOST, 0))
                 port = probe.getsockname()[1]
             command = [*launcher_command[:-1], '--no-browser', '--port', str(port),
                        '--idle-timeout', '0.1']
@@ -188,7 +188,7 @@ def main():
                     deadline = time.monotonic() + 30
                     while True:
                         try:
-                            connection = http.client.HTTPConnection('127.0.0.1', port, timeout=2)
+                            connection = http.client.HTTPConnection(LOOPBACK_HOST, port, timeout=2)
                             connection.request('GET', '/__station/status')
                             response = connection.getresponse()
                             status = json.loads(response.read())
@@ -201,7 +201,7 @@ def main():
                             time.sleep(0.1)
                         finally:
                             connection.close()
-                    connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+                    connection = http.client.HTTPConnection(LOOPBACK_HOST, port, timeout=5)
                     try:
                         connection.request('GET', '/index.html')
                         response = connection.getresponse()
