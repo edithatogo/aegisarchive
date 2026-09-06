@@ -1,0 +1,81 @@
+{
+  "schema_version": 1,
+  "kind": "native_bundle_receipt",
+  "bundle": "/Users/doughnut/.codex/artifacts/aegisarchive-20260905/AegisArchive macOS ARM64",
+  "inference_claimed": false,
+  "smoke": "not_run",
+  "status": "verified",
+  "immutable_files": 9513,
+  "assets": [
+    {
+      "id": "python",
+      "source_url": "https://github.com/astral-sh/python-build-standalone/releases/tag/20260901",
+      "license": "Python-2.0 and component notices"
+    },
+    {
+      "id": "git",
+      "source_url": "https://github.com/git/git/archive/refs/tags/v2.55.0.tar.gz",
+      "license": "GPL-2.0"
+    },
+    {
+      "id": "console",
+      "source_url": "https://ftp.gnu.org/gnu/bash/bash-5.3.tar.gz",
+      "license": "GPL-3.0"
+    },
+    {
+      "id": "llama",
+      "source_url": "https://github.com/ggml-org/llama.cpp/releases/download/b10819/llama-b10819-bin-macos-arm64.tar.gz",
+      "license": "MIT"
+    },
+    {
+      "id": "llama_server",
+      "source_url": "https://github.com/ggml-org/llama.cpp/releases/download/b10819/llama-b10819-bin-macos-arm64.tar.gz",
+      "license": "MIT"
+    },
+    {
+      "id": "piper",
+      "source_url": "https://github.com/OHF-Voice/piper1-gpl",
+      "license": "GPL-3.0"
+    },
+    {
+      "id": "whisper",
+      "source_url": "https://github.com/ggml-org/whisper.cpp",
+      "license": "MIT"
+    },
+    {
+      "id": "whisper_model",
+      "source_url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny.en.bin",
+      "license": "mit"
+    },
+    {
+      "id": "general",
+      "source_url": "https://huggingface.co/Qwen/Qwen3-4B-GGUF/resolve/bc640142c66e1fdd12af0bd68f40445458f3869b/Qwen3-4B-Q4_K_M.gguf",
+      "license": "apache-2.0"
+    },
+    {
+      "id": "scout",
+      "source_url": "https://huggingface.co/Qwen/Qwen2.5-1.5B-Instruct-GGUF/resolve/91cad51170dc346986eccefdc2dd33a9da36ead9/qwen2.5-1.5b-instruct-q4_k_m.gguf",
+      "license": "apache-2.0"
+    },
+    {
+      "id": "deep",
+      "source_url": "https://huggingface.co/Qwen/Qwen3-8B-GGUF/resolve/7c41481f57cb95916b40956ab2f0b139b296d974/Qwen3-8B-Q4_K_M.gguf",
+      "license": "apache-2.0"
+    },
+    {
+      "id": "bge",
+      "source_url": "https://huggingface.co/ggml-org/bge-small-en-v1.5-Q8_0-GGUF/resolve/f2068edd9b54f2a369549ccc71f70ed273a2a801/bge-small-en-v1.5-q8_0.gguf",
+      "license": "MIT"
+    },
+    {
+      "id": "piper_model",
+      "source_url": "https://huggingface.co/rhasspy/piper-voices/tree/1162a9173d0ce503555aed757976b7a9912eae4c",
+      "license": "MIT model repository; dataset public domain"
+    },
+    {
+      "id": "piper_config",
+      "source_url": "https://huggingface.co/rhasspy/piper-voices/tree/1162a9173d0ce503555aed757976b7a9912eae4c",
+      "license": "MIT model repository; dataset public domain"
+    }
+  ]
+}

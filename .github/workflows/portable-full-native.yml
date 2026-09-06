@@ -22,6 +22,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y patchelf zlib1g-dev
           df -h .
+      - name: Write pinned licence and source inventory
+        shell: bash
+        run: python portable/provision_native.py --inventory artifacts/full-native/native-source-inventory.json
       - name: Provision pinned assets and qualify relocated offline bundle
         shell: bash
         run: python portable/provision_native.py --work "$RUNNER_TEMP/aegis-full-native" --output artifacts/full-native

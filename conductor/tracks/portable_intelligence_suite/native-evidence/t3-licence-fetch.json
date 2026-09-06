@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "kind": "licence_fetch",
+  "inference_claimed": false,
+  "acquired": [
+    {
+      "path": "transcription/LICENSE",
+      "status": "downloaded",
+      "bytes": 1063
+    },
+    {
+      "path": "transcription/README.md",
+      "status": "downloaded",
+      "bytes": 3196
+    },
+    {
+      "path": "general/LICENSE",
+      "status": "downloaded",
+      "bytes": 11544
+    },
+    {
+      "path": "general/README.md",
+      "status": "downloaded",
+      "bytes": 7576
+    },
+    {
+      "path": "scout/LICENSE",
+      "status": "downloaded",
+      "bytes": 11343
+    },
+    {
+      "path": "scout/README.md",
+      "status": "downloaded",
+      "bytes": 4856
+    },
+    {
+      "path": "deep/LICENSE",
+      "status": "downloaded",
+      "bytes": 11544
+    },
+    {
+      "path": "deep/README.md",
+      "status": "downloaded",
+      "bytes": 7577
+    },
+    {
+      "path": "embeddings/LICENSE",
+      "status": "downloaded",
+      "bytes": 1065
+    },
+    {
+      "path": "embeddings/README.md",
+      "status": "downloaded",
+      "bytes": 62097
+    }
+  ],
+  "blocked": []
+}

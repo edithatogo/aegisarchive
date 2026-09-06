@@ -70,6 +70,22 @@ with GGUFEmbedder('/path/to/manifest.json') as encoder:
 The alternative `BGEEmbedder` adapter remains available for separately provisioned
 sentence-transformers environments; it loads local files with remote code disabled.
 
+Write the licence/source inventory without downloading:
+
+```sh
+python3 portable/provision_native.py --inventory /path/to/native-source-inventory.json
+python3 portable/provision_models.py --inventory --output /path/to/model-inventory.json
+```
+
+Audit a cache fail-closed (exit 1 unless every locked file verifies; this is not inference):
+
+```sh
+python3 portable/provision_models.py --audit --output /path/to/models
+python3 portable/provision_native.py --verify-bundle /path/to/package --receipt /path/to/receipt.json
+```
+
+`--smoke-bundle` runs native qualification only after package integrity succeeds. A missing bundle writes `status: blocked` with `inference_claimed: false` and `smoke: not_run`.
+
 Provision the locked model set with `python3 portable/provision_models.py --output
 /path/to/models`. Subsequent `--offline` runs verify the cache without downloading.
 `model-lock.json` records exact revisions, source URLs, SHA-256 values, licences,
