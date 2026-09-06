@@ -44,7 +44,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T6 Write coverage and omission receipts. (AC2, AC3)
+- [x] T6 Write coverage and omission receipts. (AC2, AC3) — commit 36c6487
   - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
   - **Change**: Reconcile discovered/captured/excluded/failed/unsupported counts and archive hashes; fail completeness on a missing required resource.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -52,7 +52,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T7 Final acceptance and claim reconciliation. (AC1–AC3)
+- [~] T7 Final acceptance and claim reconciliation. (AC1–AC3)
   - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`; `python3 scripts/gate.py test`; full Conductor validation.
