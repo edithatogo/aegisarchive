@@ -2,26 +2,66 @@
 
 ## Status: NEW
 
-Tasks are sequential. Dependencies must complete first. This contract explicitly transfers ownership of the listed shared runtime files from completed historical tracks for these tasks only; do not modify their archived evidence. Later new tracks wait for earlier owners to finish. Existing launcher and CI files remain read-only; the acceptance track owns its new workflow.
+Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [ ] T1 Freeze acceptance fixtures and failing regression tests. (AC1–AC3)
-  - **Files**: `cli/aegis_cli.py`, `cli/mirror_checkpoint.py`, `web/lib/core_crawler.js`, `web/lib/opfs_streamer.js`, `web/lib/mirror_checkpoint.js`, `tests/test_mirror_resume.py`, `tests/js/mirror_resume.test.js`; this track’s plan, metadata and evidence.
-  - **Change**: Define the exact fixture URL/resource/hash graph and failure cases for AC1–AC3. Add test-only browser tooling/configuration when required; lock dependencies and document provisioning before invoking npx --no-install. Record expected baseline failures; distinguish RED evidence from the passing completion gate.
-  - **Verify**: `python3 -m unittest tests.test_mirror_resume && node --test tests/js/mirror_resume.test.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: Fixtures and explicit failing assertions are recorded; development test tooling is available without altering core runtime dependencies.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T1 Define checkpoint schema and fault fixtures. (AC1, AC2)
+  - **Files**: `cli/mirror_checkpoint.py`, `web/lib/mirror_checkpoint.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Version profile/segment/hash state and specify interruption points, corruption and mismatch rejection.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Version profile/segment/hash state and specify interruption points, corruption and mismatch rejection. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T2 Implement the specified behaviour. (AC1–AC3)
-  - **Files**: `cli/aegis_cli.py`, `cli/mirror_checkpoint.py`, `web/lib/core_crawler.js`, `web/lib/opfs_streamer.js`, `web/lib/mirror_checkpoint.js`, `tests/test_mirror_resume.py`, `tests/js/mirror_resume.test.js`; this track’s plan, metadata and evidence.
-  - **Change**: Implement R1 onward within the owned files and make the T1 contract pass. Retain explicit unsupported cases and all existing security/politeness guarantees.
-  - **Verify**: `python3 -m unittest tests.test_mirror_resume && node --test tests/js/mirror_resume.test.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T2 Persist CLI archive segments atomically. (AC1)
+  - **Files**: `cli/mirror_checkpoint.py`, `cli/aegis_cli.py`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Commit segment bytes before checkpoint references; recover truncated writes without losing completed records.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Commit segment bytes before checkpoint references; recover truncated writes without losing completed records. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T3 Review, validate and record acceptance. (AC1–AC3)
-  - **Files**: `cli/aegis_cli.py`, `cli/mirror_checkpoint.py`, `web/lib/core_crawler.js`, `web/lib/opfs_streamer.js`, `web/lib/mirror_checkpoint.js`, `tests/test_mirror_resume.py`, `tests/js/mirror_resume.test.js`; this track’s plan, metadata and evidence.
-  - **Change**: Review hostile input, source disconnect, missing assets, redirects, secrets and failure semantics. Run focused tests and the baseline, retain revision-bound receipts and update capability claims only to the tested scope.
-  - **Verify**: `python3 -m unittest tests.test_mirror_resume && node --test tests/js/mirror_resume.test.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T3 Persist browser bytes and frontier together. (AC1, AC3)
+  - **Files**: `web/lib/mirror_checkpoint.js`, `web/lib/opfs_streamer.js`, `web/lib/core_crawler.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Coordinate durable storage and checkpoint updates; explicitly disable durable claims on memory-only fallback.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Coordinate durable storage and checkpoint updates; explicitly disable durable claims on memory-only fallback. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
+- [ ] T4 Implement verified resume and cancellation. (AC1, AC3)
+  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Reverify prior bytes and profile before resuming; preserve completed records and record cancellation/storage failures.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Reverify prior bytes and profile before resuming; preserve completed records and record cancellation/storage failures. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T5 Implement conditional incremental refresh. (AC2)
+  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Use validators when available and preserve old revisions; identify missing resources without silently deleting evidence.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Use validators when available and preserve old revisions; identify missing resources without silently deleting evidence. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T6 Resolve revisit lineage across segments. (AC2)
+  - **Files**: `cli/mirror_checkpoint.py`, `web/lib/mirror_checkpoint.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Ensure every revisit resolves to retained payload bytes and expose broken references as validation failures.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Ensure every revisit resolves to retained payload bytes and expose broken references as validation failures. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T7 Exercise interruption and recovery matrix. (AC1, AC2, AC3)
+  - **Files**: `tests/test_mirror_resume.py`, `tests/js/mirror_resume.test.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
+  - **Change**: Compare killed/restarted fixture runs with uninterrupted URL/hash sets across storage exhaustion and corrupt state.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Compare killed/restarted fixture runs with uninterrupted URL/hash sets across storage exhaustion and corrupt state. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T8 Final acceptance and claim reconciliation. (AC1–AC3)
+  - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
+  - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
+  - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`; `python3 scripts/gate.py test`; full Conductor validation.
+  - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.

@@ -3,10 +3,11 @@
   "type": "feature",
   "status": "new",
   "created_at": "2026-09-06T13:42:07Z",
-  "updated_at": "2026-09-06T13:42:07Z",
+  "updated_at": "2026-09-06T13:49:10Z",
   "description": "Explicit authenticated acquisition routes",
   "evidence_schema": "1.0",
   "dependencies": [
-    "mirror_capture_20260906"
+    "mirror_capture_20260906",
+    "crawl_controls_reports_20260906"
   ]
 }

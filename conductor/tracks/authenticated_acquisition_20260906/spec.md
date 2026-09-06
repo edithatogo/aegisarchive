@@ -26,8 +26,19 @@ Core runtime remains Python standard library and native browser APIs. Preserve a
 
 ## Dependencies
 
-mirror_capture_20260906
+mirror_capture_20260906, crawl_controls_reports_20260906
 
 ## Out of scope
 
 General JavaScript application emulation, server-side business logic, bypassing access controls, automatic browser-cookie extraction, source publication, and claiming all websites are supported. Optional AI functionality is not a mirroring acceptance substitute.
+
+## Granular implementation mapping
+
+- T1: Define session contracts and auth fixtures → AC1, AC2.
+- T2: Load explicit local session material → AC1, AC2.
+- T3: Enforce redirect credential isolation → AC1, AC2.
+- T4: Detect login and session expiry → AC1, AC3.
+- T5: Redact all secret-bearing artefacts → AC2.
+- T6: Expose supported acquisition routes → AC3.
+
+The final task reconciles all R requirements and AC1–AC3. Shared browser-test provisioning is owned by offline_navigation_20260906/T1; later tracks consume its locked configuration and add only their own test files. Changes to shared tooling require an explicit integration refinement.

@@ -18,3 +18,9 @@ All entries are planned, not delivered. Core static mirroring remains first.
 “Dynamic Document Management” is interpreted as a generic document lifecycle capability, not a named product or an organisation-specific system. Clarifying a different meaning would refine that track rather than invent product parity.
 
 No blanket claim of preserving server-side applications, protected media or every interactive website is made. Retain the archived research ADRs; these new tracks implement selected gaps rather than claiming the research already delivered them.
+
+## Execution granularity
+
+The ten tracks now contain 78 pending tasks. Each slice names owned files, a focused verification command and acceptance criteria; fixture/schema tasks retain honest RED evidence. Core static acceptance remains independent of optional tiers. Browser-test provisioning has one owner, and dependency edges are recorded in both metadata and the backlog.
+
+Shared crawler integration order: capture → crawl controls → authenticated acquisition → resume. Offline navigation can proceed after capture because it owns the reader/viewer rather than crawler files. Optional browser capture consumes completed authentication, controls and navigation tooling.

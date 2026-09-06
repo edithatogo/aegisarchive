@@ -2,26 +2,66 @@
 
 ## Status: NEW
 
-Tasks are sequential. Dependencies must complete first. This contract explicitly transfers ownership of the listed shared runtime files from completed historical tracks for these tasks only; do not modify their archived evidence. Later new tracks wait for earlier owners to finish. Existing launcher and CI files remain read-only; the acceptance track owns its new workflow.
+Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [ ] T1 Freeze acceptance fixtures and failing regression tests. (AC1–AC3)
-  - **Files**: `web/viewer.html`, `web/lib/warc_reader.js`, `web/lib/offline_navigation.js`, `tests/js/offline_navigation.test.js`, `tests/browser/offline_replay.spec.js`; this track’s plan, metadata and evidence.
-  - **Change**: Define the exact fixture URL/resource/hash graph and failure cases for AC1–AC3. Add test-only browser tooling/configuration when required; lock dependencies and document provisioning before invoking npx --no-install. Record expected baseline failures; distinguish RED evidence from the passing completion gate.
-  - **Verify**: `node --test tests/js/offline_navigation.test.js && npx --no-install playwright test tests/browser/offline_replay.spec.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: Fixtures and explicit failing assertions are recorded; development test tooling is available without altering core runtime dependencies.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T1 Provision isolated browser acceptance tooling. (AC1, AC2)
+  - **Files**: `package.json`, `package-lock.json`, `tests/browser/playwright.config.js`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Pin test-only browser tooling, document browser provisioning and network isolation, and create a deterministic loopback fixture harness.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Pin test-only browser tooling, document browser provisioning and network isolation, and create a deterministic loopback fixture harness. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T2 Implement the specified behaviour. (AC1–AC3)
-  - **Files**: `web/viewer.html`, `web/lib/warc_reader.js`, `web/lib/offline_navigation.js`, `tests/js/offline_navigation.test.js`, `tests/browser/offline_replay.spec.js`; this track’s plan, metadata and evidence.
-  - **Change**: Implement R1 onward within the owned files and make the T1 contract pass. Retain explicit unsupported cases and all existing security/politeness guarantees.
-  - **Verify**: `node --test tests/js/offline_navigation.test.js && npx --no-install playwright test tests/browser/offline_replay.spec.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T2 Specify archive navigation and hostile fixtures. (AC1, AC2)
+  - **Files**: `tests/browser/fixtures/`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Define expected page/fragment/history transitions plus malicious messages, refresh, forms, scripts and missing targets.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Define expected page/fragment/history transitions plus malicious messages, refresh, forms, scripts and missing targets. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T3 Review, validate and record acceptance. (AC1–AC3)
-  - **Files**: `web/viewer.html`, `web/lib/warc_reader.js`, `web/lib/offline_navigation.js`, `tests/js/offline_navigation.test.js`, `tests/browser/offline_replay.spec.js`; this track’s plan, metadata and evidence.
-  - **Change**: Review hostile input, source disconnect, missing assets, redirects, secrets and failure semantics. Run focused tests and the baseline, retain revision-bound receipts and update capability claims only to the tested scope.
-  - **Verify**: `node --test tests/js/offline_navigation.test.js && npx --no-install playwright test tests/browser/offline_replay.spec.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T3 Implement canonical archive-local resolution. (AC1, AC3)
+  - **Files**: `web/lib/offline_navigation.js`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Resolve archived redirects and query identities; expose missing destinations without live fallback.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Resolve archived redirects and query identities; expose missing destinations without live fallback. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
+- [ ] T4 Implement isolated navigation signalling. (AC1, AC2)
+  - **Files**: `web/lib/warc_reader.js`, `web/lib/offline_navigation.js`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Use a narrow nonce/source-bound navigation contract or equivalent isolated route; captured scripts remain disabled and cannot gain parent privileges.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Use a narrow nonce/source-bound navigation contract or equivalent isolated route; captured scripts remain disabled and cannot gain parent privileges. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T5 Wire viewer navigation and history. (AC1, AC2)
+  - **Files**: `web/viewer.html`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Connect the validated navigation contract, back/forward, fragments and accessible missing-resource status.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Connect the validated navigation contract, back/forward, fragments and accessible missing-resource status. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T6 Rewrite nested assets and manage lifetime. (AC1, AC3)
+  - **Files**: `web/lib/warc_reader.js`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Handle CSS dependencies, srcset, fonts and images without modifying original payloads; release obsolete blob resources safely.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Handle CSS dependencies, srcset, fonts and images without modifying original payloads; release obsolete blob resources safely. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T7 Prove disconnected-source replay. (AC1, AC2, AC3)
+  - **Files**: `tests/browser/offline_replay.spec.js`; focused tests: `tests/js/offline_navigation.test.js`; `tests/browser/offline_replay.spec.js`.
+  - **Change**: Stop the source and traverse three pages plus assets; instrument requests and reject all unintended non-loopback traffic.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Stop the source and traverse three pages plus assets; instrument requests and reject all unintended non-loopback traffic. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T8 Final acceptance and claim reconciliation. (AC1–AC3)
+  - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
+  - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
+  - **Verify**: `node --test tests/js/offline_navigation.test.js; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js`; `python3 scripts/gate.py test`; full Conductor validation.
+  - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.

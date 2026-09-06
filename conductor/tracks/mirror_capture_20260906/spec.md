@@ -26,8 +26,19 @@ Core runtime remains Python standard library and native browser APIs. Preserve a
 
 ## Dependencies
 
-None; start here.
+
 
 ## Out of scope
 
 General JavaScript application emulation, server-side business logic, bypassing access controls, automatic browser-cookie extraction, source publication, and claiming all websites are supported. Optional AI functionality is not a mirroring acceptance substitute.
+
+## Granular implementation mapping
+
+- T1: Freeze resource graph fixtures → AC1.
+- T2: Parse HTML requisites consistently → AC1.
+- T3: Traverse CSS imports and resource URLs → AC1.
+- T4: Integrate CLI resource discovery → AC1, AC3.
+- T5: Integrate browser resource discovery → AC1, AC2.
+- T6: Write coverage and omission receipts → AC2, AC3.
+
+The final task reconciles all R requirements and AC1–AC3. Shared browser-test provisioning is owned by offline_navigation_20260906/T1; later tracks consume its locked configuration and add only their own test files. Changes to shared tooling require an explicit integration refinement.

@@ -28,3 +28,16 @@ mirror_capture_20260906, mirror_resume_20260906
 ## Constraints, gates and exclusions
 
 Use synthetic fixtures and reserved domains, preserve security/politeness and original archive bytes. No core runtime dependency expansion: optional browser/parser/OCR tools require isolated pinned environments and explicit provisioning documentation. Machine-verifiable acceptance does not require extra manual sign-off. Credentials, runtime availability and hosted platform evidence are genuine execution boundaries, not automatic success. No release, publication, production schedule activation, external notification or sensitive-data egress is included. No specific organisation, target website or assessment method is in scope.
+
+## Granular implementation mapping
+
+- T1: Define catalogue and derivative schemas → AC1, AC2.
+- T2: Implement immutable registration and history → AC2.
+- T3: Add bounded native text extraction → AC1, AC3.
+- T4: Add optional PDF and Office adapters → AC1, AC3.
+- T5: Add optional OCR derivative processing → AC1, AC3.
+- T6: Implement revision-aware offline search → AC1, AC2.
+- T7: Implement revision changes and duplicates → AC2.
+- T8: Enforce handling and retention boundaries → AC3.
+
+The final task reconciles all R requirements and AC1–AC3. Shared browser-test provisioning is owned by offline_navigation_20260906/T1; later tracks consume its locked configuration and add only their own test files. Changes to shared tooling require an explicit integration refinement.

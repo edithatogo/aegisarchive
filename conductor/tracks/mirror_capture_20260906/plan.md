@@ -2,26 +2,58 @@
 
 ## Status: NEW
 
-Tasks are sequential. Dependencies must complete first. This contract explicitly transfers ownership of the listed shared runtime files from completed historical tracks for these tasks only; do not modify their archived evidence. Later new tracks wait for earlier owners to finish. Existing launcher and CI files remain read-only; the acceptance track owns its new workflow.
+Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [ ] T1 Freeze acceptance fixtures and failing regression tests. (AC1–AC3)
-  - **Files**: `cli/aegis_cli.py`, `cli/mirror_resources.py`, `web/lib/core_crawler.js`, `web/lib/mirror_resources.js`, `tests/test_mirror_capture.py`, `tests/js/mirror_capture.test.js`, `tests/fixtures/mirror/`; this track’s plan, metadata and evidence.
-  - **Change**: Define the exact fixture URL/resource/hash graph and failure cases for AC1–AC3. Add test-only browser tooling/configuration when required; lock dependencies and document provisioning before invoking npx --no-install. Record expected baseline failures; distinguish RED evidence from the passing completion gate.
-  - **Verify**: `python3 -m unittest tests.test_mirror_capture && node --test tests/js/mirror_capture.test.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: Fixtures and explicit failing assertions are recorded; development test tooling is available without altering core runtime dependencies.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T1 Freeze resource graph fixtures. (AC1)
+  - **Files**: `tests/fixtures/mirror/`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
+  - **Change**: Declare exact resources, hashes, encodings and negative outcomes for links, CSS, srcset, redirects and missing assets.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Declare exact resources, hashes, encodings and negative outcomes for links, CSS, srcset, redirects and missing assets. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T2 Implement the specified behaviour. (AC1–AC3)
-  - **Files**: `cli/aegis_cli.py`, `cli/mirror_resources.py`, `web/lib/core_crawler.js`, `web/lib/mirror_resources.js`, `tests/test_mirror_capture.py`, `tests/js/mirror_capture.test.js`, `tests/fixtures/mirror/`; this track’s plan, metadata and evidence.
-  - **Change**: Implement R1 onward within the owned files and make the T1 contract pass. Retain explicit unsupported cases and all existing security/politeness guarantees.
-  - **Verify**: `python3 -m unittest tests.test_mirror_capture && node --test tests/js/mirror_capture.test.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T2 Parse HTML requisites consistently. (AC1)
+  - **Files**: `cli/mirror_resources.py`, `web/lib/mirror_resources.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
+  - **Change**: Handle quoted/unquoted attributes, base URLs, srcset and canonical URL resolution using parity vectors.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Handle quoted/unquoted attributes, base URLs, srcset and canonical URL resolution using parity vectors. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T3 Review, validate and record acceptance. (AC1–AC3)
-  - **Files**: `cli/aegis_cli.py`, `cli/mirror_resources.py`, `web/lib/core_crawler.js`, `web/lib/mirror_resources.js`, `tests/test_mirror_capture.py`, `tests/js/mirror_capture.test.js`, `tests/fixtures/mirror/`; this track’s plan, metadata and evidence.
-  - **Change**: Review hostile input, source disconnect, missing assets, redirects, secrets and failure semantics. Run focused tests and the baseline, retain revision-bound receipts and update capability claims only to the tested scope.
-  - **Verify**: `python3 -m unittest tests.test_mirror_capture && node --test tests/js/mirror_capture.test.js`; `python3 scripts/gate.py test`; full Conductor validation. For T1, record expected failing new assertions and require existing baseline tests to pass.
-  - **Done when**: All applicable acceptance criteria and checkpoint review pass; evidence distinguishes local and hosted execution.
-  - **Do not**: substitute mocks or launcher smoke tests for required real browser/platform acceptance; weaken security to pass tests.
+- [ ] T3 Traverse CSS imports and resource URLs. (AC1)
+  - **Files**: `cli/mirror_resources.py`, `web/lib/mirror_resources.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
+  - **Change**: Resolve nested imports, escaped URLs and cycles with bounded recursion and MIME-aware parsing.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Resolve nested imports, escaped URLs and cycles with bounded recursion and MIME-aware parsing. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
+- [ ] T4 Integrate CLI resource discovery. (AC1, AC3)
+  - **Files**: `cli/aegis_cli.py`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
+  - **Change**: Feed discovered resources through existing scope, robots and politeness controls; preserve redirects and response identity.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Feed discovered resources through existing scope, robots and politeness controls; preserve redirects and response identity. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T5 Integrate browser resource discovery. (AC1, AC2)
+  - **Files**: `web/lib/core_crawler.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
+  - **Change**: Use the same discovery contract; report opaque/CORS failures and never infer successful bytes from an unreadable response.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Use the same discovery contract; report opaque/CORS failures and never infer successful bytes from an unreadable response. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T6 Write coverage and omission receipts. (AC2, AC3)
+  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
+  - **Change**: Reconcile discovered/captured/excluded/failed/unsupported counts and archive hashes; fail completeness on a missing required resource.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
+  - **Done when**: Reconcile discovered/captured/excluded/failed/unsupported counts and archive hashes; fail completeness on a missing required resource. Relevant assertions demonstrate the stated outcome and no regression is introduced.
+  - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
+  - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
+
+- [ ] T7 Final acceptance and claim reconciliation. (AC1–AC3)
+  - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
+  - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
+  - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`; `python3 scripts/gate.py test`; full Conductor validation.
+  - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.

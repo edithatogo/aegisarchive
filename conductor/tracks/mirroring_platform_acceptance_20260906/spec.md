@@ -36,3 +36,15 @@ General JavaScript application emulation, server-side business logic, bypassing 
 ## Extended capability tiers
 
 Core static mirroring acceptance remains the first milestone. Report additional copying controls, document lifecycle, rendered capture, scheduled jobs and portable exports as separate capability tiers using their track receipts. An extended feature cannot be advertised as supported until its own platform acceptance passes; extensions do not silently expand the static replacement claim.
+
+## Granular implementation mapping
+
+- T1: Define platform receipt contract → AC1.
+- T2: Build capture-disconnect-replay harness → AC1, AC2.
+- T3: Verify relocated ordinary launchers → AC1, AC3.
+- T4: Add isolated platform acceptance CI → AC1, AC2.
+- T5: Record actual Apple Silicon acceptance → AC1, AC2.
+- T6: Record Windows acceptance → AC1, AC2.
+- T7: Publish the scoped capability matrix → AC3.
+
+The final task reconciles all R requirements and AC1–AC3. Shared browser-test provisioning is owned by offline_navigation_20260906/T1; later tracks consume its locked configuration and add only their own test files. Changes to shared tooling require an explicit integration refinement.

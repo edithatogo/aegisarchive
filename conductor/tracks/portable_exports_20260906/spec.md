@@ -28,3 +28,15 @@ offline_navigation_20260906, mirror_resume_20260906
 ## Constraints, gates and exclusions
 
 Use synthetic fixtures and reserved domains, preserve security/politeness and original archive bytes. No core runtime dependency expansion: optional browser/parser/OCR tools require isolated pinned environments and explicit provisioning documentation. Machine-verifiable acceptance does not require extra manual sign-off. Credentials, runtime availability and hosted platform evidence are genuine execution boundaries, not automatic success. No release, publication, production schedule activation, external notification or sensitive-data egress is included. No specific organisation, target website or assessment method is in scope.
+
+## Granular implementation mapping
+
+- T1: Specify export mappings and adversarial fixtures → AC2.
+- T2: Implement deterministic directory export → AC1, AC2.
+- T3: Add deterministic ZIP and readback → AC2, AC3.
+- T4: Specify WACZ/CDXJ format contract → AC3.
+- T5: Implement and independently validate interoperable package → AC3.
+- T6: Qualify relocation and accessible offline use → AC1, AC2.
+- T7: Document prerequisites and repair diagnostics → AC3.
+
+The final task reconciles all R requirements and AC1–AC3. Shared browser-test provisioning is owned by offline_navigation_20260906/T1; later tracks consume its locked configuration and add only their own test files. Changes to shared tooling require an explicit integration refinement.

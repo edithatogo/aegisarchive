@@ -31,3 +31,15 @@ mirror_capture_20260906
 ## Out of scope
 
 General JavaScript application emulation, server-side business logic, bypassing access controls, automatic browser-cookie extraction, source publication, and claiming all websites are supported. Optional AI functionality is not a mirroring acceptance substitute.
+
+## Granular implementation mapping
+
+- T1: Provision isolated browser acceptance tooling → AC1, AC2.
+- T2: Specify archive navigation and hostile fixtures → AC1, AC2.
+- T3: Implement canonical archive-local resolution → AC1, AC3.
+- T4: Implement isolated navigation signalling → AC1, AC2.
+- T5: Wire viewer navigation and history → AC1, AC2.
+- T6: Rewrite nested assets and manage lifetime → AC1, AC3.
+- T7: Prove disconnected-source replay → AC1, AC2, AC3.
+
+The final task reconciles all R requirements and AC1–AC3. Shared browser-test provisioning is owned by offline_navigation_20260906/T1; later tracks consume its locked configuration and add only their own test files. Changes to shared tooling require an explicit integration refinement.
