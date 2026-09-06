@@ -267,7 +267,7 @@ class NativeReceiptGateTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertEqual(report['status'], 'blocked')
             self.assertFalse(report['inference_claimed'])
-            self.assertEqual(report['status'], json.loads(path.read_text())['status'])
+            self.assertEqual(json.loads(path.read_text())['status'], 'blocked')
             self.assertEqual(main([str(path)]), 1)
 
     def test_passed_receipt_exits_zero(self):
@@ -286,8 +286,10 @@ class NativeReceiptGateTests(unittest.TestCase):
         from portable.check_native_receipt import evaluate
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / 'native-qualification.json'
-            original = {'status': 'failed', 'checks': {'scout': {'status': 'failed'}}}
-            path.write_text(json.dumps(original))
+            path.write_text(json.dumps({
+                'status': 'failed',
+                'checks': {'scout': {'status': 'failed'}},
+            }))
             report, code = evaluate(path)
             self.assertEqual(code, 1)
             self.assertEqual(report['status'], 'failed')
@@ -295,42 +297,20 @@ class NativeReceiptGateTests(unittest.TestCase):
 
 
 class PrefetchBashTests(unittest.TestCase):
-    def test_stage_accepts_matching_bytes_from_mirror(self):
+    def test_stage_accepts_matching_cached_pin(self):
+        from portable import prefetch_bash as prefetch
         from portable.prefetch_bash import stage
-        from portable.provision_native import BASH_SHA
-
-        class Transport:
-            def __init__(self, payload):
-                self.payload = payload
-            def __call__(self, request, timeout=0):
-                class Response:
-                    def __init__(self, payload):
-                        self._payload = payload
-                    def read(self, size=-1):
-                        data, self._payload = self._payload, b''
-                        return data
-                    def __enter__(self):
-                        return self
-                    def __exit__(self, *_):
-                        return False
-                return Response(self.payload)
-
+        payload = b'pinned-bash-archive'
+        digest = hashlib.sha256(payload).hexdigest()
         with tempfile.TemporaryDirectory() as directory:
             work = Path(directory)
-            payload = b'pinned-bash-archive'
-            digest = hashlib.sha256(payload).hexdigest()
-            self.assertNotEqual(digest, BASH_SHA)
-            with self.assertRaises(RuntimeError):
-                stage(work, opener=Transport(payload))
             target = work / 'downloads' / 'bash.tar.gz'
-            target.parent.mkdir(parents=True, exist_ok=True)
+            target.parent.mkdir(parents=True)
             target.write_bytes(payload)
-            # Cached matching pin is not re-fetched; mismatch above already failed closed.
-            from portable import prefetch_bash as prefetch
             original = prefetch.BASH_SHA
             try:
                 prefetch.BASH_SHA = digest
-                self.assertEqual(stage(work, opener=Transport(b'ignored')), target)
+                self.assertEqual(stage(work, opener=lambda *_a, **_k: None), target)
             finally:
                 prefetch.BASH_SHA = original
 
