@@ -104,3 +104,7 @@ Maintenance rules:
 ## 2026-09-06 — repo
 - **Surprise**: A later native run repeated the macOS embeddings permission failure after passing matrices. The Portable Intelligence completion was reopened before merge.
 - **Change for the next planner**: Preserve failed receipts and require the final-head result; keep diagnostics sufficient to identify the failed operation.
+
+## 2026-09-07 — mirror_capture_20260906
+- **Surprise**: Real browser Fetch makes manual redirects opaque even when the same redirect is readable in a mocked response or the CLI. Counting attempted requests can therefore hide missing archive bytes.
+- **Change for the next planner**: freeze URL/hash fixtures and retain a real-browser negative case alongside deterministic tests. Scope completeness to captured resource outcomes and explicitly record opaque, excluded and pending entries.
