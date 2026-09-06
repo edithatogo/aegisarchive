@@ -13,13 +13,13 @@
  */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
-    define([], factory);
+    define(['./mirror_resources'], factory);
   } else if (typeof module === 'object' && module.exports) {
-    module.exports = factory();
+    module.exports = factory(require('./mirror_resources.js'));
   } else {
-    root.CoreCrawler = factory();
+    root.CoreCrawler = factory(root.MirrorResources);
   }
-}(typeof self !== 'undefined' ? self : this, function () {
+}(typeof self !== 'undefined' ? self : this, function (MirrorResources) {
 
   const TRACKING_PARAMS = new Set([
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
@@ -55,6 +55,8 @@
       this.queue = [];       // [{ url, tier, depth, parentUrl, retries }]
       this.visited = new Set();
       this.documents = [];   // [{ url, title, mimeType, size, hash, date }]
+      this.discoveryLimitations = [];
+      this.resourceOutcomes = new Map();
       this.auditLedger = []; // [{ url, status, mimeType, latency_ms, size_bytes, timestamp }]
 
       // Submodules
@@ -75,8 +77,8 @@
       this.assetExtensions = new Set((this.targetConfig.asset_extensions || [
         '.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.zip'
       ]).map(ext => ext.toLowerCase()));
-      this.maxDepth = this.targetConfig.max_depth || 5;
-      this.maxPages = this.targetConfig.max_pages || 5000;
+      this.maxDepth = this.targetConfig.max_depth ?? 5;
+      this.maxPages = this.targetConfig.max_pages ?? 5000;
       this.maxRetries = 3;
 
       // robots.txt (D8): 'respect' (default) or 'ignore_authorised'
@@ -92,6 +94,7 @@
       try {
         const u = baseUrl ? new URL(rawUrl, baseUrl) : new URL(rawUrl);
         if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+        if (u.username || u.password) return null;
 
         // Clean tracking parameters
         const searchParams = new URLSearchParams(u.search);
@@ -282,7 +285,13 @@
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
 
-        if (!resp.ok) {
+        if (resp.type === 'opaque' || resp.type === 'opaqueredirect' || resp.status === 0) {
+          this.discoveryLimitations.push({source:url, reason:'unreadable_response_or_redirect'});
+          this.resourceOutcomes.set(url, {url,state:'unsupported',reason:'unreadable_response_or_redirect'});
+          return;
+        }
+        const isRedirect = [301,302,303,307,308].includes(resp.status);
+        if (!resp.ok && !isRedirect) {
           const retryAfter = resp.headers.get('retry-after');
           this.politeness.recordFailure(url, resp.status, retryAfter);
           this.auditLedger.push({
@@ -301,7 +310,8 @@
         this.politeness.recordSuccess(url, latencyMs);
 
         const contentType = resp.headers.get('content-type') || '';
-        const isHtml = contentType.includes('text/html');
+        const mime = contentType.split(';')[0].trim().toLowerCase();
+        const isHtml = ['text/html','application/xhtml+xml'].includes(mime);
         const isAsset = this.isAssetUrl(url) || !isHtml;
 
         const arrayBuffer = await resp.arrayBuffer();
@@ -335,10 +345,20 @@
           this.callbacks.onDocumentFound(docEntry);
         }
 
-        // If HTML and within depth limit, parse links for BFS
-        if (isHtml && depth < this.maxDepth) {
-          const htmlText = new TextDecoder('utf-8').decode(uint8);
-          this.extractLinks(htmlText, url, depth + 1, tier);
+        if (isRedirect) {
+          const location = resp.headers.get('location');
+          if (location) this.enqueueReference(location, url, depth, tier);
+          else this.discoveryLimitations.push({source:url,reason:'redirect_without_location'});
+        } else if (isHtml || mime === 'text/css') {
+          const charset = /charset\s*=\s*["']?([^;\s"']+)/i.exec(contentType)?.[1] || 'utf-8';
+          try {
+            const text = new TextDecoder(charset, {fatal:true}).decode(uint8);
+            const found = MirrorResources.discover(text, contentType, url);
+            this.discoveryLimitations.push(...found.unsupported.map(reason => ({source:url,reason})));
+            for (const reference of found.resources) this.enqueueReference(reference.url, url, depth + 1, tier);
+          } catch (_) {
+            this.discoveryLimitations.push({source:url,reason:'unsupported_or_invalid_charset'});
+          }
         }
 
       } catch (err) {
@@ -442,49 +462,27 @@
      * Uses DOMParser in browsers; falls back to a tolerant regex (handles unquoted values).
      */
     collectCandidateUrls(html) {
-      const out = [];
-      const pushSrcset = (value) => {
-        for (const part of String(value || '').split(',')) {
-          const candidate = part.trim().split(/\s+/)[0];
-          if (candidate) out.push(candidate);
-        }
-      };
-      if (typeof DOMParser !== 'undefined') {
-        const doc = new DOMParser().parseFromString(html, 'text/html');
-        doc.querySelectorAll('a[href], link[href], area[href]').forEach(el => out.push(el.getAttribute('href')));
-        doc.querySelectorAll('img[src], script[src], iframe[src], source[src], video[src], audio[src]')
-          .forEach(el => out.push(el.getAttribute('src')));
-        doc.querySelectorAll('img[srcset], source[srcset]').forEach(el => pushSrcset(el.getAttribute('srcset')));
-        return out;
+      return MirrorResources.discover(html, 'text/html', 'http://discovery.invalid/').resources.map(x => x.url);
+    }
+
+    enqueueReference(raw, baseUrl, nextDepth, tier) {
+      const url = this.canonicalizeUrl(raw, baseUrl);
+      if (!url) {
+        this.discoveryLimitations.push({source:baseUrl,reason:'unsupported_seed_or_reference'});
+        return;
       }
-      const attrRegex = /<(?:a|link|area|img|script|iframe|source|video|audio)\b[^>]*?\s(?:href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
-      let m;
-      while ((m = attrRegex.exec(html)) !== null) out.push(m[1] || m[2] || m[3]);
-      const srcsetRegex = /\ssrcset\s*=\s*(?:"([^"]*)"|'([^']*)')/gi;
-      while ((m = srcsetRegex.exec(html)) !== null) pushSrcset(m[1] || m[2]);
-      return out;
+      if (!this.isUrlInScope(url) || nextDepth > this.maxDepth) {
+        if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'excluded',reason:nextDepth > this.maxDepth ? 'depth_limit' : 'scope'});
+        return;
+      }
+      if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'pending',reason:null});
+      if (!this.visited.has(url) && !this.queue.some(q => q.url === url)) this.queue.push({url,tier,depth:nextDepth,parentUrl:baseUrl});
     }
 
     extractLinks(html, baseUrl, nextDepth, tier) {
-      for (const candidate of this.collectCandidateUrls(html)) {
-        const rawHref = String(candidate || '').trim();
-        if (!rawHref || /^(#|javascript:|mailto:|tel:|data:|blob:)/i.test(rawHref)) {
-          continue;
-        }
-
-        const canonical = this.canonicalizeUrl(rawHref, baseUrl);
-        if (canonical && this.isUrlInScope(canonical) && !this.visited.has(canonical)) {
-          // Avoid duplicate entries in pending queue
-          if (!this.queue.some(q => q.url === canonical)) {
-            this.queue.push({
-              url: canonical,
-              tier,
-              depth: nextDepth,
-              parentUrl: baseUrl
-            });
-          }
-        }
-      }
+      const found = MirrorResources.discover(html, 'text/html', baseUrl);
+      this.discoveryLimitations.push(...found.unsupported.map(reason => ({source:baseUrl,reason})));
+      for (const reference of found.resources) this.enqueueReference(reference.url, baseUrl, nextDepth, tier);
     }
 
     pause() {
