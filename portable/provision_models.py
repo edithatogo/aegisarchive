@@ -15,6 +15,7 @@ import json
 import os
 from pathlib import Path, PurePosixPath
 import re
+import stat
 import sys
 import tempfile
 import time
@@ -60,6 +61,44 @@ def source_inventory(lock: dict) -> dict:
             "inference_claimed": False, "models": models}
 
 
+def digest_nofollow(path: Path) -> str:
+    flags = os.O_RDONLY
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags)
+    try:
+        result = hashlib.sha256()
+        while True:
+            block = os.read(fd, 8 * 1024 * 1024)
+            if not block:
+                break
+            result.update(block)
+        return result.hexdigest()
+    finally:
+        os.close(fd)
+
+
+def locate_cache_file(root: Path, relative: str):
+    """Reject dest or ancestor symlinks and paths that escape the cache root."""
+    root = Path(root).resolve()
+    cursor = root
+    info = None
+    for part in PurePosixPath(relative).parts:
+        cursor = cursor / part
+        try:
+            info = os.lstat(cursor)
+        except FileNotFoundError:
+            return None, "missing"
+        if stat.S_ISLNK(info.st_mode):
+            return None, "symlink_rejected"
+    if info is None or not stat.S_ISREG(info.st_mode):
+        return None, "missing"
+    resolved = cursor.resolve(strict=True)
+    if not resolved.is_relative_to(root):
+        return None, "path_escape"
+    return cursor, None
+
+
 def audit_cache(lock: dict, root: Path, selected: set) -> dict:
     """Offline SHA-256 audit. Missing or mismatched files fail closed; no inference."""
     files = []
@@ -69,23 +108,19 @@ def audit_cache(lock: dict, root: Path, selected: set) -> dict:
         if model["role"] not in selected:
             continue
         for entry in model["files"]:
-            destination = root / entry["path"]
+            destination, status = locate_cache_file(root, entry["path"])
             record = {key: entry[key] for key in ("path", "url", "sha256", "size_bytes")}
-            if destination.is_symlink():
-                record["status"] = "symlink_rejected"
+            if status is not None:
+                record["status"] = status
                 complete = False
-            elif destination.is_file():
-                if destination.stat().st_size != entry["size_bytes"]:
-                    record["status"] = "size_mismatch"
-                    complete = False
-                elif digest(destination) != entry["sha256"]:
-                    record["status"] = "digest_mismatch"
-                    complete = False
-                else:
-                    record["status"] = "verified"
+            elif destination.stat().st_size != entry["size_bytes"]:
+                record["status"] = "size_mismatch"
+                complete = False
+            elif digest_nofollow(destination) != entry["sha256"]:
+                record["status"] = "digest_mismatch"
+                complete = False
             else:
-                record["status"] = "missing"
-                complete = False
+                record["status"] = "verified"
             files.append(record)
     return {"schema_version": 1, "kind": "model_cache_audit", "complete": complete,
             "inference_claimed": False, "files": files}

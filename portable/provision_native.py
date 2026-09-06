@@ -217,6 +217,7 @@ def qualify(bundle, receipt, work, system):
     env=dict(os.environ)
     for key in tuple(env):
         if key.startswith('PYTHON'):env.pop(key)
+    env['PYTHONDONTWRITEBYTECODE']='1'
     # Root launchers use only declared OS shell utilities plus bundled Python.
     env['PATH']=str(bundle/'runtime/git/bin')+os.pathsep+('/usr/bin:/bin' if system!='Windows' else os.environ['SystemRoot']+'\\System32')
     env['OMP_NUM_THREADS']='2'
@@ -328,7 +329,7 @@ def source_inventory():
             'whisper_revision': WHISPER_REVISION, 'whisper_source_sha256': WHISPER_SOURCE_SHA256,
             'piper_revision': PIPER_REVISION, 'piper_source_sha256': PIPER_SOURCE_SHA256,
             'voice_revision': VOICE_REVISION, 'voice_files': VOICE_FILES,
-            'wheel_packages': {name: record['version'] for name, record in WHEEL_PINS.items()},
+            'wheels': WHEEL_PINS,
             'licences': {'whisper': 'MIT', 'piper': 'GPL-3.0', 'voice_repository': 'MIT',
                          'voice_dataset': 'public domain'},
         },
@@ -368,11 +369,37 @@ def verify_or_smoke(bundle, receipt, *, smoke=False):
         report['error'] = 'Bundled interpreter missing; native inference was not executed'
         write_json(receipt, report)
         return 1
+    script = bundle / 'app' / 'portable' / 'native_qualification.py'
+    expected = manifest.get('files', {}).get('app/portable/native_qualification.py')
+    if not script.is_file() or expected is None:
+        report['error'] = 'Bundled qualification script missing; native inference was not executed'
+        write_json(receipt, report)
+        return 1
+    if digest(script) != expected['sha256']:
+        report['error'] = 'Bundled qualification script digest mismatch; native inference was not executed'
+        write_json(receipt, report)
+        return 1
     qualification = receipt.with_name(receipt.stem + '-qualification.json')
-    script = Path(__file__).with_name('native_qualification.py')
-    completed = subprocess.run([str(python), '-I', '-B', '-X', 'utf8', str(script),
-                                str(bundle), str(qualification)], timeout=3000)
-    payload = json.loads(qualification.read_text()) if qualification.is_file() else {}
+    environment = {key: value for key, value in os.environ.items() if not key.startswith('PYTHON')}
+    environment['PYTHONDONTWRITEBYTECODE'] = '1'
+    try:
+        completed = subprocess.run([str(python), '-I', '-B', '-X', 'utf8', str(script),
+                                    str(bundle), str(qualification)],
+                                   env=environment, timeout=3000)
+    except subprocess.TimeoutExpired:
+        report['status'] = 'failed'
+        report['error'] = 'Native qualification timed out after 3000 seconds'
+        write_json(receipt, report)
+        return 1
+    except (OSError, subprocess.SubprocessError) as error:
+        report['status'] = 'failed'
+        report['error'] = 'Native qualification subprocess failed: ' + str(error)
+        write_json(receipt, report)
+        return 1
+    try:
+        payload = json.loads(qualification.read_text()) if qualification.is_file() else {}
+    except (OSError, ValueError) as error:
+        payload = {'status': 'failed', 'error': 'Qualification result parsing failed: ' + str(error)}
     report['smoke'] = payload.get('status', 'failed')
     report['qualification_receipt'] = qualification.name
     report['checks'] = {name: item.get('status') for name, item in payload.get('checks', {}).items()}
@@ -387,18 +414,51 @@ def verify_or_smoke(bundle, receipt, *, smoke=False):
     return 0 if report['status'] == 'passed' else 1
 
 
+def is_undeclared_bytecode(relative):
+    return any(part == '__pycache__' or part.endswith(('.pyc', '.pyo'))
+               for part in Path(relative).parts)
+
+
+def purge_undeclared_bytecode(bundle):
+    """Delete only extra bytecode files. Other undeclared files fail closed."""
+    bundle = Path(bundle).resolve()
+    manifest = json.loads((bundle / 'manifest.json').read_text())
+    declared = set(manifest.get('files', {}))
+    removed = []
+    for path in sorted(bundle.rglob('*'), reverse=True):
+        if not path.is_file() or path.is_symlink():
+            continue
+        relative = path.relative_to(bundle).as_posix()
+        if relative == 'manifest.json' or relative.startswith('data/') or relative in declared:
+            continue
+        if not is_undeclared_bytecode(relative):
+            raise ValueError('Undeclared non-bytecode file: ' + relative)
+        path.unlink()
+        removed.append(relative)
+    for directory in sorted((p for p in bundle.rglob('__pycache__') if p.is_dir()), reverse=True):
+        if not any(directory.iterdir()):
+            directory.rmdir()
+    return removed
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--work',type=Path)
     parser.add_argument('--output',type=Path)
     parser.add_argument('--inventory',type=Path,help='Write licence/source inventory JSON')
     parser.add_argument('--verify-bundle',type=Path,help='Fail-closed package integrity check')
+    parser.add_argument('--purge-undeclared-bytecode',type=Path,
+                        help='Delete extra bytecode files only, then fail closed on other extras')
     parser.add_argument('--smoke-bundle',type=Path,help='Verify then run native qualification')
     parser.add_argument('--receipt',type=Path,help='Receipt path for verify/smoke modes')
     args=parser.parse_args()
     if args.inventory:
         write_json(args.inventory.resolve(), source_inventory())
         print(json.dumps({'inventory': str(args.inventory.resolve()), 'inference_claimed': False}))
+        return
+    if args.purge_undeclared_bytecode:
+        removed = purge_undeclared_bytecode(args.purge_undeclared_bytecode)
+        print(json.dumps({'purged_bytecode': len(removed), 'inference_claimed': False}))
         return
     if args.verify_bundle or args.smoke_bundle:
         bundle = args.smoke_bundle or args.verify_bundle

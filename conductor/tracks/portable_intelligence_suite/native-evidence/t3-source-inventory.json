@@ -68,14 +68,73 @@
       "en_US-ljspeech-medium.onnx.json": "141d612cc0a95ed7efc1ca936b845c2364967f2e9217c5dbfcf69fc4d6c65860",
       "MODEL_CARD": "fbee1529c89d36b3fe76d7e9f3f832dce17f44900a52d76a9bda735654766b4d"
     },
-    "wheel_packages": {
-      "piper-tts": "1.8.0",
-      "flatbuffers": "25.12.19",
-      "numpy": "2.5.2",
-      "onnxruntime": "1.29.0",
-      "packaging": "26.3",
-      "pathvalidate": "3.3.1",
-      "protobuf": "7.36.1"
+    "wheels": {
+      "piper-tts": {
+        "version": "1.8.0",
+        "wheels": {
+          "piper_tts-1.8.0-cp39-abi3-macosx_10_9_x86_64.whl": "98c7dd791b2be0f8732e5c9cefd86c54200ac0360e43c643c937bf18ac0e941a",
+          "piper_tts-1.8.0-cp39-abi3-macosx_11_0_arm64.whl": "33e7425933e9290fe651ae127916ed1ca6104cfa3d94e9049295dd3a5c449382",
+          "piper_tts-1.8.0-cp39-abi3-manylinux_2_17_aarch64.manylinux2014_aarch64.manylinux_2_28_aarch64.whl": "3f60c1917de6d8e8033f395878ad3f88f6dfee88a8b05f98971a275f76a38484",
+          "piper_tts-1.8.0-cp39-abi3-manylinux_2_17_x86_64.manylinux2014_x86_64.manylinux_2_28_x86_64.whl": "25b4d3f31ff70c8fa7151908e00aaa5650cbdf16bca8fcf21299f3941b89a7d3",
+          "piper_tts-1.8.0-cp39-abi3-win_amd64.whl": "5da9bfdb05dfe15da3536859d422e605483ffa6d2b3ec2c5b9593bae6b5aa6a4"
+        }
+      },
+      "flatbuffers": {
+        "version": "25.12.19",
+        "wheels": {
+          "flatbuffers-25.12.19-py2.py3-none-any.whl": "7634f50c427838bb021c2d66a3d1168e9d199b0607e6329399f04846d42e20b4"
+        }
+      },
+      "numpy": {
+        "version": "2.5.2",
+        "wheels": {
+          "numpy-2.5.2-cp312-cp312-macosx_10_13_x86_64.whl": "14e373cfc6387177e8409dac3c7159be8eb05cd77096cd7c950268b86f62831c",
+          "numpy-2.5.2-cp312-cp312-macosx_11_0_arm64.whl": "4bbd96c833ecc8cc069ce518078fc8c60cb9cbfb0fea5b7a803ad65035596d03",
+          "numpy-2.5.2-cp312-cp312-macosx_14_0_arm64.whl": "6e8172ddfcf5cf74b811d372b570b83c60bd2de87a6fbfbebdadb4a9bd9c6cbb",
+          "numpy-2.5.2-cp312-cp312-macosx_14_0_x86_64.whl": "65f188481f1669e26f62b701e8205d19e460fa4a9b52a1414ba382330e4a3414",
+          "numpy-2.5.2-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl": "8ee9c4eeb8454b3660a8b53493563c3e121c2fc94fbd72b848ef814ed7b676a9",
+          "numpy-2.5.2-cp312-cp312-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl": "3cdec01fa790a186d430433fdd4d4ffb70eed6f0eeb4bf05c8dbe2dce0a9bcb8",
+          "numpy-2.5.2-cp312-cp312-musllinux_1_2_aarch64.whl": "7999d4ddb0c4025018373fd787510d46e04c769467af22869707b3c1cfd459ab",
+          "numpy-2.5.2-cp312-cp312-musllinux_1_2_x86_64.whl": "c1f017dc0875c9209d219f97feceb7d54c2661bb243deb4114478e1295808af7",
+          "numpy-2.5.2-cp312-cp312-win32.whl": "d6a48072864e3324e194a8fbb3c657bcc5b5c869dbc64c9537b1d5c862572c0a",
+          "numpy-2.5.2-cp312-cp312-win_amd64.whl": "28ac63476ec7651484215ee7fa15a1f78b57c14621f01e392afe17b9a1390ce4",
+          "numpy-2.5.2-cp312-cp312-win_arm64.whl": "27650bb0e7140fa3d37b9923b4803645e0b125d190f326eecfd3f4dad8e8ade1"
+        }
+      },
+      "onnxruntime": {
+        "version": "1.29.0",
+        "wheels": {
+          "onnxruntime-1.29.0-cp312-cp312-macosx_14_0_arm64.whl": "3a3814c041251d6a77fdf513fb282056538ee826d2f1178a0df3c549d3fff6ba",
+          "onnxruntime-1.29.0-cp312-cp312-manylinux_2_28_aarch64.whl": "d2fb19e848f7c33ed8d3182b52504aaa11c5e8da438bbb47296f85b133cbcf6b",
+          "onnxruntime-1.29.0-cp312-cp312-manylinux_2_28_x86_64.whl": "2b80d8c7ec2cc7438e4da3760b88c24568cba72c9ace96d668800a6c79419acb",
+          "onnxruntime-1.29.0-cp312-cp312-win_amd64.whl": "4acf2b4948b7ede87221ca6332344b8facdc8059d6ac751a7d367d04532b02dd",
+          "onnxruntime-1.29.0-cp312-cp312-win_arm64.whl": "dc61a79cb39afd66ab3f01fd2c23591a7f01de89c1668e1fb6315067fc279164"
+        }
+      },
+      "packaging": {
+        "version": "26.3",
+        "wheels": {
+          "packaging-26.3-py3-none-any.whl": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+        }
+      },
+      "pathvalidate": {
+        "version": "3.3.1",
+        "wheels": {
+          "pathvalidate-3.3.1-py3-none-any.whl": "5263baab691f8e1af96092fa5137ee17df5bdfbd6cff1fcac4d6ef4bc2e1735f"
+        }
+      },
+      "protobuf": {
+        "version": "7.36.1",
+        "wheels": {
+          "protobuf-7.36.1-cp310-abi3-macosx_10_9_universal2.whl": "3cf2ee25d006cee57294a1196ea43b37feb78e0dcd1e8af5c1aeddb777655aca",
+          "protobuf-7.36.1-cp310-abi3-manylinux2014_aarch64.whl": "43d3d37b1eb24c113b9b7d02008cac44e423f00b611b7781ae998d7623972969",
+          "protobuf-7.36.1-cp310-abi3-manylinux2014_s390x.whl": "39c518c05586c016d7874ff6079ee115bcec1ea5fbb1d177fbf7867ef4c67e44",
+          "protobuf-7.36.1-cp310-abi3-manylinux2014_x86_64.whl": "97198b77e369a0abd8e262b8f6c7266c55ddb796a3a12c76d7b8881188ed83aa",
+          "protobuf-7.36.1-cp310-abi3-win32.whl": "0b53ce95272aad50ad25d7ff03373743209822e8ba42ea7fad27d2bee1547d00",
+          "protobuf-7.36.1-cp310-abi3-win_amd64.whl": "51139351435d9b43d88a55eaa49fb6f737fbb478fb0cbf2cf694d1a04a9d3363",
+          "protobuf-7.36.1-py3-none-any.whl": "7d951e46b3f963d6c264c367c437921de9d5aedd9c3f9612b9077736b4e3ad5c"
+        }
+      }
     },
     "licences": {
       "whisper": "MIT",
