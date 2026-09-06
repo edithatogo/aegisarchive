@@ -4,7 +4,7 @@
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [~] T1 Freeze resource graph fixtures. (AC1)
+- [x] T1 Freeze resource graph fixtures. (AC1) — commit 5a3c139
   - **Files**: `tests/fixtures/mirror/`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
   - **Change**: Declare exact resources, hashes, encodings and negative outcomes for links, CSS, srcset, redirects and missing assets.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -12,7 +12,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T2 Parse HTML requisites consistently. (AC1)
+- [~] T2 Parse HTML requisites consistently. (AC1)
   - **Files**: `cli/mirror_resources.py`, `web/lib/mirror_resources.js`; focused tests: `tests/test_mirror_capture.py`; `tests/js/mirror_capture.test.js`.
   - **Change**: Handle quoted/unquoted attributes, base URLs, srcset and canonical URL resolution using parity vectors.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
