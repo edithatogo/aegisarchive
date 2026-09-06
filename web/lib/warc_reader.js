@@ -171,6 +171,22 @@
       return this.recordsByUrl.get(this.normalizeUrl(url)) || null;
     }
 
+    resolveArchiveUrl(raw, pageUrl) {
+      try {
+        const u = new URL(raw, pageUrl); u.hash = '';
+        if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return null;
+        return u.href;
+      } catch (_) { return null; }
+    }
+
+    releaseBlobUrls(keepUrls = new Set()) {
+      for (const record of this.recordsByUrl.values()) {
+        if (record.blobUrl && !keepUrls.has(record.blobUrl)) {
+          URL.revokeObjectURL(record.blobUrl); delete record.blobUrl;
+        }
+      }
+    }
+
     findSequence(uint8, seq, startOffset) {
       const len = uint8.length;
       const seqLen = seq.length;
@@ -229,7 +245,7 @@
      */
     rewriteRequisites(html, pageUrl) {
       const attrSafe = s => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
-      const resolve = raw => { try { return new URL(raw, pageUrl).href; } catch (e) { return null; } };
+      const resolve = raw => this.resolveArchiveUrl(raw, pageUrl);
       html = html.replace(/\ssrcset\s*=\s*("[^"]*"|'[^']*')/gi, ' data-archived-srcset=$1');
       const re = /<(a|link|area|img|script|iframe|source|video|audio)\b([^>]*?)\s(href|src)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/gi;
       return html.replace(re, (m, tag, before, attr, v1, v2, v3) => {

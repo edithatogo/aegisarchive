@@ -6,6 +6,7 @@
   <title>AegisArchive — In-Browser WARC Replay Viewer</title>
   <link rel="stylesheet" href="css/style.css">
   <script src="lib/warc_reader.js"></script>
+  <script src="lib/offline_navigation.js"></script>
   <style>
     .viewer-layout {
       display: grid;
@@ -294,6 +295,19 @@
             ? `<img src="${blobUrl}" alt="Archived image">`
             : '<p>This record is available using Download record.</p>');
       }
+      frame.onload = () => frame.contentWindow && frame.contentWindow.addEventListener('click', event => {
+        const anchor = event.target.closest && event.target.closest('a[data-archived-href]');
+        if (!anchor) return;
+        event.preventDefault();
+        const target = anchor.dataset.archivedHref;
+        const destination = OfflineNavigation.resolve(target, url, reader);
+        if (destination.state === 'captured') selectUrl(destination.target);
+        else announceMissing(destination.target || target);
+      }, {once:true});
+    }
+
+    function announceMissing(target) {
+      document.getElementById('activeUrlDisplay').textContent = `Missing archived resource: ${target}`;
     }
 
     function openCurrentInNewTab() {
