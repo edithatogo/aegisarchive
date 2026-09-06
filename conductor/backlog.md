@@ -34,7 +34,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
 
-Remaining selectable work is `portable_intelligence_suite` T3 (native assets and full-package execution) then T4 (review-fix closeout). Do not archive that track while the native platform matrix is incomplete.
+T3 native acceptance is complete with three retained passing hosted receipts. Remaining work is `portable_intelligence_suite` T4: qualify and close the Bash-prefetch follow-up in PR #24, then perform final track review. Do not archive before that gate passes.
 
 ## G2 companion-program delegations
 
