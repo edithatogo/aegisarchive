@@ -28,7 +28,7 @@ from portable.native_platform_probe import ASSETS, RELEASE, VERSION
 from portable.packaging import assemble, digest, verify as verify_package
 from portable.provision_models import (
     main as models_main, load_lock, source_inventory as model_source_inventory, write_json,
-    write_provenance, fetch as fetch_model, retry_delay)
+    fetch as fetch_model, retry_delay)
 from portable.provision_speech import (
     provision as speech_provision, normalize, WHISPER_REVISION, WHISPER_SOURCE_SHA256,
     PIPER_REVISION, PIPER_SOURCE_SHA256, VOICE_REVISION, VOICE_FILES, WHEEL_PINS)
@@ -451,11 +451,6 @@ def acquire_locked_assets(output, receipt, *, max_bytes=None, wheels=True, opene
         try:
             fetch_runtime(item['url'], destination, item['sha256'], runtime_receipts)
             record = dict(item, status='verified', bytes=destination.stat().st_size, path=relative)
-            write_provenance(destination, {
-                'id': item['id'], 'url': item['url'], 'sha256': item['sha256'],
-                'size_bytes': record['bytes'], 'license': item.get('license'),
-                'status': 'verified',
-            })
         except (OSError, ValueError, urllib.error.URLError) as error:
             runtimes_complete = False
             record = dict(item, status='failed', error=str(error), path=relative)
@@ -477,26 +472,17 @@ def acquire_locked_assets(output, receipt, *, max_bytes=None, wheels=True, opene
             try:
                 result = fetch_model_file(entry, destination)
                 record['status'] = 'verified' if result in ('cached', 'downloaded') else result
-                record['fetch_result'] = result
             except (OSError, ValueError, urllib.error.URLError) as error:
                 models_complete = False
                 record['status'] = 'failed'
                 record['error'] = str(error)
             if record['status'] != 'verified':
                 models_complete = False
-            else:
-                write_provenance(destination, {
-                    'path': entry['path'], 'url': entry['url'], 'sha256': entry['sha256'],
-                    'size_bytes': entry['size_bytes'], 'license': model['license'],
-                    'role': model['role'], 'repo': model.get('repo'),
-                    'revision': model.get('revision'), 'status': record.get('fetch_result', 'verified'),
-                })
             files.append(record)
     report = {
         'schema_version': 1,
         'kind': 'locked_asset_acquisition',
         'inference_claimed': False,
-        'host': {'system': platform.system(), 'machine': platform.machine()},
         'runtimes_complete': runtimes_complete,
         'models_complete': models_complete,
         'complete': runtimes_complete and models_complete,
