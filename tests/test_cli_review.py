@@ -50,7 +50,7 @@ class CliReviewTests(unittest.TestCase):
                 data = next(Path(td).glob('*.warc')).read_bytes()
                 self.assertIn(b'<a href="/external">next</a>', data)
                 self.assertNotIn(b'content-encoding:', data.lower())
-                self.assertEqual(hits, ['/', '/compressed', '/external'])
+                self.assertEqual(hits, ['/robots.txt', '/', '/compressed', '/external'])
         finally:
             server.shutdown()
             server.server_close()

@@ -57,3 +57,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `python3 -m unittest tests.test_mirror_capture; node --test tests/js/mirror_capture.test.js`; `python3 scripts/gate.py test`; full Conductor validation.
   - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.
+
+## Integration refinements
+
+T4 also owns `tests/test_cli_review.py`: the existing exact request-list expectation omitted robots.txt because the old CLI lacked policy fetching. The regression now requires the robots request before the same redirect sequence; no assertion about scope or bytes is removed. T5 also owns `web/index.html` to load the new discovery module before the crawler. This is required runtime wiring, not a new UI feature.
