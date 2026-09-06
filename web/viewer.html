@@ -161,6 +161,8 @@
               <span id="activeUrlDisplay" style="font-family: var(--font-mono); color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 600px;"></span>
             </div>
             <div>
+              <button class="btn btn-secondary" onclick="history.back()" style="padding: 4px 10px; font-size: 0.75rem;">Back</button>
+              <button class="btn btn-secondary" onclick="history.forward()" style="padding: 4px 10px; font-size: 0.75rem;">Forward</button>
               <button class="btn btn-secondary" onclick="openCurrentInNewTab()" style="padding: 4px 10px; font-size: 0.75rem;">Download record</button>
             </div>
           </div>
@@ -275,6 +277,7 @@
 
     function selectUrl(url) {
       activeUrl = url;
+      history.pushState({url}, '', `#${encodeURIComponent(url)}`);
       const rec = reader.getRecord(url);
       if (!rec) return;
 
@@ -311,6 +314,7 @@
         else announceMissing(destination.target || target);
       }, {once:true});
     }
+    window.addEventListener('popstate', event => { if (event.state && event.state.url) selectUrl(event.state.url); });
 
     function announceMissing(target) {
       document.getElementById('activeUrlDisplay').textContent = `Missing archived resource: ${target}`;
