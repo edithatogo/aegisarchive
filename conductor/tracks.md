@@ -93,7 +93,7 @@
   *ADR spikes only (WACZ+CDXJ, Compression Streams, service-worker replay, MCP resources, in-browser PDF and embeddings later, OPFS wiring, task scheduling, provenance score). Depends on `warc_interop_20260905` before WACZ.*
 
 ---
-- [ ] **Track: Complete static-site capture**
+- [~] **Track: Complete static-site capture**
   *Link: [./tracks/mirror_capture_20260906/index.md](./tracks/mirror_capture_20260906/index.md)*
 
 ---
