@@ -40,7 +40,7 @@ jobs:
         shell: bash
         run: |
           python portable/provision_native.py --acquire artifacts/acquire --receipt artifacts/acquire/acquisition.json --max-bytes 120000000
-          python -c "import json,sys; r=json.load(open('artifacts/acquire/acquisition.json')); assert r['inference_claimed'] is False; assert r['runtimes_complete'] is True; sys.exit(0 if r['runtimes_complete'] else 1)"
+          python -c "import json,sys; r=json.load(open('artifacts/acquire/acquisition.json')); failed=any(f.get('status')=='failed' for f in r['files']); assert r['inference_claimed'] is False; assert r['runtimes_complete'] is True; sys.exit(1 if failed or not r['runtimes_complete'] else 0)"
       - name: Retain acquisition receipts
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

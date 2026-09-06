@@ -5,6 +5,7 @@ network boundary and uses the relocated package's interpreter and runtimes.
 """
 from __future__ import annotations
 import argparse
+import http.client
 import hashlib
 import json
 import os
@@ -16,6 +17,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -26,7 +28,7 @@ from portable.native_platform_probe import ASSETS, RELEASE, VERSION
 from portable.packaging import assemble, digest, verify as verify_package
 from portable.provision_models import (
     main as models_main, load_lock, source_inventory as model_source_inventory, write_json,
-    fetch as fetch_model)
+    fetch as fetch_model, retry_delay)
 from portable.provision_speech import (
     provision as speech_provision, normalize, WHISPER_REVISION, WHISPER_SOURCE_SHA256,
     PIPER_REVISION, PIPER_SOURCE_SHA256, VOICE_REVISION, VOICE_FILES, WHEEL_PINS)
@@ -393,14 +395,24 @@ def locked_runtime_targets():
     return items
 
 
-def pypi_wheel_targets(opener=None):
+def pypi_wheel_targets(opener=None, attempts=6):
     opener = opener or urllib.request.build_opener()
     items = []
     for package, record in WHEEL_PINS.items():
         url = f'https://pypi.org/pypi/{package}/{record["version"]}/json'
         request = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive-provisioner/1'})
-        with opener.open(request, timeout=60) as response:
-            payload = json.loads(response.read().decode('utf-8'))
+        payload = None
+        for attempt in range(attempts):
+            try:
+                with opener.open(request, timeout=60) as response:
+                    payload = json.loads(response.read().decode('utf-8'))
+                break
+            except (OSError, ValueError, urllib.error.URLError, http.client.HTTPException) as error:
+                if attempt + 1 == attempts:
+                    raise
+                delay = retry_delay(error, attempt)
+                print(f'Retry {package} index in {delay:g}s: {error}', file=sys.stderr, flush=True)
+                time.sleep(delay)
         files = {entry['filename']: entry for entry in payload.get('urls', [])}
         for filename, sha in record['wheels'].items():
             if not wheel_wanted(filename):
@@ -416,6 +428,7 @@ def pypi_wheel_targets(opener=None):
                 raise ValueError('Wheel URL must use HTTPS: ' + filename)
             items.append({'id': 'wheel/' + filename, 'url': href, 'sha256': sha,
                           'license': 'GPL-3.0' if package == 'piper-tts' else 'bundled'})
+        time.sleep(0.25)
     return items
 
 
@@ -478,6 +491,13 @@ def acquire_locked_assets(output, receipt, *, max_bytes=None, wheels=True, opene
     }
     write_json(Path(receipt), report)
     return report
+
+
+def acquisition_failed(report):
+    """True when a runtime is incomplete or any attempted file failed (not size-skipped)."""
+    if not report.get('runtimes_complete'):
+        return True
+    return any(item.get('status') == 'failed' for item in report.get('files', []))
 
 
 def verify_or_smoke(bundle, receipt, *, smoke=False):
@@ -612,7 +632,7 @@ def main():
                                        wheels=not args.no_wheels)
         print(json.dumps({key: report[key] for key in
                           ('complete', 'runtimes_complete', 'models_complete', 'inference_claimed')}))
-        raise SystemExit(0 if report['runtimes_complete'] else 1)
+        raise SystemExit(1 if acquisition_failed(report) else 0)
     if args.verify_bundle or args.smoke_bundle:
         bundle = args.smoke_bundle or args.verify_bundle
         receipt = args.receipt or Path('native-bundle-receipt.json')

@@ -167,6 +167,7 @@ class NativeAssetAuditTests(unittest.TestCase):
             self.assertEqual(statuses['scout/model.gguf'], 'skipped_size')
             self.assertEqual(statuses['embeddings/bge.gguf'], 'verified')
             self.assertFalse(json.loads(receipt.read_text())['inference_claimed'])
+            self.assertFalse(native.acquisition_failed(report))
 
     def test_acquire_fail_closed_on_checksum_mismatch(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -194,6 +195,41 @@ class NativeAssetAuditTests(unittest.TestCase):
             self.assertFalse(report['complete'])
             self.assertFalse(report['inference_claimed'])
             self.assertEqual(report['files'][0]['status'], 'failed')
+            self.assertTrue(native.acquisition_failed(report))
+
+    def test_acquire_fails_closed_when_attempted_model_download_fails(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+
+            def runtime(url, target, sha, receipt):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(b'ok')
+                receipt.append({'url': url, 'sha256': sha, 'bytes': 2})
+                return target
+
+            original_targets = native.locked_runtime_targets
+            original_lock = native.load_lock
+            native.locked_runtime_targets = lambda: [{
+                'id': 'git/source', 'url': 'https://example.invalid/git.tar.gz',
+                'sha256': hashlib.sha256(b'ok').hexdigest(), 'license': 'GPL-2.0-only',
+            }]
+            native.load_lock = lambda _path: {'schema_version': 1, 'models': [
+                {'role': 'embeddings', 'license': 'MIT',
+                 'files': [{'path': 'embeddings/bge.gguf', 'url': 'https://example.invalid/bge.gguf',
+                            'sha256': 'c' * 64, 'size_bytes': 11}]},
+            ]}
+            try:
+                report = native.acquire_locked_assets(
+                    root / 'cache', root / 'receipt.json', max_bytes=100, wheels=False,
+                    fetch_runtime=runtime,
+                    fetch_model_file=lambda *args, **kwargs: (_ for _ in ()).throw(ValueError('digest mismatch')))
+            finally:
+                native.locked_runtime_targets = original_targets
+                native.load_lock = original_lock
+            self.assertTrue(report['runtimes_complete'])
+            self.assertFalse(report['models_complete'])
+            self.assertEqual(report['files'][-1]['status'], 'failed')
+            self.assertTrue(native.acquisition_failed(report))
 
     def test_purge_removes_only_undeclared_bytecode(self):
         with tempfile.TemporaryDirectory() as directory:
