@@ -63,3 +63,12 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
 T4 also owns `tests/test_cli_review.py`: the existing exact request-list expectation omitted robots.txt because the old CLI lacked policy fetching. The regression now requires the robots request before the same redirect sequence; no assertion about scope or bytes is removed. T5 also owns `web/index.html` to load the new discovery module before the crawler. This is required runtime wiring, not a new UI feature.
 
 T6 also owns `web/index.html` to expose coverage JSON in the existing downloadable diagnostic report. Chrome UI acceptance observed 8/8 readable static responses complete, and a separate redirect fixture explicitly incomplete because manual redirects are opaque. No cross-origin or authenticated browser capability is claimed.
+
+## Review Fixes
+
+- [x] R1 Resolve reproduced discovery and policy edge cases. (AC1, AC2) — commit 495c0be
+  - **Files**: the discovery modules, crawler modules, shared discovery vectors and focused capture tests already owned by T2–T6.
+  - **Change**: handle descriptor-free srcset commas and duplicate attributes; reject credential URLs; deny robots authentication failures.
+  - **Verify**: focused Python and JavaScript capture tests, then full test gate.
+  - **Done when**: all regression assertions pass with explicit negative coverage.
+  - **Do not**: broaden static capture into rendered automation or alter another track.
