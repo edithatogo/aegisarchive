@@ -34,3 +34,5 @@ The internally stored macOS ARM64 package previously recorded a complete relocat
 ## Remaining acceptance
 
 T3 is not complete until Linux and Windows have direct native execution receipts. T4 still owns remaining review-fix closeout on the hosted matrix. Archive only after those receipts pass.
+
+Hosted `portable-full-native.yml` now runs on pull requests for `ubuntu-latest`, `windows-latest`, and `macos-14`, fail-closed on `native-qualification.json` status. Darwin loopback embeddings allow `127.0.0.1` as well as `localhost`.

@@ -48,6 +48,11 @@ WIN_GIT_SHA = '5aa8a20f6e9abb2c755f0e73c91c687701a46b309ad84a0ca6509380fa4ae290'
 PYTHON_LICENSES = {'LICENSE': '1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5', 'LICENSE.bzip2.txt': '1f38bbc7caacafd65169276d759c0d88c991b753b643ce35d0e45ea1971dd441', 'LICENSE.cpython.txt': '86e61415828a8b5b06ec8d024e6f086ce155a8b85fd0c419c0ba4dc004e74fdd', 'LICENSE.expat.txt': '122f2c27000472a201d337b9b31f7eb2b52d091b02857061a8880371612d9534', 'LICENSE.libedit.txt': '29cea33c32bbc9785142386377915612a2fa786482c46843383384aded2e09b1', 'LICENSE.libffi.txt': 'deaf3a42effb551a5b140fa9afefed183a27f1341c6d1bf430d106a5e6931fc0', 'LICENSE.liblzma.txt': '9a4062de0a2c388a98cf35a35d348b62fa97c838a71c3c28ee1a2d7d0a565b02', 'LICENSE.mpdecimal.txt': '669512af7219f58be03a398766d7c9da11a3b3df9d3f05cb74c5ceca25c8da3b', 'LICENSE.ncurses.txt': '87a4c4442337b8968ef956031c406b74f9cb7149b7ba87311bdaba534816201c', 'LICENSE.openssl-3.txt': '7d5450cb2d142651b8afa315b5f238efc805dad827d91ba367d8516bc9d49e7a', 'LICENSE.sqlite.txt': '38bef3d28b24f145ea293bd3b6eb4b20396982abc8303128fb493986ea5bc719', 'LICENSE.tcl.txt': 'c0a69a2bfd757361ec7e6143973b103c90409316b49e9c88db26ad6388e79f16', 'LICENSE.tix.txt': '3ac5cdd0bef6c43ce34c6a7ced452081d9e5a0bf94082b9f9147d23ec9e214f5', 'LICENSE.zlib.txt': '818922b2620f12801a12bf78e399644a30990e66824abd8ca8ec24d451d6f92c'}
 QUALIFIED_PYTHON = (('Darwin', 'arm64'), ('Linux', 'x86_64'), ('Windows', 'AMD64'))
 PYTHON_LICENSE_BASE = 'https://raw.githubusercontent.com/astral-sh/python-build-standalone/4bb01f09aaf362c71e891be4a41cb6d6ddf830b3/'
+DARWIN_NETWORK_POLICY = (
+    '(version 1)(allow default)(deny network*)'
+    '(allow network-inbound (local ip "localhost:*") (local ip "127.0.0.1:*"))'
+    '(allow network-outbound (remote ip "localhost:*") (remote ip "127.0.0.1:*"))'
+)
 WHEEL_PLATFORM_MARKERS = (
     'macosx_14_0_arm64', 'macosx_11_0_arm64', 'macosx_10_9_x86_64',
     'manylinux_2_28_x86_64', 'manylinux_2_27_x86_64', 'manylinux_2_17_x86_64',
@@ -241,7 +246,7 @@ def qualify(bundle, receipt, work, system):
         policy_evidence['rule_count']=len(policy_evidence['executables'])
     policy_receipt.write_text(json.dumps(policy_evidence,indent=2)+'\n')
     if system=='Darwin':
-        policy='(version 1)(allow default)(deny network*)(allow network-inbound (local ip "localhost:*"))(allow network-outbound (remote ip "localhost:*"))'
+        policy=DARWIN_NETWORK_POLICY
         policy_evidence['policy']=policy;policy_receipt.write_text(json.dumps(policy_evidence,indent=2)+'\n')
         subprocess.run(['/usr/bin/sandbox-exec','-p',policy,*command],env=env,check=True,timeout=3000)
     elif system=='Linux':

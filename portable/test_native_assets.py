@@ -113,6 +113,7 @@ class NativeAssetAuditTests(unittest.TestCase):
         self.assertIn('llama/Windows', targets)
         self.assertIn('llama/Darwin', targets)
         self.assertIn('win_git/portable', targets)
+        self.assertIn('127.0.0.1', native.DARWIN_NETWORK_POLICY)
         for item in targets.values():
             self.assertEqual(len(item['sha256']), 64)
             self.assertTrue(item['url'].startswith('https://'))
