@@ -1,0 +1,33 @@
+{
+  "verified_at": "2026-09-06T03:53:29.108703+00:00",
+  "method": "Streamed every retained runtime archive member and checked its bytes, size and executable flag against the full manifest; checked shared model bytes against omitted-model SHA-256 and size. This is payload/restore-input verification, not local execution on other OSes.",
+  "run_id": "34008890917",
+  "qualified_payloads": [
+    {
+      "artifact_directory": "full-native-macos-14",
+      "runtime_payload_sha256": "91a4f86c23f0cb4c76cd6530ca5e7616fc826e33ca44f629ae78fda88dec32e5",
+      "manifest_sha256": "375d4e438e806ea9b9fbd93e6e6e0ad6e9729dd64e0fb4b1405d1228778d5db5",
+      "immutable_files": 5736,
+      "shared_models": 5,
+      "hosted_qualification": "passed"
+    },
+    {
+      "artifact_directory": "full-native-ubuntu-latest",
+      "runtime_payload_sha256": "2358fb92b05e06ffc7faa4b519c02eabc75b550fc1b7e7e91588ee4f43ebf320",
+      "manifest_sha256": "99ba87a358715941d1a9c3fed6301b9ab4b20e98a35a9559eb93f5fab6466a6a",
+      "immutable_files": 5813,
+      "shared_models": 5,
+      "hosted_qualification": "passed"
+    },
+    {
+      "artifact_directory": "full-native-windows-latest",
+      "runtime_payload_sha256": "594462182d68604438cf454225580081c43c714a78db3b5d48da970a520f187e",
+      "manifest_sha256": "1c5d35f7786b4b2eb0466422221e7bc8c2e726eca91b18fbe59172cbfdf6e6ae",
+      "immutable_files": 25926,
+      "shared_models": 5,
+      "hosted_qualification": "passed"
+    }
+  ],
+  "shared_model_cache": "models (sibling asset-store directory)",
+  "complete": true
+}

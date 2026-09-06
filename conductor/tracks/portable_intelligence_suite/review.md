@@ -1,6 +1,6 @@
 # Native implementation and review checkpoint
 
-**Reopened:** final-head native run 34006333417 repeated macOS embeddings EPERM. Earlier passing matrices are retained but do not clear the new failure. The dated sections below preserve earlier checkpoint limitations; this final decision supersedes their pending status.
+**Completed:** final native qualification and review closeout passed. The dated sections below preserve earlier checkpoint limitations; this final decision supersedes their pending status.
 
 ## Issue #11 acquire session (2026-09-06)
 
@@ -47,8 +47,18 @@ Local verification on integrated main `80864a0`: focused packaging/intelligence 
 
 T4 remains open: PR #24 fixes the Bash-prefetch script import failure masked by continue-on-error. Its run 34004202702 is pending. Historical statements that Linux/Windows receipts are absent are superseded by the retained receipts above. No release is claimed.
 
-## Final review and acceptance
+## Acceptance checkpoint — run 34005505093
 
 Run [34005505093](https://github.com/edithatogo/aegisarchive/actions/runs/34005505093) passed on Linux x86_64, Windows AMD64 and Darwin arm64. [Retained receipts](native-evidence/hosted-34005505093/index.json) each record 14/14 passing checks. Application and workflow bytes match the tested revision. The Bash-prefetch entrypoint now gates requests and HTTPS redirects through PolitenessEngine, with Retry-After, backoff and cancellation tests. The prior macOS embeddings EPERM failure was preserved in hosted run 34004202702; its root cause was not established. Five local sandboxed embedding runs and this final hosted matrix passed without relaxing the sandbox or assertions.
 
 Review covered graph invalidation, extreme-vector normalization, semantic-only retrieval, real Git/console operations, relocated launchers, post-execution integrity, request pacing and original receipt hashes. Local baseline passed: 48 Python tests, 18 station tests, 36 JavaScript tests; focused tests and claims audit passed. All 18 canonical ledgers validate; four recovered ledgers retain their original bytes without re-attesting historical claims. No release or companion-program authorization is implied.
+
+## Final review and acceptance — 2026-09-06
+
+Run [34008890917](https://github.com/edithatogo/aegisarchive/actions/runs/34008890917) passed on Linux x86_64, Windows AMD64 and Darwin arm64. [Retained receipts](native-evidence/hosted-34008890917/index.json) each record 14/14 passing checks. Application and workflow bytes match the tested revision. The Bash-prefetch entrypoint now gates requests and HTTPS redirects through PolitenessEngine, with Retry-After, backoff and cancellation tests. Earlier macOS failure receipts are retained, including a child-process startup failure; startup diagnostics now preserve its exit code and log tail. Numeric IPv4 loopback now avoids hostname resolution in the sandbox path; failure receipts include exception type and traceback. Twenty native local embedding runs and the real sandbox HTTP regression passed with external egress denied. Qualification speech now uses ONNX Runtime seed 42; three local synthesized files were byte-identical and passed the unchanged transcription assertions. This final native matrix passed without relaxing external-egress restrictions or acceptance assertions; the later traceback identified probe.bind as the denied operation, and the Darwin policy now explicitly permits loopback network-bind. External-egress denial remains required.
+
+Review covered graph invalidation, extreme-vector normalization, semantic-only retrieval, real Git/console operations, relocated launchers, post-execution integrity, request pacing and original receipt hashes. Local baseline passed: 48 Python tests, 18 station tests, 36 JavaScript tests; focused tests and claims audit passed. All 18 canonical ledgers validate; four recovered ledgers retain their original bytes without re-attesting historical claims. No release or companion-program authorization is implied.
+
+## Durable native delivery
+
+The three qualified runtime payloads, complete manifests, restore instructions, source inventories and provisioning/native receipts from run 34008890917 are retained at `/Volumes/DM/aegisarchive-assets/qualified-20260906/34008890917`. The five shared model files and their licences are retained in `/Volumes/DM/aegisarchive-assets/models`. The [verification receipt](native-evidence/hosted-34008890917/durable-verification.json) records complete SHA-256, size and executable-flag verification of every immutable file, plus the shared models. Licences remain inside the verified payloads. This establishes durable restore inputs; Windows/Linux execution evidence comes from hosted native qualification, not local cross-platform execution.
