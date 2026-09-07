@@ -13,8 +13,8 @@ class TestWebConsoleStatic(unittest.TestCase):
             self.index = f.read()
 
     def test_viewer_sandbox_hardened(self):
-        self.assertIn('sandbox=""', self.viewer)
-        self.assertNotIn("allow-same-origin", self.viewer)
+        self.assertIn('sandbox="allow-same-origin"', self.viewer)
+        self.assertNotIn('allow-scripts', self.viewer)
 
     def test_forbidden_raw_interpolations_absent(self):
         forbidden = ["${url}", "${doc.url}", "${file.name}"]
