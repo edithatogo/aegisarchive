@@ -35,7 +35,6 @@ class TestAuth(unittest.TestCase):
         self.assertIsNone(browser_handoff(c,'https://other.test/'))
         c['expires_at']=time.time()-1
         self.assertIsNone(browser_handoff(c,'https://example.test/'))
-
     def test_client_certificate_is_optional_and_expiry_is_fail_closed(self):
         self.assertIsNone(ssl_context(None))
         config = {'mode': 'client_certificate', 'certificate_file': 'cert.pem', 'key_file': 'key.pem'}
