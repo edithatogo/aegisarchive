@@ -57,3 +57,64 @@ def validate_rules(config):
             if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
                 raise ValueError('URL prefix must be an HTTP URL without credentials')
     return copy.deepcopy(config)
+
+
+def evaluate_rules(config, resource, *, in_scope):
+    """Return first-match decisions; unknown response metadata holds downloads.
+
+    A caller may acquire response headers for ``needs_metadata``, subject to its
+    ordinary scope/politeness controls, but must reevaluate before reading bytes.
+    """
+    config = validate_rules(config)
+    if type(in_scope) is not bool or not isinstance(resource, dict):
+        raise ValueError('Explicit scope and resource required')
+    url = resource.get('url')
+    if not isinstance(url, str) or len(url) > 8192 or any(ord(c) < 32 for c in url):
+        raise ValueError('Invalid resource URL')
+    parsed = urlsplit(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError('Invalid resource URL')
+    if resource.get('kind') not in ('page', 'asset', 'sitemap'):
+        raise ValueError('Invalid resource kind')
+    for key in ('depth', 'bytes'):
+        value = resource.get(key)
+        if value is not None and (type(value) is not int or not 0 <= value <= MAX_INTEGER):
+            raise ValueError('Invalid resource count')
+    if resource.get('mime') is not None and (not isinstance(resource['mime'], str) or len(resource['mime']) > MAX_TEXT):
+        raise ValueError('Invalid resource MIME')
+    result = dict(discover=in_scope, download=in_scope, traverse=in_scope,
+                  rule_id=None, state='decided' if in_scope else 'out_of_scope', missing=[])
+    if not in_scope:
+        return result
+    for rule in config['rules']:
+        missing, mismatch = set(), False
+        for key, expected in rule['match'].items():
+            if key in NUMBER_FIELDS:
+                direction, field = key.split('_', 1)
+                value = resource.get(field)
+                if value is None:
+                    missing.add(field)
+                elif (direction == 'min' and value < expected) or (direction == 'max' and value > expected):
+                    mismatch = True
+            elif key == 'mime':
+                value = resource.get('mime')
+                if value is None:
+                    missing.add('mime')
+                elif value.split(';')[0].strip().lower() != expected.lower():
+                    mismatch = True
+            else:
+                value = {'url_prefix': url, 'path_prefix': parsed.path or '/',
+                         'host': parsed.hostname.lower(), 'kind': resource['kind']}[key]
+                if not (value.startswith(expected) if key.endswith('_prefix') else value == expected):
+                    mismatch = True
+        if mismatch:
+            continue
+        result['rule_id'] = rule['id']
+        if missing:
+            result.update(download=False, traverse=False, state='needs_metadata', missing=sorted(missing))
+            return result
+        result.update(rule['decision'])
+        result['download'] = result['discover'] and result['download']
+        result['traverse'] = result['download'] and result['traverse']
+        return result
+    return result

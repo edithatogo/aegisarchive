@@ -39,5 +39,43 @@
     }
     return JSON.parse(JSON.stringify(config));
   }
-  return {validateRules};
+  function evaluateRules(config, resource, inScope) {
+    config = validateRules(config);
+    if (typeof inScope !== 'boolean' || !object(resource) || typeof resource.url !== 'string' ||
+        Array.from(resource.url).length > 8192 || /[\x00-\x1f]/.test(resource.url)) throw Error('Invalid resource');
+    const url = new URL(resource.url);
+    if (!['http:','https:'].includes(url.protocol) || !url.hostname || url.username || url.password ||
+        !['page','asset','sitemap'].includes(resource.kind)) throw Error('Invalid resource URL or kind');
+    for (const key of ['depth','bytes']) {
+      if (resource[key] != null && (!Number.isSafeInteger(resource[key]) || resource[key]<0)) throw Error('Invalid resource count');
+    }
+    if (resource.mime != null && (typeof resource.mime !== 'string' || Array.from(resource.mime).length>2048)) throw Error('Invalid MIME');
+    const result = {discover:inScope,download:inScope,traverse:inScope,rule_id:null,state:inScope?'decided':'out_of_scope',missing:[]};
+    if (!inScope) return result;
+    for (const rule of config.rules) {
+      const missing = new Set();let mismatch = false;
+      for (const [key,expected] of Object.entries(rule.match)) {
+        if (numberFields.includes(key)) {
+          const [direction,field]=key.split('_'),value=resource[field];
+          if (value == null) missing.add(field);
+          else if ((direction==='min' && value<expected) || (direction==='max' && value>expected)) mismatch=true;
+        } else if (key==='mime') {
+          if (resource.mime == null) missing.add('mime');
+          else if (resource.mime.split(';')[0].trim().toLowerCase()!==expected.toLowerCase()) mismatch=true;
+        } else {
+          const value={url_prefix:resource.url,path_prefix:url.pathname || '/',host:url.hostname.toLowerCase(),kind:resource.kind}[key];
+          if (!(key.endsWith('_prefix') ? value.startsWith(expected) : value===expected)) mismatch=true;
+        }
+      }
+      if (mismatch) continue;
+      result.rule_id=rule.id;
+      if (missing.size) return {...result,download:false,traverse:false,state:'needs_metadata',missing:[...missing].sort()};
+      Object.assign(result,rule.decision);
+      result.download=result.discover && result.download;
+      result.traverse=result.download && result.traverse;
+      return result;
+    }
+    return result;
+  }
+  return {validateRules, evaluateRules};
 }));
