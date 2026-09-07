@@ -115,7 +115,7 @@
   *Link: [./tracks/mirroring_platform_acceptance_20260906/index.md](./tracks/mirroring_platform_acceptance_20260906/index.md)*
 
 ---
-- [ ] **Track: Crawl controls, previews and site reports**
+- [~] **Track: Crawl controls, previews and site reports**
   *Link: [./tracks/crawl_controls_reports_20260906/index.md](./tracks/crawl_controls_reports_20260906/index.md)*
 
 ---

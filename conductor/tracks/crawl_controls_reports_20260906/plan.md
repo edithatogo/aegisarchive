@@ -1,10 +1,10 @@
 # Plan: Crawl controls, previews and site reports
 
-## Status: NEW
+## Status: IN PROGRESS
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [ ] T1 Define ordered rule schema and vectors. (AC1, AC3)
+- [~] T1 Define ordered rule schema and vectors. (AC1, AC3)
   - **Files**: `cli/crawl_rules.py`, `web/lib/crawl_rules.js`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`.
   - **Change**: Specify discover/traverse/download decisions and precedence by URL, MIME, depth and bytes with safe matcher limits.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
