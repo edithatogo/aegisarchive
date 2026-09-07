@@ -1,5 +1,5 @@
-import os, time, unittest
-from cli.auth import request_headers, redact_headers
+import json, os, time, unittest
+from cli.auth import browser_handoff, request_headers, redact_headers
 class TestAuth(unittest.TestCase):
     def test_optional_scope_and_expiry(self):
         self.assertEqual(request_headers(None, 'https://example.test/'), {})
@@ -9,3 +9,27 @@ class TestAuth(unittest.TestCase):
         self.assertEqual(request_headers(c,'https://other.test/a'),{})
         c['expires_at']=time.time()-1; self.assertEqual(request_headers(c,'https://example.test/a'),{})
     def test_redaction(self): self.assertEqual(redact_headers({'Cookie':'secret','X':'ok'})['Cookie'],'[REDACTED]')
+
+    def test_browser_session_import_is_scoped_and_expiry_aware(self):
+        state = {'headers': {'X-Session': 'ok'}, 'cookies': [
+            {'name': 'sid', 'value': 'secret', 'domain': '.example.test', 'path': '/'},
+            {'name': 'old', 'value': 'gone', 'domain': 'example.test', 'expires': 90},
+            {'name': 'other', 'value': 'no', 'domain': 'other.test'},
+        ]}
+        os.environ['AEGIS_TEST_SESSION'] = json.dumps(state)
+        config = {'mode': 'browser_session', 'source': 'env:AEGIS_TEST_SESSION',
+                  'allowed_domains': ['example.test']}
+        result = request_headers(config, 'https://www.example.test/a', now=100)
+        self.assertEqual(result['X-Session'], 'ok')
+        self.assertEqual(result['Cookie'], 'sid=secret')
+        self.assertEqual(request_headers(config, 'https://other.test/', now=100), {})
+    def test_browser_handoff_is_explicit_and_credential_free(self):
+        c={'mode':'browser_handoff','allowed_domains':['example.test'],'expires_at':time.time()+60}
+        handoff=browser_handoff(c,'https://example.test/login')
+        self.assertTrue(handoff['requires_operator_login'])
+        self.assertTrue(handoff['supports_sso_mfa'])
+        self.assertEqual(handoff['credential_collection'],'none')
+        self.assertEqual(request_headers(c,'https://example.test/'),{})
+        self.assertIsNone(browser_handoff(c,'https://other.test/'))
+        c['expires_at']=time.time()-1
+        self.assertIsNone(browser_handoff(c,'https://example.test/'))
