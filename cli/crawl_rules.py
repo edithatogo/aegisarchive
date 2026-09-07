@@ -5,7 +5,8 @@ existing scope decision; they never grant access outside the caller's scope.
 """
 import copy
 import re
-from urllib.parse import urlsplit
+from urllib.parse import urlsplit, urljoin
+import xml.etree.ElementTree as ET
 
 MAX_RULES = 100
 MAX_TEXT = 2048
@@ -117,4 +118,77 @@ def evaluate_rules(config, resource, *, in_scope):
         result['download'] = result['discover'] and result['download']
         result['traverse'] = result['download'] and result['traverse']
         return result
+    return result
+
+
+def scope_hosts(allowed_hosts, aliases=None):
+    """Expand only operator-declared aliases, never redirect-derived hosts."""
+    aliases = {} if aliases is None else aliases
+    valid = lambda value: isinstance(value, str) and len(value) <= 253 and re.fullmatch(r'[a-z0-9]+(?:[.-][a-z0-9]+)*', value)
+    if (not isinstance(allowed_hosts, list) or len(allowed_hosts) > 32
+            or not all(valid(value) for value in allowed_hosts)
+            or not isinstance(aliases, dict) or len(aliases) > 16):
+        raise ValueError('Invalid host scope')
+    hosts = set(allowed_hosts)
+    for primary, extra in aliases.items():
+        if primary not in allowed_hosts or not isinstance(extra, list) or len(extra) > 16 or not all(valid(value) for value in extra):
+            raise ValueError('Invalid explicit alias')
+        hosts.update(extra)
+    if len(hosts) > 32:
+        raise ValueError('Too many hosts')
+    return sorted(hosts)
+
+
+def discover_sitemap(text, source_url, allowed_hosts, visited=None):
+    """Parse a bounded unprefixed sitemap subset, without fetching anything.
+
+    Supports urlset/sitemapindex and the standard default namespace. Extensions,
+    DTDs, CDATA, attributes other than the default namespace and nested location markup are rejected rather than partly inferred.
+    The caller retains visited sitemap URLs across fetches to terminate cycles.
+    """
+    hosts = scope_hosts(allowed_hosts)
+    if not isinstance(text, str) or len(text.encode('utf-8')) > 262144:
+        raise ValueError('Sitemap byte limit')
+    if re.search(r'<!DOCTYPE|<!ENTITY|<!\[CDATA\[|</?[A-Za-z_][\w.-]*:', text, re.I):
+        raise ValueError('Unsupported sitemap XML declaration or prefix')
+    seen = set(visited or [])
+    result = {'pages': [], 'sitemaps': [], 'excluded': []}
+    source = urlsplit(source_url)
+    if source.scheme not in ('http', 'https') or source.hostname not in hosts or source.username or source.password:
+        raise ValueError('Sitemap source outside scope')
+    if source_url in seen:
+        return result
+    seen.add(source_url)
+    try:
+        root = ET.fromstring(text)
+    except ET.ParseError as error:
+        raise ValueError('Malformed sitemap XML') from error
+    local = lambda tag: tag.removeprefix('{http://www.sitemaps.org/schemas/sitemap/0.9}')
+    structure = {'urlset': {'url'}, 'sitemapindex': {'sitemap'},
+                 'url': {'loc', 'lastmod', 'changefreq', 'priority'}, 'sitemap': {'loc', 'lastmod'},
+                 'loc': set(), 'lastmod': set(), 'changefreq': set(), 'priority': set()}
+    root_name = local(root.tag)
+    if root_name not in ('urlset', 'sitemapindex'):
+        raise ValueError('Unsupported sitemap root')
+    nodes = list(root.iter())
+    if len(nodes) > 6001:
+        raise ValueError('Sitemap node limit')
+    for node in nodes:
+        name = local(node.tag)
+        if node.attrib or name not in structure or any(local(child.tag) not in structure[name] for child in node):
+            raise ValueError('Unsupported sitemap structure')
+    locations = [node.text.strip() for node in nodes if local(node.tag) == 'loc' and node.text and node.text.strip()]
+    if len(locations) > 1000:
+        raise ValueError('Sitemap location limit')
+    for location in locations:
+        if len(location) > 8192:
+            raise ValueError('Sitemap URL limit')
+        url = urljoin(source_url, location)
+        parsed = urlsplit(url)
+        if parsed.scheme not in ('http', 'https') or parsed.hostname not in hosts or parsed.username or parsed.password:
+            if url not in result['excluded']:
+                result['excluded'].append(url)
+        elif url not in seen:
+            result['sitemaps' if root_name == 'sitemapindex' else 'pages'].append(url)
+            seen.add(url)
     return result

@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const {validateRules, evaluateRules} = require('../../web/lib/crawl_rules.js');
+const {validateRules, evaluateRules, discoverSitemap, scopeHosts} = require('../../web/lib/crawl_rules.js');
 
 test('schema preserves ordered independent decisions', () => {
   const config = {version: 1, rules: [
@@ -44,4 +44,20 @@ test('unknown metadata cannot skip a potential deny', () => {
 test('invalid resources fail closed', () => {
   for(const change of [{url:'file:///tmp/a'},{url:'https://user:secret@example.test/'},{depth:true}])
     assert.throws(()=>evaluateRules({version:1,rules:[]},{...resource,...change},true));
+});
+test('aliases require explicit in-scope primary hosts',()=>{
+  assert.deepEqual(scopeHosts(['example.test'],{'example.test':['assets.test']}),['assets.test','example.test']);
+  assert.throws(()=>scopeHosts(['example.test'],{'unapproved.test':['assets.test']}));
+});
+test('sitemaps preserve scope and terminate cycles',()=>{
+  const xml='<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"><url><loc>https://example.test/a?x=1&amp;y=2</loc></url><url><loc>https://example.test/a?x=1&amp;y=2</loc></url><url><loc>https://outside.test/a</loc></url></urlset>';
+  const result=discoverSitemap(xml,'https://example.test/map.xml',['example.test']);
+  assert.deepEqual(result.pages,['https://example.test/a?x=1&y=2']);assert.deepEqual(result.excluded,['https://outside.test/a']);
+  const index='<sitemapindex><sitemap><loc>https://example.test/map.xml</loc></sitemap><sitemap><loc>https://example.test/next.xml</loc></sitemap></sitemapindex>';
+  assert.deepEqual(discoverSitemap(index,'https://example.test/map.xml',['example.test']).sitemaps,['https://example.test/next.xml']);
+  assert.deepEqual(discoverSitemap(index,'https://example.test/map.xml',['example.test'],['https://example.test/map.xml']).sitemaps,[]);
+});
+test('sitemap XML failures are explicit',()=>{
+  for(const xml of ['<!DOCTYPE x [<!ENTITY x "bad">]><urlset/>','<urlset><url></urlset>','<urlset x="1"/>','<urlset><url><loc><![CDATA[/a]]></loc></url></urlset>','<urlset><url><loc>&#1;</loc></url></urlset>','<urlset>'+' '.repeat(262144)+'</urlset>'])
+    assert.throws(()=>discoverSitemap(xml,'https://example.test/map.xml',['example.test']));
 });

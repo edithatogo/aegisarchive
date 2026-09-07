@@ -77,5 +77,89 @@
     }
     return result;
   }
-  return {validateRules, evaluateRules};
+  function scopeHosts(allowedHosts, aliases = {}) {
+    const valid = value => typeof value==='string' && value.length<=253 && /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/.test(value);
+    if (!Array.isArray(allowedHosts) || allowedHosts.length>32 || !allowedHosts.every(valid) ||
+        !object(aliases) || Object.keys(aliases).length>16) throw Error('Invalid host scope');
+    const hosts=new Set(allowedHosts);
+    for (const [primary,extra] of Object.entries(aliases)) {
+      if (!allowedHosts.includes(primary) || !Array.isArray(extra) || extra.length>16 || !extra.every(valid)) throw Error('Invalid explicit alias');
+      extra.forEach(host=>hosts.add(host));
+    }
+    if (hosts.size>32) throw Error('Too many hosts');
+    return [...hosts].sort();
+  }
+  function sitemapLocations(text) {
+    // Small strict XML subset also usable in the dependency-free test runtime.
+    if (/[\x00-\x08\x0b\x0c\x0e-\x1f\ufffe\uffff]/.test(text)) throw Error('Invalid XML character');
+    if (/<!DOCTYPE|<!ENTITY|<\/?[A-Za-z_][\w.-]*:/i.test(text)) throw Error('Unsupported sitemap XML');
+    const structure={urlset:['url'],sitemapindex:['sitemap'],url:['loc','lastmod','changefreq','priority'],sitemap:['loc','lastmod'],loc:[],lastmod:[],changefreq:[],priority:[]};
+    const stack=[],locations=[];let root=null,position=0,nodes=0,loc='';
+    const decode=value=>value.replace(/&([^;]+);/g,(_,entity)=>{
+      const entities={amp:'&',lt:'<',gt:'>',quot:'"',apos:"'"};
+      if (Object.hasOwn(entities,entity)) return entities[entity];
+      if (!/^#(?:x[0-9a-fA-F]+|[0-9]+)$/.test(entity)) throw Error('Invalid entity');
+      const n=entity[1]==='x'?parseInt(entity.slice(2),16):Number(entity.slice(1));
+      if (!Number.isSafeInteger(n) || (n<0x20 && ![9,10,13].includes(n)) || n===0xfffe || n===0xffff || n>0x10ffff || (n>=0xd800 && n<=0xdfff)) throw Error('Invalid entity');
+      return String.fromCodePoint(n);
+    });
+    while (position<text.length) {
+      if (text.startsWith('<!--',position)) {
+        const end=text.indexOf('-->',position+4);if(end<0)throw Error('Malformed comment');position=end+3;continue;
+      }
+      if (text.startsWith('<?xml',position) && root===null) {
+        const end=text.indexOf('?>',position+5);if(end<0)throw Error('Malformed declaration');position=end+2;continue;
+      }
+      if (text[position]!=='<') {
+        let end=text.indexOf('<',position);if(end<0)end=text.length;
+        const raw=text.slice(position,end);
+        if (raw.replace(/&(?:amp|lt|gt|quot|apos|#x[0-9a-fA-F]+|#[0-9]+);/g,'').includes('&')) throw Error('Malformed entity');
+        const value=decode(raw);
+        if (stack.at(-1)==='loc') loc+=value;
+        else if (!stack.length && value.trim()) throw Error('Text outside root');
+        position=end;continue;
+      }
+      const end=text.indexOf('>',position);if(end<0)throw Error('Malformed tag');
+      const token=text.slice(position,end+1);position=end+1;
+      const closing=token.match(/^<\/([a-z]+)\s*>$/);
+      if (closing) {
+        if (stack.pop()!==closing[1]) throw Error('Mismatched tag');
+        if (closing[1]==='loc' && loc.trim()) locations.push(loc.trim());
+        if (locations.length>1000) throw Error('Sitemap location limit');
+        continue;
+      }
+      const opening=token.match(/^<([a-z]+)((?:\s+[\w:.-]+\s*=\s*(?:"[^"<>]*"|'[^'<>]*'))*)\s*(\/?)>$/);
+      if (!opening || !Object.hasOwn(structure,opening[1]) || ++nodes>6001) throw Error('Unsupported sitemap structure');
+      const name=opening[1];
+      if (opening[2].trim() && !/^\s+xmlns\s*=\s*(?:"[^"<>]*"|'[^'<>]*')\s*$/.test(opening[2])) throw Error('Unsupported attributes');
+      const namespace=opening[2].match(/\sxmlns\s*=\s*["']([^"']*)["']/);
+      if (namespace && namespace[1]!=='http://www.sitemaps.org/schemas/sitemap/0.9') throw Error('Unsupported namespace');
+      if (!stack.length) {
+        if (root || !['urlset','sitemapindex'].includes(name)) throw Error('Invalid root');root=name;
+      } else if (!structure[stack.at(-1)].includes(name)) throw Error('Unsupported nesting');
+      if (name==='loc') loc='';
+      if (!opening[3]) stack.push(name);
+    }
+    if (stack.length || !root) throw Error('Unclosed sitemap');
+    return {root,locations};
+  }
+  function discoverSitemap(text, sourceUrl, allowedHosts, visited=[]) {
+    const hosts=scopeHosts(allowedHosts);
+    if (typeof text!=='string' || new TextEncoder().encode(text).length>262144) throw Error('Sitemap byte limit');
+    const seen=new Set(visited),result={pages:[],sitemaps:[],excluded:[]};
+    const source=new URL(sourceUrl);
+    if (!['http:','https:'].includes(source.protocol) || !hosts.includes(source.hostname) || source.username || source.password) throw Error('Source outside scope');
+    if(seen.has(sourceUrl))return result;
+    seen.add(sourceUrl);
+    const {root,locations}=sitemapLocations(text);
+    for(const location of locations) {
+      if(Array.from(location).length>8192)throw Error('Sitemap URL limit');
+      const url=new URL(location,sourceUrl),value=url.href;
+      if(!['http:','https:'].includes(url.protocol) || !hosts.includes(url.hostname) || url.username || url.password) {
+        if(!result.excluded.includes(value))result.excluded.push(value);
+      } else if(!seen.has(value)) {result[root==='sitemapindex'?'sitemaps':'pages'].push(value);seen.add(value);}
+    }
+    return result;
+  }
+  return {validateRules, evaluateRules, scopeHosts, discoverSitemap};
 }));
