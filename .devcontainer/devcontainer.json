@@ -1,6 +1,6 @@
 {
   "name": "AegisArchive",
-  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "image": "mcr.microsoft.com/devcontainers/python:3.14",
   "remoteUser": "vscode",
   "features": {
     "ghcr.io/devcontainers/features/node:2": {
