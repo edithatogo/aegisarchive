@@ -1,4 +1,6 @@
 import json, os, time, unittest
+from unittest.mock import patch
+from cli.auth import ssl_context
 from cli.auth import browser_handoff, request_headers, redact_headers
 class TestAuth(unittest.TestCase):
     def test_optional_scope_and_expiry(self):
@@ -33,3 +35,17 @@ class TestAuth(unittest.TestCase):
         self.assertIsNone(browser_handoff(c,'https://other.test/'))
         c['expires_at']=time.time()-1
         self.assertIsNone(browser_handoff(c,'https://example.test/'))
+
+    def test_client_certificate_is_optional_and_expiry_is_fail_closed(self):
+        self.assertIsNone(ssl_context(None))
+        config = {'mode': 'client_certificate', 'certificate_file': 'cert.pem', 'key_file': 'key.pem'}
+        with patch('cli.auth.ssl.create_default_context') as create:
+            context = create.return_value
+            self.assertIs(context, ssl_context(config))
+            context.load_cert_chain.assert_called_once_with(certfile='cert.pem', keyfile='key.pem')
+        config['expires_at'] = 1
+        self.assertIsNone(ssl_context(config, now=2))
+
+    def test_client_certificate_requires_both_files(self):
+        with self.assertRaisesRegex(ValueError, 'requires certificate_file'):
+            ssl_context({'mode': 'client_certificate'})

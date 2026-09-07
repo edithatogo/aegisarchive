@@ -26,7 +26,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
-from auth import request_headers, redact_headers  # noqa: E402
+from auth import request_headers, redact_headers, ssl_context  # noqa: E402
 
 def format_warc_date(dt=None):
     if dt is None:
@@ -262,7 +262,11 @@ def main():
     max_pages = args.max_pages or profile.get('target', {}).get('max_pages', 500)
 
     politeness = PolitenessEngine(profile.get('politeness', {}))
-    opener = urllib.request.build_opener(ScopedRedirectHandler())
+    auth_context = ssl_context(profile.get('authentication'))
+    handlers = [ScopedRedirectHandler()]
+    if auth_context is not None:
+        handlers.append(urllib.request.HTTPSHandler(context=auth_context))
+    opener = urllib.request.build_opener(*handlers)
     MAX_RETRIES = 3
     accepts_request_headers = 'request_headers' in inspect.signature(writer.write_response).parameters
 
