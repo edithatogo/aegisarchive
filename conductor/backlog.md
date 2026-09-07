@@ -33,6 +33,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | contributor_experience_20260905 | T1 | done | - | - |
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
+| P1 | authenticated_acquisition_20260907 | T1 | in_progress | codex | - |
 
 All approved repository tasks are complete. Companion-program G2 delegations remain external and blocked.
 

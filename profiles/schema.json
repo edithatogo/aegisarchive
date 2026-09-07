@@ -3,6 +3,15 @@
   "title": "AegisArchive Profile",
   "type": "object",
   "properties": {
+    "authentication": {
+      "type": "object",
+      "properties": {
+        "mode": {"type": "string", "enum": ["none", "headers_env", "cookies_env", "basic_env", "client_certificate", "browser_handoff"]},
+        "source": {"type": "string"},
+        "allowed_domains": {"type": "array", "items": {"type": "string"}},
+        "expires_at": {"type": "number"}
+      }
+    },
     "profile_id": {
       "type": "string"
     },

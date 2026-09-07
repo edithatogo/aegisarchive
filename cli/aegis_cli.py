@@ -26,6 +26,7 @@ import zlib
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
+from auth import request_headers, redact_headers  # noqa: E402
 
 def format_warc_date(dt=None):
     if dt is None:
@@ -302,7 +303,7 @@ def main():
         if urllib.parse.urlparse(url).scheme not in ('http', 'https'):
             print(f"[SKIP] {url} (non-HTTP scheme)")
             continue
-        req = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive/1.0 (Ethical Archival Preservation)'})
+        req = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive/1.0 (Ethical Archival Preservation)', **request_headers(profile.get('authentication'), url)})
         start_t = time.time()
         try:
             # Scheme allow-listed above; audit rules cannot see that guard.
@@ -314,7 +315,7 @@ def main():
                 status = resp.status
                 politeness.record_success(url, elapsed_ms)
                 if accepts_request_headers:
-                    writer.write_response(url, status, headers, body, request_headers=dict(req.header_items()))
+                    writer.write_response(url, status, headers, body, request_headers=redact_headers(dict(req.header_items())))
                 else:
                     writer.write_response(url, status, headers, body)
                 print(f"[{status}] {url} ({len(body)} bytes, {elapsed_ms} ms)")
