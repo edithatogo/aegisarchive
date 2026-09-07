@@ -1,4 +1,5 @@
-import base64, json, os, time
+import base64, json, os, ssl, time
+import urllib.request
 from urllib.parse import urlparse
 SENSITIVE = {'authorization','proxy-authorization','cookie','set-cookie'}
 def _load(v):
@@ -95,3 +96,25 @@ def browser_handoff(config, url, now=None):
         'session_import_required': True,
     }
 def redact_headers(headers): return {k: ('[REDACTED]' if k.lower() in SENSITIVE else v) for k,v in headers.items()}
+
+def ssl_context(config, now=None):
+    """Build an optional mutual-TLS context from profile file paths."""
+    config = config or {}
+    if config.get('mode') != 'client_certificate':
+        return None
+    if config.get('expires_at') is not None and (time.time() if now is None else now) >= float(config['expires_at']):
+        return None
+    certfile = config.get('certificate_file')
+    keyfile = config.get('key_file')
+    if not certfile or not keyfile:
+        raise ValueError('client_certificate requires certificate_file and key_file')
+    cafile = config.get('ca_file')
+    context = ssl.create_default_context(cafile=cafile or None)
+    context.load_cert_chain(certfile=certfile, keyfile=keyfile)
+    return context
+
+def opener_for_auth(config):
+    context = ssl_context(config)
+    if context is None:
+        return urllib.request.build_opener()
+    return urllib.request.build_opener(urllib.request.HTTPSHandler(context=context))
