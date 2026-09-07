@@ -92,7 +92,7 @@
   *Link: [./archive/future_capabilities_20260905/index.md](./archive/future_capabilities_20260905/index.md)*
   *ADR spikes only (WACZ+CDXJ, Compression Streams, service-worker replay, MCP resources, in-browser PDF and embeddings later, OPFS wiring, task scheduling, provenance score). Depends on `warc_interop_20260905` before WACZ.*
 
-- [~] **Track: Optional Authenticated Acquisition**
-  *Status: In progress*
+- [x] **Track: Optional Authenticated Acquisition**
+  *Status: Completed*
   *Link: [./tracks/authenticated_acquisition_20260907/index.md](./tracks/authenticated_acquisition_20260907/index.md)*
   *Provider-neutral optional session strategies; public crawling remains the default.*

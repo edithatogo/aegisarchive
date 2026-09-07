@@ -1,0 +1,2 @@
+{"ts":"2026-09-07T03:00:00Z","kind":"validation","task":"T1","status":"passed","summary":"54 Python tests, authentication adapter tests, CLI help, and Python compilation passed."}
+{"ts":"2026-09-07T03:00:00Z","kind":"completed","task":"T1","status":"passed","summary":"Optional headers, cookies, basic auth, browser session import, browser hand-off, and client certificate adapters implemented with scope, expiry, and redaction."}
