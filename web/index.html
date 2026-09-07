@@ -46,6 +46,12 @@
       </div>
     </div>
 
+    <div class="controls-bar" style="gap:12px; align-items:center;">
+      <label for="simpleTarget" style="font-weight:600;">Quick capture address:</label>
+      <input id="simpleTarget" class="text-input" style="flex:1;" placeholder="https://intranet.example/" inputmode="url">
+      <span class="badge" id="captureState">READY — nothing is running</span>
+    </div>
+
     <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
       <span id="resumeBannerText"></span>
       <button class="btn btn-emerald" onclick="resumeFromCheckpoint()">▶️ Resume</button>
@@ -404,6 +410,15 @@
 
     function startHarvest() {
       if (!activeProfile) return;
+      const quick = document.getElementById('simpleTarget').value.trim();
+      if (quick) {
+        let parsed;
+        try { parsed = new URL(quick); } catch (err) { log('[Capture] Enter a complete http(s) address.'); return; }
+        if (!/^https?:$/.test(parsed.protocol)) { log('[Capture] Only http(s) addresses are supported.'); return; }
+        activeProfile = JSON.parse(JSON.stringify(activeProfile));
+        activeProfile.target = { ...activeProfile.target, allowed_domains: [parsed.hostname], seed_urls: { ...activeProfile.target.seed_urls, tier_1_core: [parsed.href] } };
+        log(`[Capture] Quick target selected: ${parsed.href}`);
+      }
       crawler = new CoreCrawler(activeProfile, {
         onLog: (msg) => log(msg),
         onProgress: (stats) => updateProgress(stats),
@@ -424,6 +439,7 @@
       document.getElementById('btnExportWarc').disabled = true;
       document.getElementById('btnExportCsv').disabled = true;
       document.getElementById('btnReport').disabled = true;
+      document.getElementById('captureState').textContent = 'RUNNING — archiving selected scope';
 
       crawler.start();
     }
@@ -477,6 +493,7 @@
     }
 
     function updateStatus(status) {
+      document.getElementById('captureState').textContent = status === 'STOPPED' ? 'STOPPED — archive finalized' : status === 'PAUSED' ? 'PAUSED — checkpoint saved' : status;
       if (status === 'STOPPED') {
         document.getElementById('btnStart').disabled = false;
         document.getElementById('btnPause').disabled = true;
