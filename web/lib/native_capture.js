@@ -12,7 +12,7 @@ class NativeCapture {
   constructor(token) { this.token = token; }
   async call(action, payload) {
     const response = await fetch('/__station/capture/' + action, {
-      method: 'POST', headers: {'Content-Type': 'application/json', 'X-Capture-Token': this.token},
+      method: 'POST', keepalive: action === 'stop', headers: {'Content-Type': 'application/json', 'X-Capture-Token': this.token},
       body: JSON.stringify(payload)
     });
     const result = await response.json();

@@ -419,6 +419,9 @@
     }
 
     let nativeCapture = null;
+    window.addEventListener('pagehide', () => {
+      if (nativeCapture) nativeCapture.close().catch(() => {});
+    });
     async function startHarvest() {
       if (!activeProfile) return;
       const quick = document.getElementById('simpleTarget').value.trim();

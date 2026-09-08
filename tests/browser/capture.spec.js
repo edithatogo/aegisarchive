@@ -7,6 +7,7 @@ test.beforeAll(async () => {
   source = http.createServer((req, res) => {
     requests.push(req.url);
     if (req.url === '/robots.txt') { res.writeHead(200, {'Content-Type':'text/plain'}); res.end('User-agent: *\nDisallow: /blocked\n'); return; }
+    if (req.url === '/long') { res.writeHead(200, {'Content-Type':'text/html'}); res.end('<h1>Long fixture</h1>'+Array.from({length:40},(_,i)=>`<a href="/item-${i}">Item ${i}</a>`).join('')); return; }
     if (req.url === '/protected') { res.writeHead(req.headers.cookie === 'session=synthetic' ? 200 : 401, {'Content-Type':'text/html'}); res.end('<h1>Protected fixture</h1>'); return; }
     if (req.url === '/denied') { res.writeHead(403); res.end('Access denied'); return; }
     if (req.url === '/redirect') { res.writeHead(302, {Location:'/second'}); res.end(); return; }
@@ -87,4 +88,17 @@ test('explicit imported session is optional and enables a protected fixture', as
   await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
   await expect(page.locator('#captureState')).toHaveText('COMPLETE — discovered resources saved');
   await expect(page.locator('#captureOutcome')).toContainText('1 responses saved');
+});
+
+test('pause, resume and stop preserve an explicitly incomplete archive', async ({page}) => {
+  await setup(page,'/long');
+  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
+  await page.getByRole('button', {name:'⏸️ Pause'}).click();
+  await expect(page.locator('#captureState')).toHaveText('PAUSED — checkpoint saved');
+  await page.getByRole('button', {name:'▶️ Resume', exact:true}).click();
+  await page.getByRole('button', {name:'⏹️ Stop & Finalize'}).click();
+  await expect(page.locator('#captureState')).toHaveText('INCOMPLETE — some resources not saved');
+  await expect(page.locator('#captureOutcome')).toContainText(/[1-9][0-9]* pending/);
+  await expect(page.getByRole('button', {name:'📦 Download WARC + CDX'})).toBeEnabled();
 });
