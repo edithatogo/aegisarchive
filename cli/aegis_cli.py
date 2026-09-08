@@ -30,6 +30,7 @@ from mirror_resources import discover, VERSION as DISCOVERY_VERSION
 from crawl_rules import evaluate_rules
 from auth import request_headers, redact_headers, ssl_context
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
+from robots_receipt import decision as robots_decision
 
 def format_warc_date(dt=None):
     if dt is None:
@@ -284,7 +285,7 @@ def main():
 
     queue = collections.deque()
     pending, visited = set(), set()
-    outcomes, limitations, robots = {}, [], {}
+    outcomes, limitations, robots, robots_provenance = {}, [], {}, {}
     policy = profile.get('politeness', {}).get('robots_policy', 'respect')
     target_config = profile.get('target', {})
     rule_config = target_config.get('crawl_rules', {'version': 1, 'rules': []})
@@ -339,15 +340,18 @@ def main():
                 request = urllib.request.Request(robots_url, headers={'User-Agent':'AegisArchive/1.0', **request_headers(authentication, robots_url)})
                 with opener_for(robots_url).open(request, timeout=15) as response:
                     data = response.read(1024 * 1024 + 1)
+                    policy_lines = data.decode('utf-8', errors='replace').splitlines()
                     if len(data) > 1024 * 1024:
                         robot.parse(['User-agent: *', 'Disallow: /'])
                     else:
-                        robot.parse(data.decode('utf-8', errors='replace').splitlines())
+                        robot.parse(policy_lines)
+                    robots_provenance[origin] = robots_decision(policy, 200, policy_lines)
                     politeness.record_success(robots_url, int((time.time() - started) * 1000))
             except urllib.error.HTTPError as error:
                 politeness.record_failure(robots_url, error.code, error.headers.get('Retry-After'))
                 robot.parse(['User-agent: *', 'Disallow: /'] if error.code not in (404, 410) else [])
                 error.close()
+                robots_provenance[origin] = robots_decision(policy, error.code)
             except (OSError, ValueError):
                 politeness.record_failure(robots_url, 0)
                 robot.parse(['User-agent: *', 'Disallow: /'])
@@ -442,7 +446,7 @@ def main():
     receipt = {'schema_version':1, 'extractor_version':DISCOVERY_VERSION,
                'scope':'discovered_static_resource_graph', 'complete':bool(resources) and counts['captured'] == len(resources) and not limitations,
                'counts':counts, 'discovered':len(resources), 'resources':resources,
-               'limitations':limitations, 'robots_policy':policy,
+               'limitations':limitations, 'robots_policy':policy, 'robots_provenance':robots_provenance,
                'archives':{'warc':{'file':os.path.basename(warc_path),'sha256':file_digest(warc_path)},
                            'cdx':{'file':os.path.basename(writer.cdx_filepath),'sha256':file_digest(writer.cdx_filepath)}}}
     receipt_path = warc_path.replace('.warc', '.coverage.json')
