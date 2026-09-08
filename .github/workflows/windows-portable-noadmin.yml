@@ -1,0 +1,27 @@
+name: Windows portable no-admin acceptance
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  portable-noadmin:
+    name: Portable path without admin services
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+      - name: Run portable acceptance
+        shell: pwsh
+        run: ./scripts/windows_portable_acceptance.ps1
