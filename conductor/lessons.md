@@ -1,5 +1,20 @@
 # Lessons Ledger
 
+- 2026-09-08: Keep pull-request acceptance on local synthetic fixtures and fast probes; reserve multi-gigabyte native qualification for an explicit manual workflow so feedback remains bounded and reproducible.
+- 2026-09-08: `browser_capture_acceptance_20260908` is accepted only against reserved local fixtures; private-site access remains an external gate.
+
+## 2026-09-08 — browser_capture_acceptance_20260908
+- **Surprise**: A private site can return an access denial before any capture behavior is exercised.
+- **Change for the next planner**: Keep browser acceptance on local synthetic fixtures and record private access as an external gate.
+
+## 2026-09-08 — fast_acceptance_fixtures_20260908
+- **Surprise**: Large optional runtime downloads dominated pull-request feedback time.
+- **Change for the next planner**: Require fast probes on pull requests and run full native qualification only through an explicit manual workflow.
+
+## 2026-09-08 — document_lifecycle_20260906
+- **Surprise**: Document catalogue work crossed storage, extraction, and search boundaries that were previously only planned.
+- **Change for the next planner**: Keep source identities, immutable revisions, derivative hashes, and offline search links in one validated lifecycle contract.
+
 Append-only. One entry per completed track (required by `conductor/implementation_contract.md` step 5), plus any entry a planner or reviewer considers worth keeping. Never edit or delete earlier entries; if a lesson turns out to be wrong, add a new entry that supersedes it and says so.
 
 Entry format (four fields, in this order):

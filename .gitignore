@@ -27,6 +27,9 @@ archive/incoming/
 
 # Local acquisition diagnostics
 archive/capture-logs/
+
+# Portable runtime and acceptance artefacts (kept on the drive, never committed)
+artifacts/
 node_modules/
 test-results/
 playwright-report/
