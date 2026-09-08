@@ -125,3 +125,6 @@ Maintenance rules:
 - **Change for the next planner**: pin the test package, explicitly select a verified browser executable in the test configuration, and exercise disconnected requests before treating browser acceptance as complete.
 
 - 2026-09-08 — Browser capture acceptance: launch the actual server and drive the real UI against a separate-origin non-CORS fixture. Help/unit checks miss transport boundaries, hidden-control styling and Windows redirected-output encoding. Verify downloaded bytes and offline navigation; keep private deployment access distinct from synthetic platform acceptance.
+# Authenticated acquisition
+
+Explicit session material can support scoped cookie, basic-auth, header and client-certificate routes while keeping browser handoff credential-free. Synthetic fixtures are sufficient to prove scope, expiry, redirect isolation and redaction; real login and SSO remain operator-controlled external gates.

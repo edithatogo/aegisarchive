@@ -1,6 +1,6 @@
 # Explicit authenticated acquisition routes
 
-Status: new; implementation pending.
+Status: completed; synthetic acceptance verified.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
