@@ -1,4 +1,7 @@
 import json
+import io
+import sys
+from unittest import mock
 import tempfile
 import threading
 import unittest
@@ -101,3 +104,23 @@ class CaptureBridgeTests(unittest.TestCase):
         self.assertEqual(result['request']['headers']['x-preservation-agent'], 'AegisArchive/1.0')
         with self.assertRaises(ValueError): self.bridge.fetch(sid, self.url, {'method':'POST'})
         with self.assertRaises(ValueError): self.bridge.fetch(sid, self.url, {'headers':{'Cookie':'hidden'}})
+
+
+class LauncherEncodingTests(unittest.TestCase):
+    def test_legacy_windows_output_does_not_prevent_startup(self):
+        from cli import launch
+        raw = io.BytesIO()
+        output = io.TextIOWrapper(raw, encoding='cp1252')
+        server = mock.MagicMock()
+        server.serve_forever.side_effect = KeyboardInterrupt
+        with mock.patch.object(sys, 'argv', ['launch.py','--no-browser']), \
+             mock.patch.object(sys, 'stdout', output), \
+             mock.patch.object(launch, 'probe_existing_station', return_value=False), \
+             mock.patch.object(launch, 'find_available_port', return_value=8765), \
+             mock.patch.object(launch, 'WEB_DIR', '/synthetic/\u4e00/web'), \
+             mock.patch.object(launch, 'ThreadingHTTPServer', return_value=server):
+            launch.main()
+            output.flush()
+            self.assertIn(b'Local Web Console:', raw.getvalue())
+            server.serve_forever.assert_called_once()
+            server.server_close.assert_called_once()
