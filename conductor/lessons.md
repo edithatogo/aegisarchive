@@ -129,6 +129,10 @@ Maintenance rules:
 
 Explicit session material can support scoped cookie, basic-auth, header and client-certificate routes while keeping browser handoff credential-free. Synthetic fixtures are sufficient to prove scope, expiry, redirect isolation and redaction; real login and SSO remain operator-controlled external gates.
 
+## 2026-09-09 — mirror_resume_20260906
+
+Checkpoint metadata must bind profile and segment identities and validate bytes before resuming, so interruption recovery cannot silently discard or duplicate archive evidence.
+
 ## 2026-09-09 — crawl_controls_reports_20260906
 
 Bounded rule evaluation and receipt-driven reporting keep exclusions, failures and link graphs reviewable without unbounded discovery or unsafe report markup.

@@ -6,6 +6,9 @@ test('canonical navigation preserves query identity and removes fragments', () =
   assert.equal(nav.canonical('../page.html?edition=2#intro', 'https://archive.test/site/index.html'), 'https://archive.test/page.html?edition=2');
   assert.equal(nav.canonical('https://user:pass@archive.test/x', 'https://archive.test/'), null);
 });
+test('canonical navigation reconciles query ordering while retaining duplicates and empty values', () => {
+  assert.equal(nav.canonical('/x?z=2&a=&z=1#f', 'https://archive.test/'), 'https://archive.test/x?a=&z=2&z=1');
+});
 test('resolution is archive-local and reports missing destinations', () => {
   const reader = {getRecord: url => url.endsWith('/ok.html') ? {url} : null};
   assert.equal(nav.resolve('/ok.html#x', 'https://archive.test/', reader).state, 'captured');

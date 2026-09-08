@@ -161,7 +161,8 @@
     normalizeUrl(urlStr) {
       try {
         const u = new URL(urlStr);
-        return `${u.origin}${u.pathname}${u.search}`;
+        const q = new URLSearchParams(u.search); q.sort();
+        return `${u.origin}${u.pathname}${q.toString() ? '?' + q.toString() : ''}`;
       } catch (e) {
         return urlStr;
       }
@@ -175,6 +176,7 @@
       try {
         const u = new URL(raw, pageUrl); u.hash = '';
         if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return null;
+        const q = new URLSearchParams(u.search); q.sort(); u.search = q.toString();
         return u.href;
       } catch (_) { return null; }
     }

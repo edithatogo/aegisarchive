@@ -7,6 +7,7 @@
     try {
       const u = new URL(raw, base); u.hash = '';
       if (!['http:', 'https:'].includes(u.protocol) || u.username || u.password) return null;
+      const q = new URLSearchParams(u.search); q.sort(); u.search = q.toString();
       return u.href;
     } catch (_) { return null; }
   }
