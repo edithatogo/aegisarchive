@@ -1,14 +1,11 @@
 name: ClusterFuzzLite PR fuzzing
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'cli/**'
-      - 'mcp/**'
-      - 'tests/fuzz/**'
-      - '.clusterfuzzlite/**'
-      - '.github/workflows/cflite_pr.yml'
+  # Fuzzing remains available as an explicit security gate. Keeping it out of
+  # every PR avoids an external runner queue becoming a merge blocker.
+  workflow_dispatch:
+  schedule:
+    - cron: '17 3 * * 1'
 
 permissions:
   contents: read
