@@ -31,6 +31,7 @@ class CliCaptureContract(unittest.TestCase):
             def log_message(self, *args):
                 pass
             def do_GET(self):
+                assert self.headers.get('Cookie') == 'sid=integration-secret'
                 hits.append(self.path)
                 item = routes.get(self.path)
                 if not item:
@@ -45,8 +46,10 @@ class CliCaptureContract(unittest.TestCase):
         try:
             with tempfile.TemporaryDirectory() as td:
                 profile = {'target': {'allowed_domains':['127.0.0.1'], 'seed_urls':{'tier_1_core':[f'http://127.0.0.1:{server.server_port}/']}, 'max_depth':5, 'max_pages':50}, 'politeness':{'min_delay_ms':1,'max_delay_ms':1,'max_requests_per_minute':10000,'burst_limit':100}}
+                profile['authentication'] = {'mode':'cookies_env','source':'sid=integration-secret','allowed_domains':['127.0.0.1']}
                 p = Path(td)/'profile.json'; p.write_text(json.dumps(profile))
-                run = subprocess.run([sys.executable, 'cli/aegis_cli.py', '--profile',str(p),'--output-dir',td],capture_output=True,timeout=30)
+                log = Path(td)/'events.jsonl'
+                run = subprocess.run([sys.executable, 'cli/aegis_cli.py', '--profile',str(p),'--output-dir',td,'--log-file',str(log)],capture_output=True,timeout=30)
                 self.assertEqual(run.returncode,0,run.stderr)
                 lines = next(Path(td).glob('*.cdx')).read_text().splitlines()[1:]
                 from urllib.parse import urlsplit
@@ -56,8 +59,14 @@ class CliCaptureContract(unittest.TestCase):
                 receipt = json.loads(next(Path(td).glob('*.coverage.json')).read_text())
                 self.assertTrue(receipt['complete'])
                 self.assertEqual(receipt['counts']['captured'],9)
+                events = [json.loads(line) for line in log.read_text().splitlines()]
+                self.assertEqual(sum(e['event']=='captured' for e in events), 9)
+                self.assertEqual(events[-1]['event'], 'completed')
+                self.assertTrue(events[-1]['complete'])
                 self.assertEqual(receipt['archives']['warc']['sha256'],hashlib.sha256(next(Path(td).glob('*.warc')).read_bytes()).hexdigest())
                 warc = next(Path(td).glob('*.warc'))
+                self.assertNotIn(b'integration-secret', warc.read_bytes())
+                self.assertNotIn('integration-secret', log.read_text())
                 check = subprocess.run([sys.executable,'cli/warc_verify.py',str(warc)],capture_output=True)
                 self.assertEqual(check.returncode,0,check.stderr)
         finally:

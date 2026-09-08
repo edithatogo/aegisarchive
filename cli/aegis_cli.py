@@ -27,6 +27,7 @@ import urllib.robotparser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mirror_resources import discover, VERSION as DISCOVERY_VERSION
+from auth import request_headers, redact_headers, ssl_context
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
 
 def format_warc_date(dt=None):
@@ -242,7 +243,14 @@ def main():
     parser.add_argument("--output-dir", default="./archive", help="Directory to save WARC/CDX outputs")
     parser.add_argument("--max-pages", type=int, default=None, help="Override maximum page crawl ceiling")
     parser.add_argument("--depth", type=int, default=None, help="Override maximum crawl depth")
+    parser.add_argument('--log-file', help='Append JSONL capture decisions and outcomes')
     args = parser.parse_args()
+
+    def event(kind, **data):
+        if args.log_file:
+            with open(args.log_file, 'a', encoding='utf-8') as stream:
+                stream.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(), 'event': kind, **data}) + '\n')
+    event('session_started')
 
     with open(args.profile, 'r', encoding='utf-8') as f:
         profile = json.load(f)
@@ -263,7 +271,13 @@ def main():
     max_pages = args.max_pages or profile.get('target', {}).get('max_pages', 500)
 
     politeness = PolitenessEngine(profile.get('politeness', {}))
-    opener = urllib.request.build_opener(ScopedRedirectHandler())
+    authentication = profile.get('authentication') or {}
+    def opener_for(url):
+        handlers = [ScopedRedirectHandler()]
+        context = ssl_context(authentication, url=url)
+        if context is not None:
+            handlers.append(urllib.request.HTTPSHandler(context=context))
+        return urllib.request.build_opener(*handlers)
     MAX_RETRIES = 3
     accepts_request_headers = 'request_headers' in inspect.signature(writer.write_response).parameters
 
@@ -272,6 +286,7 @@ def main():
     outcomes, limitations, robots = {}, [], {}
     policy = profile.get('politeness', {}).get('robots_policy', 'respect')
     target_config = profile.get('target', {})
+    event('policy', robots_policy=policy, max_depth=max_depth, max_pages=max_pages)
 
     def enqueue(raw, base=None, depth=0):
         url = canonicalize_url(raw, base)
@@ -291,12 +306,14 @@ def main():
         elif target_config.get('path_whitelist_regex') and not re.search(target_config['path_whitelist_regex'], path, re.I):
             reason = 'path_whitelist'
         outcomes[url] = {'url': url, 'state': 'excluded' if reason else 'pending', 'reason': reason}
+        event('discovered', url=url, reason=reason, depth=depth)
         if not reason:
             queue.append((url, depth, 0)); pending.add(url)
 
     def requeue(url, depth, retries):
         if retries >= MAX_RETRIES:
             return
+        event('retry', url=url, attempt=retries + 1)
         visited.discard(url)
         queue.append((url, depth, retries + 1)); pending.add(url)
         outcomes[url].update(state='pending', reason='retry')
@@ -313,8 +330,8 @@ def main():
                 return False
             started = time.time()
             try:
-                request = urllib.request.Request(robots_url, headers={'User-Agent':'AegisArchive/1.0'})
-                with opener.open(request, timeout=15) as response:
+                request = urllib.request.Request(robots_url, headers={'User-Agent':'AegisArchive/1.0', **request_headers(authentication, robots_url)})
+                with opener_for(robots_url).open(request, timeout=15) as response:
                     data = response.read(1024 * 1024 + 1)
                     if len(data) > 1024 * 1024:
                         robot.parse(['User-agent: *', 'Disallow: /'])
@@ -332,6 +349,9 @@ def main():
         return robots[origin].can_fetch('AegisArchive', url)
 
     def archive_response(url, status, headers, body, request_headers):
+        headers = redact_headers(headers)
+        request_headers = redact_headers(request_headers)
+        event('captured', url=url, status=status, bytes=len(body))
         if accepts_request_headers:
             return writer.write_response(url, status, headers, body, request_headers=request_headers)
         return writer.write_response(url, status, headers, body)
@@ -343,18 +363,20 @@ def main():
     print(f"[AegisArchive CLI] Output target: {warc_path}")
     while queue and len(visited) < max_pages:
         url, depth, retries = queue.popleft(); pending.discard(url)
+        event('dequeued', url=url, depth=depth, retries=retries, queued=len(queue))
         if url in visited:
             continue
         visited.add(url)
         if not allowed_by_robots(url):
             outcomes[url].update(state='excluded', reason='robots_policy')
+            event('excluded', url=url, reason='robots_policy')
             continue
         if politeness.acquire_permission(url)['aborted']:
             outcomes[url].update(state='pending', reason='aborted'); break
-        req = urllib.request.Request(url, headers={'User-Agent':'AegisArchive/1.0 (Ethical Archival Preservation)'})
+        req = urllib.request.Request(url, headers={'User-Agent':'AegisArchive/1.0 (Ethical Archival Preservation)', **request_headers(authentication, url)})
         start_t = time.time()
         try:
-            with opener.open(req, timeout=15) as resp:
+            with opener_for(url).open(req, timeout=15) as resp:
                 body = resp.read()
                 headers = normalize_headers(resp.headers.items())
                 body = decode_payload(body, headers)
@@ -386,12 +408,14 @@ def main():
                     limitations.append({'source':url,'reason':'redirect_without_location'})
             else:
                 outcomes[url].update(state='failed',reason='http_error',status=error.code)
+                event('failed', url=url, status=error.code)
                 counted = politeness.record_failure(url, error.code, error.headers.get('Retry-After'))
                 if counted:
                     requeue(url, depth, retries)
             error.close()
         except (OSError, ValueError, EOFError) as error:
             outcomes[url].update(state='failed',reason='network_or_decode_error')
+            event('failed', url=url, error_type=type(error).__name__)
             politeness.record_failure(url, 0)
             requeue(url, depth, retries)
 
@@ -413,6 +437,7 @@ def main():
     receipt_path = warc_path.replace('.warc', '.coverage.json')
     with open(receipt_path, 'w', encoding='utf-8') as stream:
         json.dump(receipt, stream, indent=2); stream.write('\n')
+    event('completed', counts=counts, complete=receipt['complete'], queued=len(queue))
     print('[Coverage] ' + ('COMPLETE' if receipt['complete'] else 'INCOMPLETE') + f' static graph; receipt: {receipt_path}')
     captured_count = sum(item['state'] == 'captured' for item in outcomes.values())
     print(f'[AegisArchive CLI] Captured {captured_count} responses to {warc_path}')
