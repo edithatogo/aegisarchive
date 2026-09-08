@@ -2,10 +2,16 @@ name: Synthetic mirroring acceptance
 on:
   pull_request:
     paths: ['scripts/mirroring_acceptance.py', 'tests/test_mirroring_acceptance.py', '.github/workflows/mirroring-acceptance.yml']
+permissions:
+  contents: read
+concurrency:
+  group: mirroring-acceptance-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   acceptance:
     strategy: {matrix: {os: [macos-latest, windows-latest]}}
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: {persist-credentials: false}
