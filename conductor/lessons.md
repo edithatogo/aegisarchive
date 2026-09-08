@@ -11,10 +11,6 @@
 - **Surprise**: Large optional runtime downloads dominated pull-request feedback time.
 - **Change for the next planner**: Require fast probes on pull requests and run full native qualification only through an explicit manual workflow.
 
-## 2026-09-08 — document_lifecycle_20260906
-- **Surprise**: Document catalogue work crossed storage, extraction, and search boundaries that were previously only planned.
-- **Change for the next planner**: Keep source identities, immutable revisions, derivative hashes, and offline search links in one validated lifecycle contract.
-
 Append-only. One entry per completed track (required by `conductor/implementation_contract.md` step 5), plus any entry a planner or reviewer considers worth keeping. Never edit or delete earlier entries; if a lesson turns out to be wrong, add a new entry that supersedes it and says so.
 
 Entry format (four fields, in this order):
@@ -129,3 +125,6 @@ Maintenance rules:
 - **Change for the next planner**: pin the test package, explicitly select a verified browser executable in the test configuration, and exercise disconnected requests before treating browser acceptance as complete.
 
 - 2026-09-08 — Browser capture acceptance: launch the actual server and drive the real UI against a separate-origin non-CORS fixture. Help/unit checks miss transport boundaries, hidden-control styling and Windows redirected-output encoding. Verify downloaded bytes and offline navigation; keep private deployment access distinct from synthetic platform acceptance.
+## 2026-09-08 — authenticated_acquisition_20260906
+
+Explicit session material can support scoped cookie, basic-auth, header and client-certificate routes while keeping browser handoff credential-free. Synthetic fixtures are sufficient to prove scope, expiry, redirect isolation and redaction; real login and SSO remain operator-controlled external gates.

@@ -103,7 +103,8 @@
   *Link: [./archive/offline_navigation_20260906/index.md](./archive/offline_navigation_20260906/index.md)*
 
 ---
-- [ ] **Track: Explicit authenticated acquisition routes**
+- [x] **Track: Explicit authenticated acquisition routes**
+  *Status: Completed — synthetic session scope, redirect isolation, expiry detection, redaction and route documentation*
   *Link: [./tracks/authenticated_acquisition_20260906/index.md](./tracks/authenticated_acquisition_20260906/index.md)*
 
 ---
