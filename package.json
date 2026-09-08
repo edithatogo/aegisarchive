@@ -1,6 +1,11 @@
 {
   "name": "aegisarchive-browser-tests",
   "private": true,
-  "devDependencies": { "playwright": "1.63.0" },
-  "scripts": { "test:offline": "playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js" }
+  "devDependencies": {
+    "playwright": "1.63.0"
+  },
+  "scripts": {
+    "test:offline": "playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js",
+    "test:capture": "playwright test --config tests/browser/playwright.config.js tests/browser/capture.spec.js"
+  }
 }
