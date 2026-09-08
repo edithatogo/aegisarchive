@@ -1,6 +1,6 @@
 # Portable mirror exports and interoperability
 
-Status: new.
+Status: completed; deterministic directory and ZIP export implemented.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
