@@ -18,15 +18,18 @@ import platform
 import urllib.request
 import webbrowser
 import argparse
-try:
-    from . import capture_bridge
-except ImportError:
-    import capture_bridge
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if __package__:
+    from . import capture_bridge
+else:
+    # Portable bundles use -I; import only from this trusted script directory,
+    # never the caller's working directory or PYTHONPATH.
+    sys.path.insert(0, SCRIPT_DIR)
+    import capture_bridge
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 WEB_DIR = os.path.join(REPO_ROOT, "web")
 

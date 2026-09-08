@@ -1,6 +1,7 @@
 import json
 import io
 import sys
+import subprocess
 from unittest import mock
 import tempfile
 import threading
@@ -124,3 +125,11 @@ class LauncherEncodingTests(unittest.TestCase):
             self.assertIn(b'Local Web Console:', raw.getvalue())
             server.serve_forever.assert_called_once()
             server.server_close.assert_called_once()
+
+    def test_isolated_portable_launcher_imports_its_sibling_module(self):
+        launcher = Path(__file__).resolve().parents[1] / 'cli' / 'launch.py'
+        with tempfile.TemporaryDirectory() as elsewhere:
+            result = subprocess.run([sys.executable, '-I', '-B', str(launcher), '--help'],
+                                    cwd=elsewhere, capture_output=True, timeout=15)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors='replace'))
+        self.assertIn(b'AegisArchive Web Console Launcher', result.stdout)

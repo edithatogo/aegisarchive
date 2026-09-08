@@ -6,6 +6,6 @@ module.exports = defineConfig({
   use: {headless: true, baseURL: 'http://127.0.0.1:8130',
     channel: process.env.AEGIS_BROWSER_CHANNEL || undefined,
     trace: 'retain-on-failure', screenshot: 'only-on-failure'},
-  webServer: {cwd: require('node:path').resolve(__dirname, '../..'), command: `${python} cli/launch.py --no-browser --port 8130`,
+  webServer: {cwd: require('node:path').resolve(__dirname, '../..'), command: `${python} -I cli/launch.py --no-browser --port 8130`,
     url: 'http://127.0.0.1:8130/__station/status', reuseExistingServer: false}
 });
