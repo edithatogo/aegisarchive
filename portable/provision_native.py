@@ -227,7 +227,7 @@ def retain_linux_libraries(root, receipts):
 # server's bind explicitly while retaining loopback-only traffic rules.
 DARWIN_NETWORK_POLICY = (
     '(version 1)(allow default)(deny network*)'
-    '(allow network-bind (local ip "localhost:*"))'
+    '(allow network-bind)'
     '(allow network-inbound (local ip "localhost:*"))'
     '(allow network-outbound (remote ip "localhost:*"))'
 )
