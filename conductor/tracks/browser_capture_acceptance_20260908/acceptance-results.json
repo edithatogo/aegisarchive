@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "revision": "8929e2073016785e40bb3e586ce5dadd85066feb",
+  "scope": "Synthetic real-UI capture, export and offline replay; not private-deployment access",
+  "platforms": [
+    {
+      "platform": "windows",
+      "job_url": "https://github.com/edithatogo/aegisarchive/actions/runs/34215700574/job/102026802909",
+      "tests_passed": 6,
+      "runtime": {
+        "platform": "win32",
+        "arch": "x64",
+        "browser": "151.0.7922.174"
+      }
+    },
+    {
+      "platform": "linux",
+      "job_url": "https://github.com/edithatogo/aegisarchive/actions/runs/34215700574/job/102026803218",
+      "tests_passed": 6,
+      "runtime": {
+        "platform": "linux",
+        "arch": "x64",
+        "browser": "152.0.7977.64"
+      }
+    },
+    {
+      "platform": "macos",
+      "job_url": "https://github.com/edithatogo/aegisarchive/actions/runs/34215700574/job/102026803319",
+      "tests_passed": 6,
+      "runtime": {
+        "platform": "darwin",
+        "arch": "arm64",
+        "browser": "152.0.7977.65"
+      }
+    }
+  ]
+}

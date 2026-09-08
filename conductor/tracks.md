@@ -134,6 +134,6 @@
 - [ ] **Track: Portable mirror exports and interoperability**
   *Link: [./tracks/portable_exports_20260906/index.md](./tracks/portable_exports_20260906/index.md)*
 
-- [~] **Track: Native browser capture and cross-platform UI acceptance**
-  *Status: In Progress*
+- [x] **Track: Native browser capture and cross-platform UI acceptance**
+  *Status: Completed*
   *Link: [./tracks/browser_capture_acceptance_20260908/index.md](./tracks/browser_capture_acceptance_20260908/index.md)*
