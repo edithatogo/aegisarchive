@@ -4,7 +4,7 @@
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [ ] T1 Define checkpoint schema and fault fixtures. (AC1, AC2)
+- [x] T1 Define checkpoint schema and fault fixtures. (AC1, AC2)
   - **Files**: `cli/mirror_checkpoint.py`, `web/lib/mirror_checkpoint.js`; focused tests: `tests/test_mirror_resume.py`; `tests/js/mirror_resume.test.js`.
   - **Change**: Version profile/segment/hash state and specify interruption points, corruption and mismatch rejection.
   - **Verify**: `python3 -m unittest tests.test_mirror_resume; node --test tests/js/mirror_resume.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
