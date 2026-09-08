@@ -128,3 +128,15 @@ Maintenance rules:
 ## 2026-09-08 — authenticated_acquisition_20260906
 
 Explicit session material can support scoped cookie, basic-auth, header and client-certificate routes while keeping browser handoff credential-free. Synthetic fixtures are sufficient to prove scope, expiry, redirect isolation and redaction; real login and SSO remain operator-controlled external gates.
+
+## 2026-09-09 — document_lifecycle_20260906
+
+Stdlib catalogue and derivative processing can provide deterministic offline search while optional PDF, Office and OCR engines remain explicit unsupported states. Keep original bytes authoritative and carry handling labels into derivatives.
+
+## 2026-09-09 — mirroring_platform_acceptance_20260906
+
+Synthetic disconnected fixtures establish static mirroring behaviour across runners without implying support for dynamic server logic or unattended authentication. Bind fixture hashes and traffic observations to every platform receipt.
+
+## 2026-09-09 — rendered_capture_20260906
+
+Rendered capture must remain bounded and optional, with browser runtime availability recorded separately from static capture acceptance. Preserve source scope, asset outcomes and offline replay evidence when reporting capability.
