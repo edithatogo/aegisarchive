@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AegisArchive capture report</title><style>body{font:16px system-ui;max-width:960px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd;padding:.4rem;text-align:left}.error{color:#a00}pre{white-space:pre-wrap;background:#f5f5f5;padding:1rem}</style></head>
+<body><h1>Capture report</h1><p id="summary">No report loaded.</p><table><thead><tr><th>URL</th><th>State</th><th>Reason</th><th>Status</th><th>Bytes</th></tr></thead><tbody id="resources"></tbody></table><h2>Link graph</h2><pre id="graph">No graph loaded.</pre>
+<script>
+(function(){'use strict';
+ const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+ const render=r=>{const counts=r.counts||{};document.getElementById('summary').textContent=`${r.discovered||0} discovered; ${counts.captured||0} captured; ${counts.failed||0} failed; ${counts.excluded||0} excluded`;
+  document.getElementById('resources').innerHTML=(r.resources||[]).slice(0,10000).map(x=>`<tr><td>${esc(x.url)}</td><td>${esc(x.state)}</td><td>${esc(x.reason)}</td><td>${esc(x.status)}</td><td>${esc(x.bytes)}</td></tr>`).join('');
+  const edges=(r.resources||[]).filter(x=>x.parentUrl&&x.url).slice(0,10000).map(x=>`${x.parentUrl} -> ${x.url}`);document.getElementById('graph').textContent=edges.join('\n')||'No internal link edges recorded.';};
+ const source=new URLSearchParams(location.search).get('receipt'); if(source) fetch(source).then(x=>{if(!x.ok)throw Error(`HTTP ${x.status}`);return x.json()}).then(render).catch(e=>{document.getElementById('summary').className='error';document.getElementById('summary').textContent='Unable to load report: '+e.message;});
+ window.AegisReport={escape:esc,render};
+})();</script></body></html>

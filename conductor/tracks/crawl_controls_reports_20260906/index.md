@@ -1,6 +1,6 @@
 # Crawl controls, previews and site reports
 
-Status: in_progress.
+Status: implementation complete; awaiting final acceptance and merge.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
