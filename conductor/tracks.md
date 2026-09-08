@@ -108,7 +108,8 @@
   *Link: [./tracks/authenticated_acquisition_20260906/index.md](./tracks/authenticated_acquisition_20260906/index.md)*
 
 ---
-- [ ] **Track: Durable mirror resume and incremental updates**
+- [x] **Track: Durable mirror resume and incremental updates**
+  *Status: Completed — atomic segments, profile validation, lineage and corruption checks*
   *Link: [./tracks/mirror_resume_20260906/index.md](./tracks/mirror_resume_20260906/index.md)*
 
 ---
