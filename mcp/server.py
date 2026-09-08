@@ -16,6 +16,10 @@ try:
 except ImportError:
     from profile_schema import validate as validate_schema
 try:
+    from cli.jobs import JobStore
+except ImportError:
+    JobStore = None
+try:
     from ..cli.jobs import JobStore
 except ImportError:
     try:
@@ -72,6 +76,14 @@ def search_cdx(query, cdx_path):
     return {"matches": matches, "total_matches": len(matches)}
 
 def handle_tool_call(tool_name, arguments):
+    if tool_name in ('job_start', 'job_status', 'job_transition'):
+        if JobStore is None: return {'error': 'job store unavailable'}
+        store = JobStore(os.path.join(REPO_ROOT, 'archive', 'jobs.sqlite'))
+        try:
+            if tool_name == 'job_start': return store.start(arguments.get('spec', {}), arguments.get('run_id'))
+            if tool_name == 'job_status': return store.status(arguments.get('run_id', ''))
+            return store.transition(arguments.get('run_id', ''), arguments.get('state', ''), arguments.get('event', ''))
+        finally: store.close()
     if tool_name == "job_start":
         if JobStore is None: return {"error": "job store unavailable"}
         store = JobStore(os.path.join(REPO_ROOT, "archive", "jobs.sqlite"))

@@ -129,6 +129,14 @@ Maintenance rules:
 
 Explicit session material can support scoped cookie, basic-auth, header and client-certificate routes while keeping browser handoff credential-free. Synthetic fixtures are sufficient to prove scope, expiry, redirect isolation and redaction; real login and SSO remain operator-controlled external gates.
 
+## 2026-09-09 — crawl_controls_reports_20260906
+
+Bounded rule evaluation and receipt-driven reporting keep exclusions, failures and link graphs reviewable without unbounded discovery or unsafe report markup.
+
+## 2026-09-09 — portable_exports_20260906
+
+Export formats need explicit size and provenance limits so interoperability remains verifiable without silently copying credentials or uncontrolled source content.
+
 ## 2026-09-09 — document_lifecycle_20260906
 
 Stdlib catalogue and derivative processing can provide deterministic offline search while optional PDF, Office and OCR engines remain explicit unsupported states. Keep original bytes authoritative and carry handling labels into derivatives.

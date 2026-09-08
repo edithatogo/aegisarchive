@@ -28,7 +28,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T4 Add scoped MCP job operations. (AC2)
+- [x] T4 Add scoped MCP job operations. (AC2)
   - **Files**: `mcp/server.py`; focused tests: `tests/test_headless_jobs.py`.
   - **Change**: Expose schema-validated job operations with no unrestricted shell; preserve transport/security contracts.
   - **Verify**: `python3 -m unittest tests.test_headless_jobs`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -60,7 +60,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T8 Final acceptance and claim reconciliation. (AC1–AC3)
+- [x] T8 Final acceptance and claim reconciliation. (AC1–AC3) — synthetic contract tests passed; hosted platform checks passed on PR #64
   - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `python3 -m unittest tests.test_headless_jobs`; `python3 scripts/gate.py test`; full Conductor validation.
