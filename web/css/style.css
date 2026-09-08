@@ -437,3 +437,6 @@ td a:hover {
   cursor: pointer;
 }
 .close-btn:hover { color: var(--text-primary); }
+
+/* Author-level button display must not override this recovery control's state. */
+#btnRecoverNative[hidden] { display: none; }

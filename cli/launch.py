@@ -23,6 +23,13 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if __package__:
+    from . import capture_bridge
+else:
+    # Portable bundles use -I; import only from this trusted script directory,
+    # never the caller's working directory or PYTHONPATH.
+    sys.path.insert(0, SCRIPT_DIR)
+    import capture_bridge
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 WEB_DIR = os.path.join(REPO_ROOT, "web")
 
@@ -92,6 +99,8 @@ class AegisArchiveHandler(SimpleHTTPRequestHandler):
         type(self).last_activity = time.time()
         if not self._pre_flight_checks():
             return
+        if capture_bridge.handle(self):
+            return
         if self.path.split("?", 1)[0].startswith(self.CONTROL_PREFIX):
             self._handle_control_get()
         else:
@@ -105,6 +114,8 @@ class AegisArchiveHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         type(self).last_activity = time.time()
         if not self._pre_flight_checks():
+            return
+        if capture_bridge.handle(self):
             return
         sub = self.path.split("?", 1)[0][len(self.CONTROL_PREFIX):].strip("/")
         if sub == "shutdown":
@@ -179,6 +190,10 @@ def probe_existing_station(port, timeout=0.5):
 
 
 def main():
+    # Redirected Windows consoles may use a legacy encoding. Preserve startup
+    # even when a path or diagnostic contains characters it cannot represent.
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(errors="backslashreplace")
     parser = argparse.ArgumentParser(description="AegisArchive Web Console Launcher")
     parser.add_argument("--port", type=int, default=8000, help="Initial port to bind (default: 8000)")
     parser.add_argument("--no-browser", action="store_true", help="Do not automatically open the default web browser")
@@ -236,8 +251,10 @@ def main():
 
     server = ThreadingHTTPServer(("127.0.0.1", port), AegisArchiveHandler)
 
+    server.capture_bridge = capture_bridge.CaptureBridge(os.path.join(REPO_ROOT, "archive", "capture-logs"), port)
+
     print("=" * 66)
-    print("  🛡️  AegisArchive — Server-Preserving Archival Engine")
+    print("  AegisArchive - Server-Preserving Archival Engine")
     print("=" * 66)
     print(f"  Local Web Console: {url}")
     print(f"  WARC Replay Viewer: http://127.0.0.1:{port}/viewer.html")

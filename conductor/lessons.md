@@ -112,3 +112,5 @@ Maintenance rules:
 ## 2026-09-07 — offline_navigation_20260906
 - **Surprise**: A browser test package can be installed while its bundled browser is absent or mismatched with the local runtime.
 - **Change for the next planner**: pin the test package, explicitly select a verified browser executable in the test configuration, and exercise disconnected requests before treating browser acceptance as complete.
+
+- 2026-09-08 — Browser capture acceptance: launch the actual server and drive the real UI against a separate-origin non-CORS fixture. Help/unit checks miss transport boundaries, hidden-control styling and Windows redirected-output encoding. Verify downloaded bytes and offline navigation; keep private deployment access distinct from synthetic platform acceptance.

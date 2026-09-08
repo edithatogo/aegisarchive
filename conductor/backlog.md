@@ -14,6 +14,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 
 | priority | track_id | task | status | owner | blocked_by |
 | --- | --- | --- | --- | --- | --- |
+| P0 | browser_capture_acceptance_20260908 | T3 | done | - | - |
 | P0 | mirror_capture_20260906 | T7 | done | - | - |
 | P0 | offline_navigation_20260906 | T8 | done | - | mirror_capture_20260906/T7 |
 | P1 | authenticated_acquisition_20260906 | T1 | open | - | mirror_capture_20260906/T7, crawl_controls_reports_20260906/T7 |

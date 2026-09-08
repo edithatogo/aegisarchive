@@ -13,6 +13,7 @@
   <script src="lib/self_reflection.js"></script>
   <script src="lib/mirror_resources.js"></script>
   <script src="lib/core_crawler.js"></script>
+  <script src="lib/native_capture.js"></script>
 </head>
 <body>
   <div class="container">
@@ -53,6 +54,15 @@
       <span class="badge" id="captureState">READY — nothing is running</span>
     </div>
 
+    <div class="controls-bar" style="gap:12px;">
+      <label for="captureRoute">Acquisition route:</label>
+      <select id="captureRoute"><option value="native">Local Python (recommended)</option><option value="browser">Browser fetch (same-origin / CORS only)</option></select>
+      <label for="robotsPolicy">Robots policy:</label>
+      <select id="robotsPolicy"><option value="respect">Respect robots.txt</option><option value="ignore_authorised">Ignore robots.txt — I am authorised</option></select>
+    </div>
+    <button id="btnRecoverNative" class="btn btn-secondary" hidden onclick="recoverNativeSession()">Stop previous local capture session</button>
+    <p id="captureOutcome" role="status">Local capture uses this computer’s network access. Browser logins are not automatically shared; authenticated sites require an explicit authentication profile. HTTP 401/403 cannot be overridden by the robots option.</p>
+
     <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
       <span id="resumeBannerText"></span>
       <button class="btn btn-emerald" onclick="resumeFromCheckpoint()">▶️ Resume</button>
@@ -63,7 +73,7 @@
     <div class="telemetry-grid">
       <div class="telemetry-card">
         <div class="telemetry-val" id="telemetryCrawled">0</div>
-        <div class="telemetry-label">Pages Crawled</div>
+        <div class="telemetry-label">URLs Attempted</div>
         <div class="telemetry-sub" id="telemetryCeiling">Max ceiling: 2,000</div>
       </div>
       <div class="telemetry-card">
@@ -409,7 +419,18 @@
       log(`[Profile] Configuration updated: '${name}' with ${domains.length} allowed domains.`);
     }
 
-    function startHarvest() {
+    let nativeCapture = null;
+    window.addEventListener('pagehide', () => {
+      if (nativeCapture) nativeCapture.close().catch(() => {});
+    });
+    async function recoverNativeSession() {
+      try {
+        await NativeCapture.recover();
+        document.getElementById('btnRecoverNative').hidden = true;
+        document.getElementById('captureOutcome').textContent = 'Previous local session stopped. You can start a new capture.';
+      } catch (error) { log('[Recovery] ' + error.message); }
+    }
+    async function startHarvest() {
       if (!activeProfile) return;
       const quick = document.getElementById('simpleTarget').value.trim();
       if (quick) {
@@ -419,7 +440,31 @@
         activeProfile = { ...activeProfile, target: { ...activeProfile.target, allowed_domains: [parsed.hostname], seed_urls: { tier_1_core: [parsed.href], tier_2_breadth: [], tier_3_discovery: [] } } };
         log(`[Capture] Quick target selected: ${parsed.href}`);
       }
+      activeProfile = {...activeProfile, politeness: {...activeProfile.politeness, robots_policy: document.getElementById('robotsPolicy').value}};
+      finalResults = null;
+      document.getElementById('docsTableBody').textContent = '';
+      document.getElementById('docCountBadge').textContent = '0 assets';
+      document.getElementById('btnStart').disabled = true;
+      document.getElementById('captureState').textContent = 'CONNECTING — preparing acquisition';
+      document.getElementById('captureOutcome').textContent = 'Preparing capture…';
+      try {
+        nativeCapture = document.getElementById('captureRoute').value === 'native' ? await NativeCapture.start(activeProfile) : null;
+        document.getElementById('btnRecoverNative').hidden = true;
+        log(nativeCapture ? '[Route] Local Python; persistent request log: ' + nativeCapture.logFile : '[Route] Browser fetch: target must permit cross-origin reads.');
+      } catch (error) {
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('captureState').textContent = 'FAILED — capture did not start';
+        document.getElementById('captureOutcome').textContent = error.message;
+        document.getElementById('btnRecoverNative').hidden = false;
+        log('[Error] ' + error.message); return;
+      }
       crawler = new CoreCrawler(activeProfile, {
+        fetchResource: nativeCapture ? async (url, options) => {
+          log('[Request] GET ' + url);
+          const response = await nativeCapture.fetch(url, options);
+          log('[Response] HTTP ' + response.status + ' ' + url);
+          return response;
+        } : undefined,
         onLog: (msg) => log(msg),
         onProgress: (stats) => updateProgress(stats),
         onStatusChange: (status) => updateStatus(status),
@@ -441,7 +486,14 @@
       document.getElementById('btnReport').disabled = true;
       document.getElementById('captureState').textContent = 'RUNNING — archiving selected scope';
 
-      crawler.start();
+      crawler.start().catch(error => {
+        log('[Error] ' + error.message);
+        updateStatus('STOPPED');
+        document.getElementById('btnStart').disabled = false;
+        document.getElementById('captureState').textContent = 'FAILED — capture interrupted';
+        document.getElementById('captureOutcome').textContent = error.message;
+        if (nativeCapture) nativeCapture.close().catch(() => {});
+      });
     }
 
     function togglePause() {
@@ -461,6 +513,7 @@
     function stopHarvest() {
       if (!crawler) return;
       crawler.stop();
+      if (nativeCapture) nativeCapture.close().catch(error => log(error.message));
       document.getElementById('btnPause').disabled = true;
       document.getElementById('btnStop').disabled = true;
     }
@@ -469,7 +522,9 @@
       document.getElementById('telemetryCrawled').textContent = stats.visitedCount.toLocaleString();
       document.getElementById('telemetryQueue').textContent = stats.queueLength.toLocaleString();
       document.getElementById('telemetryDocs').textContent = stats.documentsFound.toLocaleString();
+      document.getElementById('docCountBadge').textContent = `${stats.documentsFound} assets`;
       
+      document.getElementById('captureOutcome').textContent = `${stats.visitedCount} URLs attempted; ${stats.queueLength} queued. Capture is still running.`;
       const ewma = stats.telemetry.ewmaLatencyMs;
       document.getElementById('telemetryLatency').textContent = `${ewma} ms`;
       
@@ -495,17 +550,24 @@
     function updateStatus(status) {
       document.getElementById('captureState').textContent = status === 'STOPPED' ? 'STOPPED — archive finalized' : status === 'PAUSED' ? 'PAUSED — checkpoint saved' : status;
       if (status === 'STOPPED') {
-        document.getElementById('btnStart').disabled = false;
+        document.getElementById('captureState').textContent = 'FINALIZING — preparing archive';
         document.getElementById('btnPause').disabled = true;
         document.getElementById('btnStop').disabled = true;
-        document.getElementById('btnExportWarc').disabled = false;
-        document.getElementById('btnExportCsv').disabled = false;
-        document.getElementById('btnReport').disabled = false;
+
       }
     }
 
     function handleComplete(results) {
       finalResults = results;
+      document.getElementById('btnStart').disabled = false;
+      document.getElementById('btnExportWarc').disabled = false;
+      document.getElementById('btnExportCsv').disabled = false;
+      document.getElementById('btnReport').disabled = false;
+      if (nativeCapture) nativeCapture.close().catch(error => log(error.message));
+      const counts = results.coverage?.counts || {};
+      const captured = counts.captured || 0;
+      document.getElementById('captureState').textContent = captured === 0 ? 'FAILED — no responses saved' : results.coverage?.complete ? 'COMPLETE — discovered resources saved' : 'INCOMPLETE — some resources not saved';
+      document.getElementById('captureOutcome').textContent = `${captured} responses saved; ${counts.failed || 0} failed; ${counts.excluded || 0} excluded; ${counts.pending || 0} pending; ${counts.unsupported || 0} unsupported. ` + (captured ? 'Download WARC + CDX to keep the archive. ' : 'No website content was archived. ') + 'Inspect the audit log and diagnostic report for HTTP, robots, scope or access failures.';
       currentReportMd = SelfReflectionEngine.generateMarkdownReport(results.selfReflection, activeProfile);
       if (results.coverage) {
         currentReportMd += '\n\n## Static capture coverage\n\n```json\n' + JSON.stringify(results.coverage, null, 2) + '\n```\n';
