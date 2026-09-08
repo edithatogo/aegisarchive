@@ -160,7 +160,10 @@ def discover_sitemap(text, source_url, allowed_hosts, visited=None):
         return result
     seen.add(source_url)
     try:
-        root = ET.fromstring(text)
+        # Input is a size-bounded Unicode string; all DTD/entity declarations
+        # are rejected above before parsing, so entities cannot be defined.
+        # Keep the pre-parser rejection regression test when changing this guard.
+        root = ET.fromstring(text)  # nosec B314 - guarded, DTD-free sitemap subset
     except ET.ParseError as error:
         raise ValueError('Malformed sitemap XML') from error
     local = lambda tag: tag.removeprefix('{http://www.sitemaps.org/schemas/sitemap/0.9}')

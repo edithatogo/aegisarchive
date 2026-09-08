@@ -1,5 +1,6 @@
 import copy
 import unittest
+from unittest.mock import patch
 
 from cli.crawl_rules import validate_rules, evaluate_rules, discover_sitemap, scope_hosts
 
@@ -96,6 +97,20 @@ class SitemapTests(unittest.TestCase):
         for xml in ('<!DOCTYPE x [<!ENTITY x "bad">]><urlset/>', '<urlset><url></urlset>', '<urlset x="1"/>', '<urlset><url><loc><![CDATA[/a]]></loc></url></urlset>', '<urlset><url><loc>&#1;</loc></url></urlset>', '<urlset>' + ' ' * 262144 + '</urlset>'):
             with self.assertRaises(ValueError):
                 discover_sitemap(xml, 'https://example.test/map.xml', ['example.test'])
+
+    def test_unsafe_xml_is_rejected_before_parser_invocation(self):
+        payloads = [
+            '<!DOCTYPE urlset SYSTEM "https://outside.test/dtd"><urlset/>',
+            '<!DOCTYPE urlset [<!ENTITY x SYSTEM "file:///private.txt">]><urlset>&x;</urlset>',
+            '<!DOCTYPE urlset [<!ENTITY a "x"><!ENTITY b "&a;&a;">]><urlset>&b;</urlset>',
+            '<!ENTITY x "value"><urlset/>',
+            '<urlset>' + ' ' * 262144 + '</urlset>',
+        ]
+        with patch('cli.crawl_rules.ET.fromstring') as parser:
+            for payload in payloads:
+                with self.subTest(payload=payload[:80]), self.assertRaises(ValueError):
+                    discover_sitemap(payload, 'https://example.test/map.xml', ['example.test'])
+            parser.assert_not_called()
 
     def test_numeric_intervals_and_resource_kinds(self):
         rule = {'id': 'asset', 'match': {'kind': 'asset', 'mime': 'image/png',
