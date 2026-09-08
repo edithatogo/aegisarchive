@@ -1,6 +1,6 @@
 # Crawl controls, previews and site reports
 
-Status: new.
+Status: in_progress.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
