@@ -120,3 +120,11 @@ class SitemapTests(unittest.TestCase):
         rule['match']['min_bytes'] = 4097
         with self.assertRaises(ValueError):
             validate_rules({'version': 1, 'rules': [rule]})
+
+    def test_sitemap_cycle_identity_ignores_default_ports_and_fragments(self):
+        xml = '<sitemapindex>' + ''.join('<sitemap><loc>' + url + '</loc></sitemap>' for url in [
+            'https://EXAMPLE.test:443/map.xml#self', 'https://example.test/next.xml#one',
+            'https://example.test:443/next.xml#two', 'https://example.test/Next.xml?q=1']) + '</sitemapindex>'
+        expected = ['https://example.test/next.xml', 'https://example.test/Next.xml?q=1']
+        self.assertEqual(discover_sitemap(xml, 'https://example.test/map.xml', ['example.test'])['sitemaps'], expected)
+        self.assertEqual(discover_sitemap(xml, 'https://example.test/map.xml', ['example.test'], ['https://example.test:443/map.xml#old'])['sitemaps'], [])

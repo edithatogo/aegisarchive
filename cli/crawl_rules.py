@@ -5,7 +5,7 @@ existing scope decision; they never grant access outside the caller's scope.
 """
 import copy
 import re
-from urllib.parse import urlsplit, urljoin
+from urllib.parse import urlsplit, urljoin, urlunsplit
 import xml.etree.ElementTree as ET
 
 MAX_RULES = 100
@@ -139,6 +139,19 @@ def scope_hosts(allowed_hosts, aliases=None):
     return sorted(hosts)
 
 
+def _sitemap_identity(url):
+    """Normalize fetch identity without collapsing case-sensitive paths or queries."""
+    parsed = urlsplit(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username or parsed.password:
+        raise ValueError('Invalid sitemap identity')
+    host = parsed.hostname.lower()
+    host = '[' + host + ']' if ':' in host else host
+    port = parsed.port
+    if port is not None and port != {'http': 80, 'https': 443}[parsed.scheme]:
+        host += ':' + str(port)
+    return urlunsplit((parsed.scheme, host, parsed.path or '/', parsed.query, ''))
+
+
 def discover_sitemap(text, source_url, allowed_hosts, visited=None):
     """Parse a bounded unprefixed sitemap subset, without fetching anything.
 
@@ -151,11 +164,12 @@ def discover_sitemap(text, source_url, allowed_hosts, visited=None):
         raise ValueError('Sitemap byte limit')
     if re.search(r'<!DOCTYPE|<!ENTITY|<!\[CDATA\[|</?[A-Za-z_][\w.-]*:', text, re.I):
         raise ValueError('Unsupported sitemap XML declaration or prefix')
-    seen = set(visited or [])
+    seen = {_sitemap_identity(url) for url in (visited or [])}
     result = {'pages': [], 'sitemaps': [], 'excluded': []}
     source = urlsplit(source_url)
     if source.scheme not in ('http', 'https') or source.hostname not in hosts or source.username or source.password:
         raise ValueError('Sitemap source outside scope')
+    source_url = _sitemap_identity(source_url)
     if source_url in seen:
         return result
     seen.add(source_url)
@@ -191,7 +205,9 @@ def discover_sitemap(text, source_url, allowed_hosts, visited=None):
         if parsed.scheme not in ('http', 'https') or parsed.hostname not in hosts or parsed.username or parsed.password:
             if url not in result['excluded']:
                 result['excluded'].append(url)
-        elif url not in seen:
-            result['sitemaps' if root_name == 'sitemapindex' else 'pages'].append(url)
-            seen.add(url)
+        else:
+            url = _sitemap_identity(url)
+            if url not in seen:
+                result['sitemaps' if root_name == 'sitemapindex' else 'pages'].append(url)
+                seen.add(url)
     return result

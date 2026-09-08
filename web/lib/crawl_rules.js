@@ -146,15 +146,21 @@
   function discoverSitemap(text, sourceUrl, allowedHosts, visited=[]) {
     const hosts=scopeHosts(allowedHosts);
     if (typeof text!=='string' || new TextEncoder().encode(text).length>262144) throw Error('Sitemap byte limit');
-    const seen=new Set(visited),result={pages:[],sitemaps:[],excluded:[]};
+    const identity=value=>{
+      const url=new URL(value);
+      if(!['http:','https:'].includes(url.protocol) || !url.hostname || url.username || url.password) throw Error('Invalid sitemap identity');
+      url.hash='';return url.href;
+    };
+    const seen=new Set(visited.map(identity)),result={pages:[],sitemaps:[],excluded:[]};
     const source=new URL(sourceUrl);
     if (!['http:','https:'].includes(source.protocol) || !hosts.includes(source.hostname) || source.username || source.password) throw Error('Source outside scope');
+    sourceUrl=identity(sourceUrl);
     if(seen.has(sourceUrl))return result;
     seen.add(sourceUrl);
     const {root,locations}=sitemapLocations(text);
     for(const location of locations) {
       if(Array.from(location).length>8192)throw Error('Sitemap URL limit');
-      const url=new URL(location,sourceUrl),value=url.href;
+      const url=new URL(location,sourceUrl);url.hash='';const value=url.href;
       if(!['http:','https:'].includes(url.protocol) || !hosts.includes(url.hostname) || url.username || url.password) {
         if(!result.excluded.includes(value))result.excluded.push(value);
       } else if(!seen.has(value)) {result[root==='sitemapindex'?'sitemaps':'pages'].push(value);seen.add(value);}

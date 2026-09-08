@@ -61,3 +61,9 @@ test('sitemap XML failures are explicit',()=>{
   for(const xml of ['<!DOCTYPE x [<!ENTITY x "bad">]><urlset/>','<urlset><url></urlset>','<urlset x="1"/>','<urlset><url><loc><![CDATA[/a]]></loc></url></urlset>','<urlset><url><loc>&#1;</loc></url></urlset>','<urlset>'+' '.repeat(262144)+'</urlset>'])
     assert.throws(()=>discoverSitemap(xml,'https://example.test/map.xml',['example.test']));
 });
+
+test('sitemap cycle identity ignores default ports and fragments',()=>{
+  const xml='<sitemapindex>'+['https://EXAMPLE.test:443/map.xml#self','https://example.test/next.xml#one','https://example.test:443/next.xml#two','https://example.test/Next.xml?q=1'].map(url=>'<sitemap><loc>'+url+'</loc></sitemap>').join('')+'</sitemapindex>';
+  assert.deepEqual(discoverSitemap(xml,'https://example.test/map.xml',['example.test']).sitemaps,['https://example.test/next.xml','https://example.test/Next.xml?q=1']);
+  assert.deepEqual(discoverSitemap(xml,'https://example.test/map.xml',['example.test'],['https://example.test:443/map.xml#old']).sitemaps,[]);
+});
