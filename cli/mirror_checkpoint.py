@@ -65,9 +65,14 @@ class MirrorCheckpoint:
             raise CheckpointError("checkpoint does not match profile")
         for item in state.get("segments", []):
             path = self.segments / str(item.get("name", ""))
-            if path.parent != self.segments or not path.is_file():
+            try:
+                resolved = path.resolve(strict=True)
+            except OSError as exc:
+                raise CheckpointError("checkpoint references missing segment") from exc
+            if (path.is_symlink() or not resolved.is_relative_to(self.segments.resolve())
+                    or resolved.parent != self.segments.resolve() or not resolved.is_file()):
                 raise CheckpointError("checkpoint references missing segment")
-            data = path.read_bytes()
+            data = resolved.read_bytes()
             if len(data) != item.get("bytes") or hashlib.sha256(data).hexdigest() != item.get("sha256"):
                 raise CheckpointError("checkpoint references corrupt segment")
         return state
