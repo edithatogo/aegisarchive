@@ -1,7 +1,5 @@
 name: Portable full native qualification
 on:
-  pull_request:
-    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
