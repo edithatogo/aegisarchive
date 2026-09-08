@@ -30,6 +30,7 @@ from mirror_resources import discover, VERSION as DISCOVERY_VERSION
 from crawl_rules import evaluate_rules
 from auth import request_headers, redact_headers, ssl_context
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
+from retry_policy import classify as classify_failure
 from robots_receipt import decision as robots_decision
 
 def format_warc_date(dt=None):
@@ -422,15 +423,15 @@ def main():
                 else:
                     limitations.append({'source':url,'reason':'redirect_without_location'})
             else:
-                outcomes[url].update(state='failed',reason='http_error',status=error.code)
-                event('failed', url=url, status=error.code)
+                outcomes[url].update(state='failed',reason='http_error',status=error.code, failure_category=classify_failure(error.code))
+                event('failed', url=url, status=error.code, failure_category=classify_failure(error.code))
                 counted = politeness.record_failure(url, error.code, error.headers.get('Retry-After'))
                 if counted:
                     requeue(url, depth, retries)
             error.close()
         except (OSError, ValueError, EOFError) as error:
-            outcomes[url].update(state='failed',reason='network_or_decode_error')
-            event('failed', url=url, error_type=type(error).__name__)
+            outcomes[url].update(state='failed',reason='network_or_decode_error',error_type=type(error).__name__, failure_category=classify_failure(0, type(error).__name__))
+            event('failed', url=url, error_type=type(error).__name__, failure_category=classify_failure(0, type(error).__name__))
             politeness.record_failure(url, 0)
             requeue(url, depth, retries)
 
