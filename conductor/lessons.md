@@ -152,3 +152,7 @@ Synthetic disconnected fixtures establish static mirroring behaviour across runn
 ## 2026-09-09 — rendered_capture_20260906
 
 Rendered capture must remain bounded and optional, with browser runtime availability recorded separately from static capture acceptance. Preserve source scope, asset outcomes and offline replay evidence when reporting capability.
+
+## 2026-09-09 — mirror_resume_20260906
+
+Atomic checkpointing and content verification make interrupted captures resumable while preserving completed payloads and exposing corruption or storage failures explicitly.
