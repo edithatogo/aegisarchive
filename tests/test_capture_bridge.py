@@ -35,7 +35,7 @@ class CaptureBridgeTests(unittest.TestCase):
         self.station.capture_bridge = self.bridge
         threading.Thread(target=self.station.serve_forever, daemon=True).start()
         self.station_url = 'http://127.0.0.1:' + str(self.station.server_port)
-        self.profile = {'target': {'allowed_domains':['127.0.0.1']}, 'politeness': {'min_delay_ms':1,'max_delay_ms':1,'max_requests_per_minute':600}}
+        self.profile = {'target': {'allowed_domains':['127.0.0.1']}, 'politeness': {'min_delay_ms':250,'max_delay_ms':250,'max_requests_per_minute':300}}
 
     def tearDown(self):
         self.station.shutdown(); self.station.server_close()
@@ -69,6 +69,7 @@ class CaptureBridgeTests(unittest.TestCase):
         result = self.bridge.fetch(session['id'], self.url)
         self.assertEqual(self.seen[0][1], 'private=credential')
         self.assertNotIn('set-cookie', result['headers'])
+        self.assertEqual(result['request']['headers']['cookie'], '[REDACTED]')
         log = Path(session['log_file']).read_text()
         self.assertNotIn('credential', log)
         self.assertNotIn('private-session', log)
@@ -85,3 +86,18 @@ class CaptureBridgeTests(unittest.TestCase):
     def test_auth_scope_and_pacing_validation(self):
         for change in [{'target':{'allowed_domains':[]}}, {'politeness':{'min_delay_ms':float('nan')}}, {'authentication':{'allowed_domains':['outside.test']}}]:
             with self.assertRaises(ValueError): self.bridge.configure({**self.profile, **change})
+
+    def test_conservative_schema_bounds_and_recovery(self):
+        profile = {**self.profile, 'politeness': {'min_delay_ms':60000,'max_delay_ms':120000,'burst_limit':20,'cooldown_seconds':3600}}
+        old = self.bridge.configure(profile)['id']
+        self.bridge.recover()
+        self.assertNotEqual(old, self.bridge.configure(self.profile)['id'])
+
+    def test_request_metadata_matches_forwarded_options(self):
+        sid = self.bridge.configure(self.profile)['id']
+        options = {'method':'GET','headers':{'Accept':'application/pdf','X-Preservation-Agent':'AegisArchive/1.0'}}
+        result = self.bridge.fetch(sid, self.url, options)
+        self.assertEqual(result['request']['headers']['accept'], 'application/pdf')
+        self.assertEqual(result['request']['headers']['x-preservation-agent'], 'AegisArchive/1.0')
+        with self.assertRaises(ValueError): self.bridge.fetch(sid, self.url, {'method':'POST'})
+        with self.assertRaises(ValueError): self.bridge.fetch(sid, self.url, {'headers':{'Cookie':'hidden'}})

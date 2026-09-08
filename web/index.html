@@ -60,6 +60,7 @@
       <label for="robotsPolicy">Robots policy:</label>
       <select id="robotsPolicy"><option value="respect">Respect robots.txt</option><option value="ignore_authorised">Ignore robots.txt — I am authorised</option></select>
     </div>
+    <button id="btnRecoverNative" class="btn btn-secondary" hidden onclick="recoverNativeSession()">Stop previous local capture session</button>
     <p id="captureOutcome" role="status">Local capture uses this computer’s network access. Browser logins are not automatically shared; authenticated sites require an explicit authentication profile. HTTP 401/403 cannot be overridden by the robots option.</p>
 
     <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
@@ -422,6 +423,13 @@
     window.addEventListener('pagehide', () => {
       if (nativeCapture) nativeCapture.close().catch(() => {});
     });
+    async function recoverNativeSession() {
+      try {
+        await NativeCapture.recover();
+        document.getElementById('btnRecoverNative').hidden = true;
+        document.getElementById('captureOutcome').textContent = 'Previous local session stopped. You can start a new capture.';
+      } catch (error) { log('[Recovery] ' + error.message); }
+    }
     async function startHarvest() {
       if (!activeProfile) return;
       const quick = document.getElementById('simpleTarget').value.trim();
@@ -441,17 +449,19 @@
       document.getElementById('captureOutcome').textContent = 'Preparing capture…';
       try {
         nativeCapture = document.getElementById('captureRoute').value === 'native' ? await NativeCapture.start(activeProfile) : null;
+        document.getElementById('btnRecoverNative').hidden = true;
         log(nativeCapture ? '[Route] Local Python; persistent request log: ' + nativeCapture.logFile : '[Route] Browser fetch: target must permit cross-origin reads.');
       } catch (error) {
         document.getElementById('btnStart').disabled = false;
         document.getElementById('captureState').textContent = 'FAILED — capture did not start';
         document.getElementById('captureOutcome').textContent = error.message;
+        document.getElementById('btnRecoverNative').hidden = false;
         log('[Error] ' + error.message); return;
       }
       crawler = new CoreCrawler(activeProfile, {
-        fetchResource: nativeCapture ? async url => {
+        fetchResource: nativeCapture ? async (url, options) => {
           log('[Request] GET ' + url);
-          const response = await nativeCapture.fetch(url);
+          const response = await nativeCapture.fetch(url, options);
           log('[Response] HTTP ' + response.status + ' ' + url);
           return response;
         } : undefined,

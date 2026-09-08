@@ -14,6 +14,8 @@ The local Python route uses this computer's network access. It does not inherit 
 
 The local transport accepts only scoped GET requests, does not automatically follow redirects, rejects requests to the station's own port, and caps each response at 32 MiB. Encoded responses that ignore identity encoding fail explicitly. No target page scripts execute on station origin.
 
+If a tab was lost during capture and a new start fails, use **Stop previous local capture session**, then start again. Leaving a page also sends a best-effort session stop.
+
 ## Diagnostics
 
 Each local capture writes request/response/failure JSONL to `archive/capture-logs/`, with the exact path shown in the UI. Status codes, byte counts and timing are retained. Credential headers and exception contents are not logged. URLs can contain private information: these logs are local and ignored by Git. Do not publish real-source logs without reviewing their contents.
@@ -22,6 +24,6 @@ Each local capture writes request/response/failure JSONL to `archive/capture-log
 
 Install development dependencies with `npm ci` and `npx playwright install --with-deps chromium`. Run `npm run test:capture` on macOS, Windows or Linux. To use an installed Chrome locally, set `AEGIS_BROWSER_CHANNEL=chrome` before the command. `AEGIS_TEST_PYTHON` can select the Python command.
 
-The suite starts the actual launcher and a separate-origin HTTP fixture with no CORS headers, uses the visible profile/address/start/export controls, verifies downloaded WARC bytes, and reopens the archive to navigate offline. It also verifies 403 failures, robots exclusion/authorised ignore, and optional imported-session authentication. The hosted Browser capture acceptance matrix uses the identical suite on all three platforms.
+The suite starts the actual launcher and a separate-origin HTTP fixture with no CORS headers, uses the visible profile/address/start/export controls, verifies downloaded WARC bytes, and reopens the archive to navigate offline. It also verifies 403 failures, robots exclusion/authorised ignore, and optional imported-session authentication. The hosted Browser capture acceptance matrix uses the identical suite with the runner image’s installed Chrome on all three platforms, recording its browser version.
 
 Synthetic acceptance proves these workflows under known conditions. It does not establish access to a private deployment or completeness of an arbitrary site.

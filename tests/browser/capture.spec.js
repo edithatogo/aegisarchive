@@ -2,10 +2,12 @@ const { test, expect } = require('playwright/test');
 const http = require('node:http');
 const fs = require('node:fs/promises');
 let source, origin, requests;
-test.beforeAll(async () => {
+test.beforeAll(async ({browser}) => {
+  console.log(JSON.stringify({platform:process.platform, arch:process.arch, browser:browser.version()}));
   requests = [];
   source = http.createServer((req, res) => {
     requests.push(req.url);
+    if (req.url === '/') { expect(req.headers.accept).toContain('text/html'); expect(req.headers['x-preservation-agent']).toBe('AegisArchive/1.0'); }
     if (req.url === '/robots.txt') { res.writeHead(200, {'Content-Type':'text/plain'}); res.end('User-agent: *\nDisallow: /blocked\n'); return; }
     if (req.url === '/long') { res.writeHead(200, {'Content-Type':'text/html'}); res.end('<h1>Long fixture</h1>'+Array.from({length:40},(_,i)=>`<a href="/item-${i}">Item ${i}</a>`).join('')); return; }
     if (req.url === '/protected') { res.writeHead(req.headers.cookie === 'session=synthetic' ? 200 : 401, {'Content-Type':'text/html'}); res.end('<h1>Protected fixture</h1>'); return; }
@@ -25,9 +27,9 @@ test.afterAll(async () => { await new Promise(resolve => source.close(resolve));
 async function setup(page, path='/') {
   await page.goto('/index.html');
   await page.getByRole('button', {name:'⚙️ Configure Profile'}).click();
-  await page.locator('#wizMinDelay').fill('1');
-  await page.locator('#wizMaxDelay').fill('1');
-  await page.locator('#wizMaxRpm').fill('600');
+  await page.locator('#wizMinDelay').fill('250');
+  await page.locator('#wizMaxDelay').fill('250');
+  await page.locator('#wizMaxRpm').fill('300');
   await page.getByRole('button', {name:'Apply Profile'}).click();
   await page.getByLabel('Quick capture address:').fill(origin + path);
 }
@@ -82,7 +84,7 @@ test('explicit imported session is optional and enables a protected fixture', as
   await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
   await expect(page.locator('#logContainer')).toContainText('HTTP 401');
   const profile=require('../../profiles/default_polite.json');
-  const configured={...profile,politeness:{...profile.politeness,min_delay_ms:1,max_delay_ms:1,max_requests_per_minute:600},
+  const configured={...profile,politeness:{...profile.politeness,min_delay_ms:250,max_delay_ms:250,max_requests_per_minute:300},
     authentication:{mode:'browser_session',allowed_domains:['127.0.0.1'],source:JSON.stringify({cookies:[{name:'session',value:'synthetic',domain:'127.0.0.1',path:'/',expires:-1}]})}};
   await page.locator('#profileFileInput').setInputFiles({name:'synthetic-profile.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(configured))});
   await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
@@ -101,4 +103,21 @@ test('pause, resume and stop preserve an explicitly incomplete archive', async (
   await expect(page.locator('#captureState')).toHaveText('INCOMPLETE — some resources not saved');
   await expect(page.locator('#captureOutcome')).toContainText(/[1-9][0-9]* pending/);
   await expect(page.getByRole('button', {name:'📦 Download WARC + CDX'})).toBeEnabled();
+});
+
+test('reload can recover the native session without restarting the launcher', async ({page}) => {
+  await setup(page,'/long');
+  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
+  await page.reload();
+  await page.getByLabel('Quick capture address:').fill(origin + '/denied');
+  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#captureState')).toContainText('FAILED');
+  if (await page.locator('#btnRecoverNative').isVisible()) {
+    await page.getByRole('button', {name:'Stop previous local capture session'}).click();
+    await expect(page.locator('#btnRecoverNative')).toBeHidden();
+    await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  }
+  await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
+  await expect(page.locator('#logContainer')).toContainText('HTTP 403');
 });

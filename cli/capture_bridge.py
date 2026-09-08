@@ -15,10 +15,10 @@ from pathlib import Path
 
 try:
     from .politeness import PolitenessEngine
-    from .auth import request_headers, ssl_context, SENSITIVE
+    from .auth import request_headers, ssl_context, SENSITIVE, redact_headers
 except ImportError:
     from politeness import PolitenessEngine
-    from auth import request_headers, ssl_context, SENSITIVE
+    from auth import request_headers, ssl_context, SENSITIVE, redact_headers
 
 MAX_BODY = 32 * 1024 * 1024
 
@@ -45,12 +45,18 @@ class CaptureBridge:
             raise ValueError('Allowed hosts must be lowercase hostnames')
         policy = profile.get('politeness') or {}
         # Validate bounded pacing parameters before constructing the engine.
-        bounds = {'min_delay_ms': (1, 60000), 'max_delay_ms': (1, 60000),
-                  'max_requests_per_minute': (1, 600), 'burst_limit': (1, 10),
-                  'consecutive_error_tripwire': (1, 20), 'cooldown_seconds': (1, 600)}
-        for key, (lo, hi) in bounds.items():
-            if key in policy and (type(policy[key]) not in (int, float) or not lo <= policy[key] <= hi):
+        schema_path = Path(__file__).resolve().parents[1] / 'profiles' / 'schema.json'
+        fields = json.loads(schema_path.read_text(encoding='utf-8'))['properties']['politeness']['properties']
+        for key, value in policy.items():
+            rule = fields.get(key, {})
+            if rule.get('type') == 'integer' and (type(value) is not int or not rule.get('minimum', value) <= value <= rule.get('maximum', value)):
                 raise ValueError('Invalid pacing parameter: ' + key)
+            if rule.get('type') == 'boolean' and type(value) is not bool:
+                raise ValueError('Invalid pacing flag: ' + key)
+            if 'enum' in rule and value not in rule['enum']:
+                raise ValueError('Invalid pacing choice: ' + key)
+        if policy.get('min_delay_ms', 1200) > policy.get('max_delay_ms', 3500):
+            raise ValueError('Minimum delay exceeds maximum')
         policy = {**policy, 'respect_retry_after': True, 'adaptive_ewma_backoff': True}
         authentication = profile.get('authentication') or {}
         if not isinstance(authentication, dict):
@@ -88,7 +94,13 @@ class CaptureBridge:
         self.event(session, 'stopped')
         return {'stopped': True}
 
-    def fetch(self, sid, url):
+    def recover(self):
+        with self.lock:
+            if self.session:
+                self.close(self.session['id'])
+        return {'stopped': True}
+
+    def fetch(self, sid, url, options=None):
         session = self.get_session(sid)
         if not isinstance(url, str) or len(url) > 8192 or any(ord(c) < 32 for c in url):
             raise ValueError('Invalid URL')
@@ -98,6 +110,18 @@ class CaptureBridge:
                 or not any(host == h or host.endswith('.' + h) for h in session['hosts'])
                 or (parsed.port or (443 if parsed.scheme == 'https' else 80)) == self.station_port):
             raise ValueError('URL is outside the explicit capture scope')
+        options = options or {}
+        if not isinstance(options, dict) or options.get('method', 'GET') != 'GET':
+            raise ValueError('Only GET acquisition is supported')
+        supplied = options.get('headers', {})
+        if not isinstance(supplied, dict) or len(supplied) > 16:
+            raise ValueError('Invalid request headers')
+        permitted = {'accept', 'accept-language', 'x-preservation-agent'}
+        forwarded = {}
+        for name, value in supplied.items():
+            if name.lower() not in permitted or not isinstance(value, str) or any(ord(c) < 32 for c in value):
+                raise ValueError('Unsupported request header')
+            forwarded[name.lower()] = value
         with session['lock']:
             if session['stop'].is_set() or session['engine'].acquire_permission(url)['aborted']:
                 raise ValueError('Capture stopped')
@@ -105,8 +129,9 @@ class CaptureBridge:
             self.event(session, 'request', url=url)
             try:
                 authentication = session['authentication']
-                headers = {'User-Agent': 'AegisArchive/1.0', 'Accept-Encoding': 'identity'}
-                headers.update(request_headers(authentication, url))
+                headers = {'user-agent': 'AegisArchive/1.0', 'accept-encoding': 'identity', 'host': parsed.netloc, 'connection': 'close', **forwarded}
+                headers.update({k.lower(): v for k, v in request_headers(authentication, url).items()})
+                headers['host'] = parsed.netloc
                 handlers = [NoRedirect()]
                 context = ssl_context(authentication, url=url)
                 if context is not None:
@@ -132,7 +157,9 @@ class CaptureBridge:
                     session['engine'].record_failure(url, status, safe_headers.get('retry-after'))
                 self.event(session, 'response', url=url, status=status, bytes=len(body), elapsed_ms=elapsed)
                 return {'status': status, 'headers': safe_headers,
-                        'body': base64.b64encode(body).decode('ascii')}
+                        'body': base64.b64encode(body).decode('ascii'),
+                        # The WARC writer synthesizes Host from this same URL once.
+                        'request': {'method': 'GET', 'headers': redact_headers({k: v for k, v in headers.items() if k != 'host'})}}
             except Exception as error:
                 session['engine'].record_failure(url, 0)
                 # Keep credential values and exception objects out of persisted logs.
@@ -175,7 +202,9 @@ def handle(handler):
             if path == '/__station/capture/start':
                 result = bridge.configure(payload['profile'])
             elif path == '/__station/capture/fetch':
-                result = bridge.fetch(payload['id'], payload['url'])
+                result = bridge.fetch(payload['id'], payload['url'], payload.get('options'))
+            elif path == '/__station/capture/recover':
+                result = bridge.recover()
             elif path == '/__station/capture/stop':
                 result = bridge.close(payload['id'])
             else:

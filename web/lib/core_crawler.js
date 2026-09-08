@@ -318,7 +318,7 @@
         const uint8 = new Uint8Array(arrayBuffer);
 
         // Append to WARC / CDX writer (with automatic SHA-256 deduplication revisit records)
-        const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: { method: 'GET', headers: REQUEST_HEADERS } });
+        const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: resp.aegisRequest || { method: 'GET', headers: REQUEST_HEADERS } });
 
         this.resourceOutcomes.set(url,{url,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length});
         this.auditLedger.push({
