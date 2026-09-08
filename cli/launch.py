@@ -18,6 +18,10 @@ import platform
 import urllib.request
 import webbrowser
 import argparse
+try:
+    from . import capture_bridge
+except ImportError:
+    import capture_bridge
 from datetime import datetime, timezone
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote
@@ -92,6 +96,8 @@ class AegisArchiveHandler(SimpleHTTPRequestHandler):
         type(self).last_activity = time.time()
         if not self._pre_flight_checks():
             return
+        if capture_bridge.handle(self):
+            return
         if self.path.split("?", 1)[0].startswith(self.CONTROL_PREFIX):
             self._handle_control_get()
         else:
@@ -105,6 +111,8 @@ class AegisArchiveHandler(SimpleHTTPRequestHandler):
     def do_POST(self):
         type(self).last_activity = time.time()
         if not self._pre_flight_checks():
+            return
+        if capture_bridge.handle(self):
             return
         sub = self.path.split("?", 1)[0][len(self.CONTROL_PREFIX):].strip("/")
         if sub == "shutdown":
@@ -235,6 +243,8 @@ def main():
         url += f"?profile={abs_profile}"
 
     server = ThreadingHTTPServer(("127.0.0.1", port), AegisArchiveHandler)
+
+    server.capture_bridge = capture_bridge.CaptureBridge(os.path.join(REPO_ROOT, "archive", "capture-logs"), port)
 
     print("=" * 66)
     print("  🛡️  AegisArchive — Server-Preserving Archival Engine")

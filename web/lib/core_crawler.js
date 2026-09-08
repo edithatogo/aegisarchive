@@ -35,6 +35,7 @@
   class CoreCrawler {
     constructor(profile = {}, callbacks = {}) {
       this.profile = profile;
+      this.fetchResource = callbacks.fetchResource || ((...args) => fetch(...args));
       this.callbacks = {
         onLog: callbacks.onLog || (() => {}),
         onProgress: callbacks.onProgress || (() => {}),
@@ -245,7 +246,7 @@
       this.endTime = Date.now();
       this.callbacks.onStatusChange('STOPPED');
       this.callbacks.onCheckpoint(this.queue.length > 0 ? this.exportCheckpoint() : null);
-      this.callbacks.onLog(`[AegisArchive] Run complete. Crawled ${this.visited.size} pages; archived ${this.documents.length} assets.`);
+      this.callbacks.onLog(`[AegisArchive] Run complete. Attempted ${this.visited.size} URLs; archived ${this.documents.length} assets.`);
       this.callbacks.onComplete(await this.getFinalResults());
     }
 
@@ -273,7 +274,7 @@
       const reqStartTime = performance.now();
 
       try {
-        const resp = await fetch(url, {
+        const resp = await this.fetchResource(url, {
           method: 'GET',
           headers: REQUEST_HEADERS,
           cache: 'no-store',
@@ -426,12 +427,12 @@
         let status = 0, rules = [];
         const started = performance.now();
         try {
-          const resp = await fetch(robotsUrl, { method: 'GET', headers: { 'X-Preservation-Agent': 'AegisArchive/1.0' }, cache: 'no-store', redirect: 'manual' });
+          const resp = await this.fetchResource(robotsUrl, { method: 'GET', headers: { 'X-Preservation-Agent': 'AegisArchive/1.0' }, cache: 'no-store', redirect: 'manual' });
           status = resp.status;
           if (resp.ok) rules = this.parseRobotsTxt(await resp.text());
           if (resp.ok) this.politeness.recordSuccess(robotsUrl, performance.now() - started);
           else this.politeness.recordFailure(robotsUrl, status, resp.headers?.get('retry-after'));
-        } catch (e) { status = 0; }
+        } catch (e) { status = 0; this.callbacks.onLog('[Robots] Acquisition failed: ' + e.message); }
         if (status === 0) this.politeness.recordFailure(robotsUrl, 0);
         // An unavailable robots policy must not silently grant access.
         if (status === 0 || status === 401 || status === 403 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];

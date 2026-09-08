@@ -24,3 +24,9 @@ archive/incoming/
 # Temporary checkpoints
 *.checkpoint.json
 .tmp/
+
+# Local acquisition diagnostics
+archive/capture-logs/
+node_modules/
+test-results/
+playwright-report/

@@ -1,0 +1,10 @@
+{
+  "track_id": "browser_capture_acceptance_20260908",
+  "type": "bug",
+  "status": "in_progress",
+  "created_at": "2026-09-08T10:00:00Z",
+  "updated_at": "2026-09-08T10:10:00Z",
+  "description": "Native browser capture and cross-platform UI acceptance",
+  "evidence_schema": "1.0",
+  "dependencies": []
+}
