@@ -1,8 +1,5 @@
 name: Portable full native qualification
 on:
-  # Full native asset qualification is deliberately a manual/release gate.
-  # Pull requests use the fast portable probe matrix instead of downloading
-  # multi-gigabyte optional runtimes on every change.
   workflow_dispatch:
 permissions:
   contents: read
