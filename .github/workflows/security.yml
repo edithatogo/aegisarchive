@@ -79,7 +79,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: "3.14"
       - run: python -m pip install --quiet -r tests/requirements-dev.txt
       # WARNING == medium, ERROR == high. --error makes any remaining finding fail the job.
       # The single excluded audit rule duplicates Bandit B310 (tracked via .bandit-baseline.json);
@@ -101,7 +101,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: "3.14"
       - run: python -m pip install --quiet -r tests/requirements-dev.txt
       # -ll = medium+ severity, -ii = medium+ confidence. Baseline holds one finding in a file
       # owned by another track (see handoff.md); nothing else may be added to it.
@@ -117,7 +117,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.11"
+          python-version: "3.14"
       - run: python -m pip install --quiet -r tests/requirements-dev.txt
       - run: zizmor --min-severity medium --min-confidence medium --offline .github/workflows
 
@@ -131,7 +131,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
-          python-version: "3.12"
+          python-version: "3.14"
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "24"
