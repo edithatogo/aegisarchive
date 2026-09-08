@@ -15,6 +15,13 @@ try:
     from .profile_schema import validate as validate_schema
 except ImportError:
     from profile_schema import validate as validate_schema
+try:
+    from ..cli.jobs import JobStore
+except ImportError:
+    try:
+        from cli.jobs import JobStore
+    except ImportError:
+        JobStore = None
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PROFILES_DIR = os.path.join(REPO_ROOT, "profiles")
@@ -65,7 +72,22 @@ def search_cdx(query, cdx_path):
     return {"matches": matches, "total_matches": len(matches)}
 
 def handle_tool_call(tool_name, arguments):
-    if tool_name == "list_profiles":
+    if tool_name == "job_start":
+        if JobStore is None: return {"error": "job store unavailable"}
+        store = JobStore(os.path.join(REPO_ROOT, "archive", "jobs.sqlite"))
+        try: return store.start(arguments.get("spec", {}), arguments.get("run_id"))
+        finally: store.close()
+    elif tool_name == "job_status":
+        if JobStore is None: return {"error": "job store unavailable"}
+        store = JobStore(os.path.join(REPO_ROOT, "archive", "jobs.sqlite"))
+        try: return store.status(arguments.get("run_id", ""))
+        finally: store.close()
+    elif tool_name == "job_transition":
+        if JobStore is None: return {"error": "job store unavailable"}
+        store = JobStore(os.path.join(REPO_ROOT, "archive", "jobs.sqlite"))
+        try: return store.transition(arguments.get("run_id", ""), arguments.get("state", ""), arguments.get("event", ""))
+        finally: store.close()
+    elif tool_name == "list_profiles":
         return {"profiles": list_profiles()}
 
     elif tool_name == "search_archive":

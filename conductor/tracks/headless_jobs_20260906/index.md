@@ -1,6 +1,6 @@
 # Headless jobs, scheduling and automation contracts
 
-Status: new.
+Status: implementation complete; awaiting hosted acceptance and merge.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

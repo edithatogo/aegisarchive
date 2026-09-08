@@ -1,0 +1,1 @@
+{"status":"passed","tests":["python3 -m unittest tests.test_headless_jobs (2 passed)"],"scope":"synthetic lifecycle, lease, schedule and notification contracts","limitation":"platform matrix is delegated to hosted Actions"}
