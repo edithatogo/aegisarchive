@@ -4,7 +4,7 @@
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [x] T1 Define ordered rule schema and vectors. (AC1, AC3) — commit 6bb387c
+- [x] T1 Define ordered rule schema and vectors. (AC1, AC3) — commit 580cdb2 (reconciled from 6bb387c)
   - **Files**: `cli/crawl_rules.py`, `web/lib/crawl_rules.js`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`.
   - **Change**: Specify discover/traverse/download decisions and precedence by URL, MIME, depth and bytes with safe matcher limits.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -12,7 +12,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [x] T2 Implement bounded rule evaluation. (AC1, AC3) — commit e0483b0
+- [x] T2 Implement bounded rule evaluation. (AC1, AC3) — commit 7149730 (reconciled from e0483b0)
   - **Files**: `cli/crawl_rules.py`, `web/lib/crawl_rules.js`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`.
   - **Change**: Return deterministic decisions with explanation IDs; prevent expensive unbounded patterns.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -20,7 +20,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [x] T3 Add bounded sitemap and alias discovery. (AC1)
+- [x] T3 Add bounded sitemap and alias discovery. (AC1) — commit b0b92b6 (reconciled from 6e58539)
   - **Files**: `cli/crawl_rules.py`, `web/lib/crawl_rules.js`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`.
   - **Change**: Parse sitemap indexes without cycles or scope expansion and distinguish explicit alias policy from redirects.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
