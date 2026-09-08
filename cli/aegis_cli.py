@@ -23,10 +23,12 @@ import collections
 import inspect
 import gzip
 import zlib
+import urllib.robotparser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from mirror_resources import discover, VERSION as DISCOVERY_VERSION
+from auth import request_headers, redact_headers, ssl_context
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
-from auth import request_headers, redact_headers, ssl_context  # noqa: E402
 
 def format_warc_date(dt=None):
     if dt is None:
@@ -68,7 +70,7 @@ def canonicalize_url(raw_url, base_url=None):
     try:
         full = urllib.parse.urljoin(base_url, raw_url) if base_url else raw_url
         u = urllib.parse.urlsplit(full)
-        if u.scheme not in ('http', 'https') or not u.hostname:
+        if u.scheme not in ('http', 'https') or not u.hostname or u.username or u.password:
             return None
         pairs = [(k, v) for k, v in urllib.parse.parse_qsl(u.query, keep_blank_values=True)
                  if k.lower() not in TRACKING_PARAMS and not k.lower().startswith('utm_')]
@@ -241,15 +243,14 @@ def main():
     parser.add_argument("--output-dir", default="./archive", help="Directory to save WARC/CDX outputs")
     parser.add_argument("--max-pages", type=int, default=None, help="Override maximum page crawl ceiling")
     parser.add_argument("--depth", type=int, default=None, help="Override maximum crawl depth")
-    parser.add_argument("--log-file", default=None, help="Append detailed JSONL capture events to this file")
+    parser.add_argument('--log-file', help='Append JSONL capture decisions and outcomes')
     args = parser.parse_args()
 
-    log_handle = open(args.log_file, 'a', encoding='utf-8') if args.log_file else None
     def event(kind, **data):
-        payload = {'ts': datetime.now(timezone.utc).isoformat(), 'event': kind, **data}
-        if log_handle:
-            log_handle.write(json.dumps(payload, sort_keys=True) + '\n'); log_handle.flush()
-    event('session_started', profile=args.profile, output_dir=args.output_dir)
+        if args.log_file:
+            with open(args.log_file, 'a', encoding='utf-8') as stream:
+                stream.write(json.dumps({'ts': datetime.now(timezone.utc).isoformat(), 'event': kind, **data}) + '\n')
+    event('session_started')
 
     with open(args.profile, 'r', encoding='utf-8') as f:
         profile = json.load(f)
@@ -270,109 +271,176 @@ def main():
     max_pages = args.max_pages or profile.get('target', {}).get('max_pages', 500)
 
     politeness = PolitenessEngine(profile.get('politeness', {}))
-    auth_context = ssl_context(profile.get('authentication'))
-    event('policy', domains=allowed_domains, robots_policy=profile.get('politeness', {}).get('robots_policy', 'respect'), authentication_mode=(profile.get('authentication') or {}).get('mode', 'none'))
-    handlers = [ScopedRedirectHandler()]
-    if auth_context is not None:
-        handlers.append(urllib.request.HTTPSHandler(context=auth_context))
-    opener = urllib.request.build_opener(*handlers)
+    authentication = profile.get('authentication') or {}
+    def opener_for(url):
+        handlers = [ScopedRedirectHandler()]
+        context = ssl_context(authentication, url=url)
+        if context is not None:
+            handlers.append(urllib.request.HTTPSHandler(context=context))
+        return urllib.request.build_opener(*handlers)
     MAX_RETRIES = 3
     accepts_request_headers = 'request_headers' in inspect.signature(writer.write_response).parameters
 
+    queue = collections.deque()
+    pending, visited = set(), set()
+    outcomes, limitations, robots = {}, [], {}
+    policy = profile.get('politeness', {}).get('robots_policy', 'respect')
+    target_config = profile.get('target', {})
+    event('policy', robots_policy=policy, max_depth=max_depth, max_pages=max_pages)
+
+    def enqueue(raw, base=None, depth=0):
+        url = canonicalize_url(raw, base)
+        if not url:
+            limitations.append({'source': base, 'reason': 'unsupported_seed_or_reference'})
+            return
+        if url in outcomes:
+            return
+        reason = None
+        path = urllib.parse.urlsplit(url).path
+        if not in_scope(url, allowed_domains):
+            reason = 'scope'
+        elif depth > max_depth:
+            reason = 'depth_limit'
+        elif target_config.get('path_blacklist_regex') and re.search(target_config['path_blacklist_regex'], path, re.I):
+            reason = 'path_blacklist'
+        elif target_config.get('path_whitelist_regex') and not re.search(target_config['path_whitelist_regex'], path, re.I):
+            reason = 'path_whitelist'
+        outcomes[url] = {'url': url, 'state': 'excluded' if reason else 'pending', 'reason': reason}
+        event('discovered', url=url, reason=reason, depth=depth)
+        if not reason:
+            queue.append((url, depth, 0)); pending.add(url)
+
     def requeue(url, depth, retries):
         if retries >= MAX_RETRIES:
-            print(f"[Retry] Abandoning {url} after {MAX_RETRIES} retries")
             return
+        event('retry', url=url, attempt=retries + 1)
         visited.discard(url)
-        queue.append((url, depth, retries + 1))
-        pending.add(url)
-        print(f"[Retry {retries + 1}/{MAX_RETRIES}] Re-queued {url}")
+        queue.append((url, depth, retries + 1)); pending.add(url)
+        outcomes[url].update(state='pending', reason='retry')
 
-    queue = collections.deque()
-    pending = set()
-    seeds = profile.get('target', {}).get('seed_urls', {}).get('tier_1_core', [])
-    for s in seeds:
-        canon = canonicalize_url(s)
-        if canon and in_scope(canon, allowed_domains) and canon not in pending:
-            queue.append((canon, 0, 0))
-            pending.add(canon)
+    def allowed_by_robots(url):
+        if policy == 'ignore_authorised':
+            return True
+        u = urllib.parse.urlsplit(url)
+        origin = f'{u.scheme}://{u.netloc}'
+        if origin not in robots:
+            robots_url = origin + '/robots.txt'
+            robot = urllib.robotparser.RobotFileParser()
+            if politeness.acquire_permission(robots_url)['aborted']:
+                return False
+            started = time.time()
+            try:
+                request = urllib.request.Request(robots_url, headers={'User-Agent':'AegisArchive/1.0', **request_headers(authentication, robots_url)})
+                with opener_for(robots_url).open(request, timeout=15) as response:
+                    data = response.read(1024 * 1024 + 1)
+                    if len(data) > 1024 * 1024:
+                        robot.parse(['User-agent: *', 'Disallow: /'])
+                    else:
+                        robot.parse(data.decode('utf-8', errors='replace').splitlines())
+                    politeness.record_success(robots_url, int((time.time() - started) * 1000))
+            except urllib.error.HTTPError as error:
+                politeness.record_failure(robots_url, error.code, error.headers.get('Retry-After'))
+                robot.parse(['User-agent: *', 'Disallow: /'] if error.code not in (404, 410) else [])
+                error.close()
+            except (OSError, ValueError):
+                politeness.record_failure(robots_url, 0)
+                robot.parse(['User-agent: *', 'Disallow: /'])
+            robots[origin] = robot
+        return robots[origin].can_fetch('AegisArchive', url)
 
-    visited = set()
-    print(f"[AegisArchive CLI] Started with profile: {profile.get('profile_name', 'Custom')}")
+    def archive_response(url, status, headers, body, request_headers):
+        headers = redact_headers(headers)
+        request_headers = redact_headers(request_headers)
+        event('captured', url=url, status=status, bytes=len(body))
+        if accepts_request_headers:
+            return writer.write_response(url, status, headers, body, request_headers=request_headers)
+        return writer.write_response(url, status, headers, body)
+
+    seeds = target_config.get('seed_urls', {})
+    for tier in ('tier_1_core', 'tier_2_breadth', 'tier_3_discovery'):
+        for raw in seeds.get(tier, []):
+            enqueue(raw)
     print(f"[AegisArchive CLI] Output target: {warc_path}")
-    event('archive_opened', warc=warc_path, seeds=len(seeds), max_pages=max_pages, max_depth=max_depth)
-
     while queue and len(visited) < max_pages:
-        url, depth, retries = queue.popleft()
-        event('dequeued', url=url, depth=depth, retries=retries, queue_remaining=len(queue))
-        pending.discard(url)
+        url, depth, retries = queue.popleft(); pending.discard(url)
+        event('dequeued', url=url, depth=depth, retries=retries, queued=len(queue))
         if url in visited:
             continue
         visited.add(url)
-
-        gate = politeness.acquire_permission(url)
-        if gate['aborted']:
-            print("[AegisArchive CLI] Stop requested; finalizing.")
-            event('stopped', reason='politeness_abort', visited=len(visited), queued=len(queue))
-            break
-
-        if urllib.parse.urlparse(url).scheme not in ('http', 'https'):
-            print(f"[SKIP] {url} (non-HTTP scheme)")
+        if not allowed_by_robots(url):
+            outcomes[url].update(state='excluded', reason='robots_policy')
+            event('excluded', url=url, reason='robots_policy')
             continue
-        req = urllib.request.Request(url, headers={'User-Agent': 'AegisArchive/1.0 (Ethical Archival Preservation)', **request_headers(profile.get('authentication'), url)})
+        if politeness.acquire_permission(url)['aborted']:
+            outcomes[url].update(state='pending', reason='aborted'); break
+        req = urllib.request.Request(url, headers={'User-Agent':'AegisArchive/1.0 (Ethical Archival Preservation)', **request_headers(authentication, url)})
         start_t = time.time()
         try:
-            # Scheme allow-listed above; audit rules cannot see that guard.
-            with opener.open(req, timeout=15) as resp:
-                elapsed_ms = int((time.time() - start_t) * 1000)
+            with opener_for(url).open(req, timeout=15) as resp:
                 body = resp.read()
                 headers = normalize_headers(resp.headers.items())
                 body = decode_payload(body, headers)
                 status = resp.status
-                politeness.record_success(url, elapsed_ms)
-                if accepts_request_headers:
-                    writer.write_response(url, status, headers, body, request_headers=redact_headers(dict(req.header_items())))
-                else:
-                    writer.write_response(url, status, headers, body)
-                print(f"[{status}] {url} ({len(body)} bytes, {elapsed_ms} ms)")
-                event('captured', url=url, status=status, bytes=len(body), depth=depth, queue_remaining=len(queue))
-
-                # Extract links if HTML and within depth
+                archive_response(url, status, headers, body, dict(req.header_items()))
+                politeness.record_success(url, int((time.time() - start_t) * 1000))
+                outcomes[url].update(state='captured', reason=None, status=status, sha256=hashlib.sha256(body).hexdigest(), bytes=len(body))
                 content_type = headers.get('content-type', '')
-                if 'text/html' in content_type and depth < max_depth:
-                    text = body.decode('utf-8', errors='ignore')
-                    links = re.findall(r'(?:href|src)=["\']([^"\']+)["\']', text, re.IGNORECASE)
-                    for raw in links:
-                        clean_url = canonicalize_url(raw, url)
-                        if not clean_url or not in_scope(clean_url, allowed_domains):
-                            continue
-                        if clean_url not in visited and clean_url not in pending:
-                            queue.append((clean_url, depth + 1, 0))
-                            pending.add(clean_url)
-        except urllib.error.HTTPError as e:
-            if e.code in (301, 302, 303, 307, 308):
-                target = canonicalize_url(e.headers.get('Location', ''), url)
-                if target and in_scope(target, allowed_domains) and target not in visited and target not in pending:
-                    queue.append((target, depth, 0))
-                    pending.add(target)
-                e.close()
-                continue
-            counted = politeness.record_failure(url, e.code, e.headers.get('Retry-After') if e.headers else None)
-            e.close()
-            print(f"[HTTP {e.code}] {url}{' (counted toward breaker)' if counted else ''}")
-            event('failed', url=url, status=e.code, counted=counted, error=str(e))
-            if counted:
-                requeue(url, depth, retries)
-        except Exception as e:
+                if content_type.split(';')[0].strip().lower() in ('text/html','application/xhtml+xml','text/css'):
+                    charset = resp.headers.get_content_charset() or 'utf-8'
+                    try:
+                        text = body.decode(charset, errors='strict')
+                    except (LookupError, UnicodeError):
+                        limitations.append({'source':url, 'reason':'unsupported_or_invalid_charset'}); continue
+                    found = discover(text, content_type, url)
+                    limitations.extend({'source':url, 'reason':reason} for reason in found['unsupported'])
+                    for reference in found['resources']:
+                        enqueue(reference['url'], url, depth + 1)
+        except urllib.error.HTTPError as error:
+            headers = normalize_headers(error.headers.items())
+            if error.code in (301, 302, 303, 307, 308):
+                body = decode_payload(error.read(), headers)
+                archive_response(url, error.code, headers, body, dict(req.header_items()))
+                outcomes[url].update(state='captured', reason=None, status=error.code, sha256=hashlib.sha256(body).hexdigest(), bytes=len(body))
+                politeness.record_success(url, int((time.time() - start_t) * 1000))
+                if headers.get('location'):
+                    enqueue(headers['location'], url, depth)
+                else:
+                    limitations.append({'source':url,'reason':'redirect_without_location'})
+            else:
+                outcomes[url].update(state='failed',reason='http_error',status=error.code)
+                event('failed', url=url, status=error.code)
+                counted = politeness.record_failure(url, error.code, error.headers.get('Retry-After'))
+                if counted:
+                    requeue(url, depth, retries)
+            error.close()
+        except (OSError, ValueError, EOFError) as error:
+            outcomes[url].update(state='failed',reason='network_or_decode_error')
+            event('failed', url=url, error_type=type(error).__name__)
             politeness.record_failure(url, 0)
-            print(f"[Error] {url}: {e}")
-            event('failed', url=url, status=0, counted=True, error=type(e).__name__ + ': ' + str(e))
             requeue(url, depth, retries)
 
     writer.close()
-    print(f"[AegisArchive CLI] Completed! Archived {len(visited)} pages to {warc_path}")
-    event('completed', visited=len(visited), queued=len(queue), warc=warc_path)
-    if log_handle: log_handle.close()
+    resources = sorted(outcomes.values(), key=lambda item: item['url'])
+    counts = {state: sum(item['state'] == state for item in resources) for state in ('captured','excluded','failed','pending','unsupported')}
+    def file_digest(path):
+        digest = hashlib.sha256()
+        with open(path, 'rb') as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
+                digest.update(chunk)
+        return digest.hexdigest()
+    receipt = {'schema_version':1, 'extractor_version':DISCOVERY_VERSION,
+               'scope':'discovered_static_resource_graph', 'complete':bool(resources) and counts['captured'] == len(resources) and not limitations,
+               'counts':counts, 'discovered':len(resources), 'resources':resources,
+               'limitations':limitations, 'robots_policy':policy,
+               'archives':{'warc':{'file':os.path.basename(warc_path),'sha256':file_digest(warc_path)},
+                           'cdx':{'file':os.path.basename(writer.cdx_filepath),'sha256':file_digest(writer.cdx_filepath)}}}
+    receipt_path = warc_path.replace('.warc', '.coverage.json')
+    with open(receipt_path, 'w', encoding='utf-8') as stream:
+        json.dump(receipt, stream, indent=2); stream.write('\n')
+    event('completed', counts=counts, complete=receipt['complete'], queued=len(queue))
+    print('[Coverage] ' + ('COMPLETE' if receipt['complete'] else 'INCOMPLETE') + f' static graph; receipt: {receipt_path}')
+    captured_count = sum(item['state'] == 'captured' for item in outcomes.values())
+    print(f'[AegisArchive CLI] Captured {captured_count} responses to {warc_path}')
 
 if __name__ == "__main__":
     main()
