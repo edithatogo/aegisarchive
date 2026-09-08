@@ -1,0 +1,10 @@
+{
+  "track_id": "fast_acceptance_fixtures_20260908",
+  "type": "chore",
+  "status": "completed",
+  "created_at": "2026-09-08T12:00:00Z",
+  "updated_at": "2026-09-08T12:00:00Z",
+  "description": "Fast synthetic acceptance and CI feedback",
+  "evidence_schema": "1.0",
+  "dependencies": ["browser_capture_acceptance_20260908"]
+}
