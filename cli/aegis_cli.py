@@ -27,6 +27,7 @@ import urllib.robotparser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mirror_resources import discover, VERSION as DISCOVERY_VERSION
+from crawl_rules import evaluate_rules
 from auth import request_headers, redact_headers, ssl_context
 from politeness import PolitenessEngine  # noqa: E402  (stdlib-only sibling module)
 
@@ -286,6 +287,7 @@ def main():
     outcomes, limitations, robots = {}, [], {}
     policy = profile.get('politeness', {}).get('robots_policy', 'respect')
     target_config = profile.get('target', {})
+    rule_config = target_config.get('crawl_rules', {'version': 1, 'rules': []})
     event('policy', robots_policy=policy, max_depth=max_depth, max_pages=max_pages)
 
     def enqueue(raw, base=None, depth=0):
@@ -305,6 +307,10 @@ def main():
             reason = 'path_blacklist'
         elif target_config.get('path_whitelist_regex') and not re.search(target_config['path_whitelist_regex'], path, re.I):
             reason = 'path_whitelist'
+        else:
+            decision = evaluate_rules(rule_config, {'url': url, 'kind': 'page', 'depth': depth}, in_scope=True)
+            if not decision['discover']:
+                reason = 'rule:' + (decision['rule_id'] or 'default')
         outcomes[url] = {'url': url, 'state': 'excluded' if reason else 'pending', 'reason': reason}
         event('discovered', url=url, reason=reason, depth=depth)
         if not reason:
@@ -373,6 +379,11 @@ def main():
             continue
         if politeness.acquire_permission(url)['aborted']:
             outcomes[url].update(state='pending', reason='aborted'); break
+        decision = evaluate_rules(rule_config, {'url': url, 'kind': 'page', 'depth': depth}, in_scope=True)
+        if not decision['download']:
+            outcomes[url].update(state='excluded', reason='rule:' + (decision['rule_id'] or 'default'))
+            event('excluded', url=url, reason=outcomes[url]['reason'])
+            continue
         req = urllib.request.Request(url, headers={'User-Agent':'AegisArchive/1.0 (Ethical Archival Preservation)', **request_headers(authentication, url)})
         start_t = time.time()
         try:
