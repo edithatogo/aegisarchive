@@ -416,8 +416,7 @@
         let parsed;
         try { parsed = new URL(quick); } catch (err) { log('[Capture] Enter a complete http(s) address.'); return; }
         if (!/^https?:$/.test(parsed.protocol)) { log('[Capture] Only http(s) addresses are supported.'); return; }
-        activeProfile = JSON.parse(JSON.stringify(activeProfile));
-        activeProfile.target = { ...activeProfile.target, allowed_domains: [parsed.hostname], seed_urls: { tier_1_core: [parsed.href], tier_2_breadth: [], tier_3_discovery: [] } };
+        activeProfile = { ...activeProfile, target: { ...activeProfile.target, allowed_domains: [parsed.hostname], seed_urls: { tier_1_core: [parsed.href], tier_2_breadth: [], tier_3_discovery: [] } } };
         log(`[Capture] Quick target selected: ${parsed.href}`);
       }
       crawler = new CoreCrawler(activeProfile, {
