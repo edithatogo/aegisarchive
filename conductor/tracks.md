@@ -137,3 +137,8 @@
 - [x] **Track: Native browser capture and cross-platform UI acceptance**
   *Status: Completed*
   *Link: [./tracks/browser_capture_acceptance_20260908/index.md](./tracks/browser_capture_acceptance_20260908/index.md)*
+
+---
+- [x] **Track: Fast synthetic acceptance and CI feedback**
+  *Status: Completed*
+  *Link: [./tracks/fast_acceptance_fixtures_20260908/index.md](./tracks/fast_acceptance_fixtures_20260908/index.md)*

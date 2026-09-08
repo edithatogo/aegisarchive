@@ -22,7 +22,9 @@ Each local capture writes request/response/failure JSONL to `archive/capture-log
 
 ## Reproducible acceptance
 
-Install development dependencies with `npm ci` and `npx playwright install --with-deps chromium`. Run `npm run test:capture` on macOS, Windows or Linux. To use an installed Chrome locally, set `AEGIS_BROWSER_CHANNEL=chrome` before the command. `AEGIS_TEST_PYTHON` can select the Python command.
+Install development dependencies with `npm ci` and `npx playwright install --with-deps chromium`. Run `npm run test:capture` on macOS, Windows or Linux. The acceptance suite uses only local synthetic fixtures; it never depends on an intranet or production site. To use an installed Chrome locally, set `AEGIS_BROWSER_CHANNEL=chrome` before the command. `AEGIS_TEST_PYTHON` can select the Python command.
+
+Pull requests run the fast synthetic browser and multi-OS probe suites. The optional full native qualification downloads large runtime assets and is available through the `Portable full native qualification` workflow via `workflow_dispatch`.
 
 The suite starts the actual launcher with isolated Python imports (`-I`) and a separate-origin HTTP fixture with no CORS headers, uses the visible profile/address/start/export controls, verifies downloaded WARC bytes, and reopens the archive to navigate offline. It also verifies 403 failures, robots exclusion/authorised ignore, and optional imported-session authentication. The hosted Browser capture acceptance matrix uses the identical suite with the runner image’s installed Chrome on all three platforms, recording its browser version.
 

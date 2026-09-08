@@ -1,5 +1,8 @@
 # Lessons Ledger
 
+- 2026-09-08: Keep pull-request acceptance on local synthetic fixtures and fast probes; reserve multi-gigabyte native qualification for an explicit manual workflow so feedback remains bounded and reproducible.
+- 2026-09-08: `browser_capture_acceptance_20260908` is accepted only against reserved local fixtures; private-site access remains an external gate.
+
 Append-only. One entry per completed track (required by `conductor/implementation_contract.md` step 5), plus any entry a planner or reviewer considers worth keeping. Never edit or delete earlier entries; if a lesson turns out to be wrong, add a new entry that supersedes it and says so.
 
 Entry format (four fields, in this order):
