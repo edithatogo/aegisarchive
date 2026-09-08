@@ -1,6 +1,6 @@
 # Optional rendered-browser capture and headless automation
 
-Status: new.
+Status: completed; optional bounded adapter implemented.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

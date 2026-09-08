@@ -124,7 +124,8 @@
   *Link: [./tracks/document_lifecycle_20260906/index.md](./tracks/document_lifecycle_20260906/index.md)*
 
 ---
-- [ ] **Track: Optional rendered-browser capture and headless automation**
+- [x] **Track: Optional rendered-browser capture and headless automation**
+  *Status: Completed — bounded optional Playwright adapter with origin scoping and rendered provenance*
   *Link: [./tracks/rendered_capture_20260906/index.md](./tracks/rendered_capture_20260906/index.md)*
 
 ---
