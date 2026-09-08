@@ -4,6 +4,8 @@ REM AegisArchive 1-Click Launcher for Windows
 REM Auto-detects embedded portable Python or system Python.
 REM ---------------------------------------------------------
 cd /d "%~dp0"
+echo [Info] AegisArchive root: %CD%
+echo [Info] Launcher: %~f0
 echo ==========================================================
 echo   Starting AegisArchive Web Console (Windows)...
 echo ==========================================================

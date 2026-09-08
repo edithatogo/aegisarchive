@@ -241,7 +241,15 @@ def main():
     parser.add_argument("--output-dir", default="./archive", help="Directory to save WARC/CDX outputs")
     parser.add_argument("--max-pages", type=int, default=None, help="Override maximum page crawl ceiling")
     parser.add_argument("--depth", type=int, default=None, help="Override maximum crawl depth")
+    parser.add_argument("--log-file", default=None, help="Append detailed JSONL capture events to this file")
     args = parser.parse_args()
+
+    log_handle = open(args.log_file, 'a', encoding='utf-8') if args.log_file else None
+    def event(kind, **data):
+        payload = {'ts': datetime.now(timezone.utc).isoformat(), 'event': kind, **data}
+        if log_handle:
+            log_handle.write(json.dumps(payload, sort_keys=True) + '\n'); log_handle.flush()
+    event('session_started', profile=args.profile, output_dir=args.output_dir)
 
     with open(args.profile, 'r', encoding='utf-8') as f:
         profile = json.load(f)
@@ -263,6 +271,7 @@ def main():
 
     politeness = PolitenessEngine(profile.get('politeness', {}))
     auth_context = ssl_context(profile.get('authentication'))
+    event('policy', domains=allowed_domains, robots_policy=profile.get('politeness', {}).get('robots_policy', 'respect'), authentication_mode=(profile.get('authentication') or {}).get('mode', 'none'))
     handlers = [ScopedRedirectHandler()]
     if auth_context is not None:
         handlers.append(urllib.request.HTTPSHandler(context=auth_context))
@@ -291,9 +300,11 @@ def main():
     visited = set()
     print(f"[AegisArchive CLI] Started with profile: {profile.get('profile_name', 'Custom')}")
     print(f"[AegisArchive CLI] Output target: {warc_path}")
+    event('archive_opened', warc=warc_path, seeds=len(seeds), max_pages=max_pages, max_depth=max_depth)
 
     while queue and len(visited) < max_pages:
         url, depth, retries = queue.popleft()
+        event('dequeued', url=url, depth=depth, retries=retries, queue_remaining=len(queue))
         pending.discard(url)
         if url in visited:
             continue
@@ -302,6 +313,7 @@ def main():
         gate = politeness.acquire_permission(url)
         if gate['aborted']:
             print("[AegisArchive CLI] Stop requested; finalizing.")
+            event('stopped', reason='politeness_abort', visited=len(visited), queued=len(queue))
             break
 
         if urllib.parse.urlparse(url).scheme not in ('http', 'https'):
@@ -323,6 +335,7 @@ def main():
                 else:
                     writer.write_response(url, status, headers, body)
                 print(f"[{status}] {url} ({len(body)} bytes, {elapsed_ms} ms)")
+                event('captured', url=url, status=status, bytes=len(body), depth=depth, queue_remaining=len(queue))
 
                 # Extract links if HTML and within depth
                 content_type = headers.get('content-type', '')
@@ -347,15 +360,19 @@ def main():
             counted = politeness.record_failure(url, e.code, e.headers.get('Retry-After') if e.headers else None)
             e.close()
             print(f"[HTTP {e.code}] {url}{' (counted toward breaker)' if counted else ''}")
+            event('failed', url=url, status=e.code, counted=counted, error=str(e))
             if counted:
                 requeue(url, depth, retries)
         except Exception as e:
             politeness.record_failure(url, 0)
             print(f"[Error] {url}: {e}")
+            event('failed', url=url, status=0, counted=True, error=type(e).__name__ + ': ' + str(e))
             requeue(url, depth, retries)
 
     writer.close()
     print(f"[AegisArchive CLI] Completed! Archived {len(visited)} pages to {warc_path}")
+    event('completed', visited=len(visited), queued=len(queue), warc=warc_path)
+    if log_handle: log_handle.close()
 
 if __name__ == "__main__":
     main()
