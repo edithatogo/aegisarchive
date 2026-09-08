@@ -68,7 +68,7 @@ class TestCli(unittest.TestCase):
         cls.server.shutdown()
         cls.server.server_close()
 
-    def run_cli_harvest(self, with_retry=False):
+    def run_cli_harvest(self, with_retry=False, crawl_rules=None):
         MockServerHandler.WITH_RETRY = with_retry
         MockServerHandler.hits["/r"] = 0
 
@@ -91,6 +91,8 @@ class TestCli(unittest.TestCase):
                 },
                 "archival": {"warc_prefix": "test_archive"},
             }
+            if crawl_rules is not None:
+                profile["target"]["crawl_rules"] = crawl_rules
             profile_path = os.path.join(tmpdir, "profile.json")
             with open(profile_path, "w", encoding="utf-8") as f:
                 json.dump(profile, f)
@@ -132,6 +134,16 @@ class TestCli(unittest.TestCase):
         r_entry = next((l for l in cdx_lines if l.split()[2].endswith("/r")), None)
         self.assertIsNotNone(r_entry)
         self.assertEqual(r_entry.split()[4], "200")
+
+    def test_cli_crawl_rules_exclude_before_fetch(self):
+        result, warc_bytes, cdx_lines = self.run_cli_harvest(crawl_rules={
+            "version": 1,
+            "rules": [{"id": "no-pdf", "match": {"path_prefix": "/doc.pdf"},
+                        "decision": {"discover": False, "download": False, "traverse": False}}]
+        })
+        self.assertEqual(result.returncode, 0)
+        self.assertFalse(any("/doc.pdf" in line for line in cdx_lines))
+        self.assertNotIn(b"%PDF-1.4 fake", warc_bytes)
 
     def test_cli_help_flag(self):
         result = subprocess.run(
