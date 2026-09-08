@@ -133,7 +133,8 @@
   *Link: [./tracks/headless_jobs_20260906/index.md](./tracks/headless_jobs_20260906/index.md)*
 
 ---
-- [ ] **Track: Portable mirror exports and interoperability**
+- [x] **Track: Portable mirror exports and interoperability**
+  *Status: Completed — deterministic directory and ZIP exports with manifests*
   *Link: [./tracks/portable_exports_20260906/index.md](./tracks/portable_exports_20260906/index.md)*
 
 - [x] **Track: Native browser capture and cross-platform UI acceptance**
