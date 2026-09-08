@@ -1,6 +1,6 @@
 # Generic document lifecycle, extraction and search
 
-Status: new.
+Status: completed.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

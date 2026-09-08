@@ -1,6 +1,6 @@
 # Durable mirror resume and incremental updates
 
-Status: new; implementation pending.
+Status: in progress; T1 checkpoint schema and fault fixtures implemented in the current PR.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

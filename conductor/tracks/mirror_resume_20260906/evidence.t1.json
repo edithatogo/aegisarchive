@@ -1,0 +1,10 @@
+{
+  "task": "T1",
+  "status": "complete",
+  "tests": [
+    "python3 -m unittest tests.test_mirror_resume (2 passed)",
+    "node --test tests/js/mirror_resume.test.js (1 passed)"
+  ],
+  "scope": "synthetic fixture metadata and atomic segment storage",
+  "limitations": "CLI crawler and browser frontier integration remain for T2-T7"
+}
