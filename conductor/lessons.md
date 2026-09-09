@@ -159,3 +159,11 @@ Atomic checkpointing and content verification make interrupted captures resumabl
 
 - capture_diagnostics_20260909: Request attempts are not archived resources. Keep native failure stages through transport wrappers; validate diagnostic intake against the actual exported schema. USB filesystem stalls can time out launcher tests independently of application behavior.
 - headless_jobs_20260906: Keep job lifecycle state, leases, and recovery contracts explicit so scheduling remains resumable and testable across platforms.
+
+## 2026-09-10 — capture_diagnostics_20260909
+- **Surprise**: Request attempts and saved archive resources can diverge during retries and transport failures.
+- **Change for the next planner**: Preserve structured failure stages and test diagnostic intake against the exported schema.
+
+## 2026-09-10 — headless_jobs_20260906
+- **Surprise**: Scheduling state needs explicit leases and recovery semantics to remain portable.
+- **Change for the next planner**: Keep lifecycle, lease, and recovery contracts covered by synthetic tests.
