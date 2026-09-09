@@ -146,3 +146,5 @@
 - [x] **Track: Fast synthetic acceptance and CI feedback**
   *Status: Completed*
   *Link: [./tracks/fast_acceptance_fixtures_20260908/index.md](./tracks/fast_acceptance_fixtures_20260908/index.md)*
+
+- [ ] [Structured capture diagnostics](tracks/capture_diagnostics_20260909/index.md)

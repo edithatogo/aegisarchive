@@ -67,6 +67,17 @@ test('HTTP denial is visibly a failure, not one saved page', async ({page}) => {
   await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
   await expect(page.locator('#captureOutcome')).toContainText('0 responses saved; 1 failed');
   await expect(page.locator('#logContainer')).toContainText('HTTP 403');
+  await page.getByRole('button', {name:'📊 Diagnostic Report'}).click();
+  const downloaded = page.waitForEvent('download');
+  await page.getByRole('button', {name:'📥 Download JSON diagnostics'}).click();
+  const diagnostic = await downloaded;
+  expect(diagnostic.suggestedFilename()).toMatch(/\.json$/);
+  const report = JSON.parse(await fs.readFile(await diagnostic.path(), 'utf8'));
+  expect(report.outcome).toBe('failed');
+  expect(report.summary.totalPagesCrawled).toBe(0);
+  expect(report.events.some(event => event.status === 403)).toBe(true);
+  await expect(page.locator('#logContainer')).toContainText('JSON saved on USB');
+
 });
 test('robots exclusion is explicit and the authorised option is optional', async ({page}) => {
   await setup(page,'/blocked');

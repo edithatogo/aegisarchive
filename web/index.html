@@ -221,7 +221,7 @@
         No report generated yet.
       </div>
       <div style="display: flex; justify-content: flex-end; gap: 12px; margin-top: 16px;">
-        <button class="btn btn-secondary" onclick="downloadReportMd()">📥 Download Markdown Report</button>
+        <button class="btn btn-secondary" onclick="downloadReportJSON()">📥 Download JSON diagnostics</button>
         <button class="btn btn-primary" onclick="closeModal('reportModal')">Close</button>
       </div>
     </div>
@@ -257,7 +257,7 @@
     let activeProfile = null;
     let crawler = null;
     let finalResults = null;
-    let currentReportMd = "";
+    let currentReportJSON = "";
     let pendingCheckpoint = null;
     const CHECKPOINT_KEY = 'aegis.checkpoint.v1';
 
@@ -442,6 +442,7 @@
       }
       activeProfile = {...activeProfile, politeness: {...activeProfile.politeness, robots_policy: document.getElementById('robotsPolicy').value}};
       finalResults = null;
+      currentReportJSON = "";
       document.getElementById('docsTableBody').textContent = '';
       document.getElementById('docCountBadge').textContent = '0 assets';
       document.getElementById('btnStart').disabled = true;
@@ -568,11 +569,10 @@
       const captured = counts.captured || 0;
       document.getElementById('captureState').textContent = captured === 0 ? 'FAILED — no responses saved' : results.coverage?.complete ? 'COMPLETE — discovered resources saved' : 'INCOMPLETE — some resources not saved';
       document.getElementById('captureOutcome').textContent = `${captured} responses saved; ${counts.failed || 0} failed; ${counts.excluded || 0} excluded; ${counts.pending || 0} pending; ${counts.unsupported || 0} unsupported. ` + (captured ? 'Download WARC + CDX to keep the archive. ' : 'No website content was archived. ') + 'Inspect the audit log and diagnostic report for HTTP, robots, scope or access failures.';
-      currentReportMd = SelfReflectionEngine.generateMarkdownReport(results.selfReflection, activeProfile);
-      if (results.coverage) {
-        currentReportMd += '\n\n## Static capture coverage\n\n```json\n' + JSON.stringify(results.coverage, null, 2) + '\n```\n';
-        log(`[Coverage] ${results.coverage.complete ? 'COMPLETE' : 'INCOMPLETE'} static graph: ${results.coverage.counts.captured}/${results.coverage.discovered} responses captured. Export the report for hashes and omissions.`);
-      }
+      currentReportJSON = JSON.stringify(SelfReflectionEngine.generateJSONReport(results, {
+        route: nativeCapture ? 'native' : 'browser', native_log_file: nativeCapture?.logFile
+      }), null, 2);
+      NativeCapture.saveReport(JSON.parse(currentReportJSON)).then(saved => log('[Diagnostics] JSON saved on USB: ' + saved.log_file)).catch(error => log('[Diagnostics] Automatic save failed. Download JSON diagnostics to the USB.'));
       log(`[AegisArchive] Archival session finalized. Output: ${results.warcStats.recordCount} WARC records (${(results.warcStats.totalBytes / 1024).toFixed(1)} KB).`);
     }
 
@@ -646,14 +646,14 @@
     }
 
     function openReportModal() {
-      document.getElementById('reportMarkdownContainer').textContent = currentReportMd || "No report available.";
+      document.getElementById('reportMarkdownContainer').textContent = currentReportJSON || "No report available.";
       document.getElementById('reportModal').style.display = 'flex';
     }
 
-    function downloadReportMd() {
-      if (!currentReportMd) return;
-      const blob = new Blob([currentReportMd], { type: 'text/markdown' });
-      downloadBlob(blob, `aegis_report_${new Date().toISOString().slice(0, 10)}.md`);
+    function downloadReportJSON() {
+      if (!currentReportJSON) return;
+      const blob = new Blob([currentReportJSON], { type: 'application/json' });
+      downloadBlob(blob, `aegis_report_${new Date().toISOString().slice(0, 10)}.json`);
     }
 
     function openHelpModal() {

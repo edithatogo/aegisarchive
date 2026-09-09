@@ -9,6 +9,12 @@ class NativeCapture {
     session.id = result.id; session.logFile = result.log_file;
     return session;
   }
+  static async saveReport(report) {
+    const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
+    if (!response.ok) throw Error('Local diagnostic storage unavailable; download JSON to the USB.');
+    const {token} = await response.json();
+    return new NativeCapture(token).call('diagnostics', {report});
+  }
   static async recover() {
     const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
     if (!response.ok) throw Error('Local launcher unavailable');
@@ -22,7 +28,11 @@ class NativeCapture {
       body: JSON.stringify(payload)
     });
     const result = await response.json();
-    if (!response.ok) throw Error(result.error || 'Native acquisition failed');
+    if (!response.ok) {
+      const error = Error(result.error || 'Native acquisition failed');
+      error.diagnostic = result.diagnostic;
+      throw error;
+    }
     return result;
   }
   async fetch(url, options = {}) {
