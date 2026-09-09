@@ -6,6 +6,8 @@ Browser cookies are not inherited; an explicit authentication profile is require
 import base64
 import json
 import secrets
+import ssl
+import socket
 import threading
 import time
 import urllib.error
@@ -21,6 +23,21 @@ except ImportError:
     from auth import request_headers, ssl_context, SENSITIVE, redact_headers
 
 MAX_BODY = 32 * 1024 * 1024
+
+
+def failure_details(error):
+    cause = getattr(error, 'reason', None) or error.__cause__ or error
+    category = ('tls' if isinstance(cause, ssl.SSLError) else
+                'dns' if isinstance(cause, socket.gaierror) else
+                'timeout' if isinstance(cause, TimeoutError) else
+                'connection' if isinstance(cause, ConnectionError) else 'transport_unclassified')
+    return {'error_type': type(error).__name__, 'cause_type': type(cause).__name__, 'category': category}
+
+
+class CaptureFailure(ValueError):
+    def __init__(self, details):
+        super().__init__('Native capture failed; inspect JSON diagnostics')
+        self.details = details
 
 
 class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -79,8 +96,11 @@ class CaptureBridge:
 
     @staticmethod
     def event(session, event, **fields):
+        if 'url' in fields:
+            u = urllib.parse.urlsplit(fields['url'])
+            fields['url'] = urllib.parse.urlunsplit((u.scheme, u.netloc.rsplit('@', 1)[-1], u.path, '', ''))
         with session['log'].open('a', encoding='utf-8') as stream:
-            stream.write(json.dumps({'timestamp': time.time(), 'event': event, **fields}) + '\n')
+            stream.write(json.dumps({'schema_version': 1, 'session_id': session['id'], 'timestamp': time.time(), 'event': event, **fields}) + '\n')
 
     def get_session(self, sid):
         session = self.session
@@ -127,6 +147,7 @@ class CaptureBridge:
                 raise ValueError('Capture stopped')
             started = time.monotonic()
             self.event(session, 'request', url=url)
+            stage, reason_code = 'preflight', 'authentication_config'
             try:
                 authentication = session['authentication']
                 headers = {'user-agent': 'AegisArchive/1.0', 'accept-encoding': 'identity', 'host': parsed.netloc, 'connection': 'close', **forwarded}
@@ -137,18 +158,22 @@ class CaptureBridge:
                 if context is not None:
                     handlers.append(urllib.request.HTTPSHandler(context=context))
                 opener = urllib.request.build_opener(*handlers)
+                stage, reason_code = 'transport', 'request_failed'
                 try:
                     response = opener.open(urllib.request.Request(url, headers=headers), timeout=30)
                 except urllib.error.HTTPError as error:
                     response = error  # preserve status and Location; never follow implicitly
                 with response:
+                    stage, reason_code = 'response_body', 'response_body_read'
                     body = response.read(MAX_BODY + 1)
                     if len(body) > MAX_BODY:
+                        reason_code = 'response_too_large'
                         raise ValueError('Response exceeds native transport 32 MiB limit')
                     status = response.code
                     safe_headers = {k.lower(): v for k, v in response.headers.items()
                                     if k.lower() not in SENSITIVE | {'transfer-encoding'}}
                 if safe_headers.get('content-encoding', 'identity').lower() not in ('identity', ''):
+                    reason_code = 'unsupported_content_encoding'
                     raise ValueError('Server ignored identity encoding; response not archived')
                 elapsed = round((time.monotonic() - started) * 1000)
                 if status < 400:
@@ -163,8 +188,9 @@ class CaptureBridge:
             except Exception as error:
                 session['engine'].record_failure(url, 0)
                 # Keep credential values and exception objects out of persisted logs.
-                self.event(session, 'failure', url=url, error_type=type(error).__name__)
-                raise ValueError('Native request failed (' + type(error).__name__ + '); check access, TLS and capture log') from error
+                details = {**failure_details(error), "stage": stage, "reason_code": reason_code}
+                self.event(session, 'failure', url=url, elapsed_ms=round((time.monotonic() - started) * 1000), **details)
+                raise CaptureFailure(details) from error
 
 
 def handle(handler):
@@ -194,7 +220,7 @@ def handle(handler):
                 handler.send_error(403, 'Capture token required')
                 return True
             length = int(handler.headers.get('Content-Length', '0'))
-            if not 0 < length <= 65536:
+            if not 0 < length <= (8 * 1024 * 1024 if path == '/__station/capture/diagnostics' else 65536):
                 raise ValueError('Invalid request length')
             payload = json.loads(handler.rfile.read(length))
             if not isinstance(payload, dict):
@@ -203,6 +229,15 @@ def handle(handler):
                 result = bridge.configure(payload['profile'])
             elif path == '/__station/capture/fetch':
                 result = bridge.fetch(payload['id'], payload['url'], payload.get('options'))
+            elif path == '/__station/capture/diagnostics':
+                report = payload['report']
+                if not isinstance(report, dict) or report.get('schema_version') != 1:
+                    raise ValueError('Unsupported diagnostic report')
+                bridge.log_dir.mkdir(parents=True, exist_ok=True)
+                report_path = bridge.log_dir / ('diagnostic-' + secrets.token_hex(12) + '.json')
+                with report_path.open('x', encoding='utf-8') as stream:
+                    json.dump(report, stream, indent=2)
+                result = {'log_file': str(report_path)}
             elif path == '/__station/capture/recover':
                 result = bridge.recover()
             elif path == '/__station/capture/stop':
@@ -211,6 +246,9 @@ def handle(handler):
                 raise ValueError('Unknown capture endpoint')
         body = json.dumps(result).encode('utf-8')
         handler.send_response(200)
+    except CaptureFailure as error:
+        body = json.dumps({'error': str(error), 'diagnostic': error.details}).encode('utf-8')
+        handler.send_response(400)
     except (ValueError, KeyError, TypeError, AttributeError):
         body = json.dumps({'error': 'Native request rejected or failed; check capture scope, network access, TLS and local capture log.'}).encode('utf-8')
         handler.send_response(400)

@@ -37,10 +37,12 @@
       endTime = Date.now()
     } = telemetry;
 
-    const totalPagesCrawled = auditLedger.length;
+    const totalPagesCrawled = new Set(auditLedger.filter(a => a.digest && a.status >= 200 && a.status < 400).map(a => a.url)).size;
+    const requestAttempts = auditLedger.filter(a => a.status >= 0).length;
+    const captureErrors = auditLedger.filter(a => a.status === 0).length;
     const totalDocsRetrieved = documents.length;
     const durationMinutes = Math.max(0.1, (endTime - startTime) / 60000);
-    const crawlRate = (totalPagesCrawled / durationMinutes).toFixed(1);
+    const crawlRate = (requestAttempts / durationMinutes).toFixed(1);
 
     // 1. Route Yield Analysis
     const routeStats = {};
@@ -108,6 +110,11 @@
       serverRecommendations.push("Server response latencies remained stable throughout the acquisition. Polite flow control was respected.");
     }
 
+    if (captureErrors > 0 || totalPagesCrawled === 0) {
+      serverHealthVerdict = 'Unknown — capture failures or no saved responses';
+      serverRecommendations.splice(0, serverRecommendations.length, 'Inspect structured capture events; server health cannot be inferred from failed capture attempts.');
+    }
+
     // 3. Low-Yield Route Identification
     const lowYieldSuggestions = [];
     for (const r of routeYields) {
@@ -166,7 +173,7 @@
 
     return {
       summary: {
-        totalPagesCrawled,
+        totalPagesCrawled, requestAttempts, captureErrors,
         totalDocsRetrieved,
         durationMinutes: parseFloat(durationMinutes.toFixed(2)),
         crawlRateReqPerMin: parseFloat(crawlRate),
@@ -185,6 +192,30 @@
       taxonomyDistribution: Object.values(taxonomyDistribution),
       taxonomyGaps
     };
+  }
+
+  function generateJSONReport(results, context = {}) {
+    // Never export authentication profiles, headers, exception messages or payloads.
+    const safeURL = value => {
+      try { const u = new URL(value); u.username = ''; u.password = ''; u.search = ''; u.hash = ''; return u.href; }
+      catch (_) { return null; }
+    };
+    const coverage = JSON.parse(JSON.stringify(results.coverage || {}));
+    for (const item of coverage.resources || []) item.url = safeURL(item.url);
+    for (const item of coverage.limitations || []) if (item.source) item.source = safeURL(item.source);
+    const events = (results.auditLedger || []).map((item, index) => ({
+      sequence: index + 1, timestamp: item.timestamp, url: safeURL(item.url),
+      stage: item.stage || (item.digest ? 'captured' : 'http_response'),
+      attempt: item.attempt || null, status: item.status, bytes: item.size_bytes,
+      elapsed_ms: item.latency_ms, error_type: item.error_type || null,
+      reason_code: item.reason_code || null, cause_type: item.cause_type || null, category: item.category || null
+    }));
+    return {schema_version: 1, generated_at: new Date().toISOString(),
+      outcome: !coverage.counts?.captured ? 'failed' : coverage.complete ? 'complete' : 'incomplete',
+      context: {route: context.route || 'unknown', native_log_file: context.native_log_file || null},
+      summary: results.selfReflection?.summary || {}, coverage, events,
+      privacy: {credentials_and_query_removed: true, contains_site_paths: true},
+      limitations: ['Browser transport exceptions cannot alone distinguish CORS, TLS, proxy or authentication failures.']};
   }
 
   function generateMarkdownReport(analysis, profile = {}) {
@@ -243,6 +274,7 @@
 
   return {
     analyze,
-    generateMarkdownReport
+    generateMarkdownReport,
+    generateJSONReport
   };
 }));

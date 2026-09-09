@@ -1,0 +1,9 @@
+{
+  "track_id": "capture_diagnostics_20260909",
+  "type": "fix",
+  "status": "in_progress",
+  "created_at": "2026-09-09T00:00:00Z",
+  "updated_at": "2026-09-09T00:00:00Z",
+  "description": "Structured capture diagnostics and agent regression intake",
+  "dependencies": []
+}

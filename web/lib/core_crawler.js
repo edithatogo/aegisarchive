@@ -273,6 +273,8 @@
       }
       const reqStartTime = performance.now();
 
+      let stage = 'transport';
+      const attempt = this.auditLedger.filter(item => item.url === url).length + 1;
       try {
         const resp = await this.fetchResource(url, {
           method: 'GET',
@@ -314,10 +316,12 @@
         const isHtml = ['text/html','application/xhtml+xml'].includes(mime);
         const isAsset = this.isAssetUrl(url) || !isHtml;
 
+        stage = 'response_body';
         const arrayBuffer = await resp.arrayBuffer();
         const uint8 = new Uint8Array(arrayBuffer);
 
         // Append to WARC / CDX writer (with automatic SHA-256 deduplication revisit records)
+        stage = 'archive_write';
         const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: resp.aegisRequest || { method: 'GET', headers: REQUEST_HEADERS } });
 
         this.resourceOutcomes.set(url,{url,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length});
@@ -363,19 +367,24 @@
         }
 
       } catch (err) {
-        this.resourceOutcomes.set(url,{url,state:'failed',reason:'network_or_decode_error'});
+        stage = err.diagnostic?.stage || stage;
+        this.resourceOutcomes.set(url,{url,state:'failed',reason:'capture_error',stage,error_type:err.diagnostic?.error_type || err.name || 'Error',attempt});
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
         this.politeness.recordFailure(url, 0, null);
         this.auditLedger.push({
           url,
           status: 0,
-          mimeType: 'network_error',
+          mimeType: 'capture_error',
+          stage, attempt, reason_code: err.diagnostic?.reason_code || null,
+          error_type: err.diagnostic?.error_type || err.name || 'Error',
+          cause_type: err.diagnostic?.cause_type || null,
+          category: err.diagnostic?.category || (stage === 'transport' ? 'transport_unclassified' : stage),
           latency_ms: latencyMs,
           size_bytes: 0,
           timestamp: new Date().toISOString()
         });
-        this.callbacks.onLog(`[Network Error] ${url}: ${err.message}`);
+        this.callbacks.onLog(`[Capture Error: ${stage}] ${url}: ${err.name}`);
         this.requeueForRetry(task);
       }
     }

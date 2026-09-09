@@ -156,3 +156,5 @@ Rendered capture must remain bounded and optional, with browser runtime availabi
 ## 2026-09-09 — mirror_resume_20260906
 
 Atomic checkpointing and content verification make interrupted captures resumable while preserving completed payloads and exposing corruption or storage failures explicitly.
+
+- capture_diagnostics_20260909: Request attempts are not archived resources. Keep native failure stages through transport wrappers; validate diagnostic intake against the actual exported schema. USB filesystem stalls can time out launcher tests independently of application behavior.
