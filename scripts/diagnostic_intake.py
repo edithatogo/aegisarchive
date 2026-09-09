@@ -112,12 +112,14 @@ def ingest(report, ledger=None):
         if not isinstance(event, dict):
             raise ValueError('expected event objects')
         http_failure = type(event.get('status')) is int and event['status'] >= 400
-        if not (http_failure or event.get('level') == 'error' or event.get('outcome') == 'failed'
+        if not (http_failure or event.get('status') == 0 or event.get('level') == 'error' or event.get('outcome') == 'failed'
                 or event.get('error_type') or event.get('error')):
             continue
         raw_error = event.get('error_type')
         if raw_error is None and isinstance(event.get('error'), dict):
             raw_error = event['error'].get('type') or event['error'].get('name')
+        if not raw_error and event.get('status') == 0:
+            raw_error = 'network_error'
         if not raw_error and http_failure:
             raw_error = 'HTTPError'
         pair = (classification(event.get('stage'), STAGES), classification(raw_error, ERROR_TYPES))

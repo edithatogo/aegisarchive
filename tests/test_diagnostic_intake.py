@@ -55,6 +55,12 @@ class DiagnosticIntakeTests(unittest.TestCase):
         result = ingest(data)
         self.assertEqual(result['findings'][0]['error_type'], 'no_resources_saved')
 
+    def test_zero_status_robots_failure_is_not_discarded(self):
+        data = {'schema_version': 1, 'coverage': {'counts': {'captured': 0, 'failed': 0, 'excluded': 1}}, 'events': [{'status': 0, 'stage': 'robots'}]}
+        finding = ingest(data)['findings'][0]
+        self.assertEqual(finding['error_type'], 'network_error')
+        self.assertEqual(finding['stage'], 'robots')
+
     def test_lifecycle_preserved_and_new_occurrence_flagged(self):
         ledger = ingest(report())
         key = ledger['findings'][0]['fingerprint']

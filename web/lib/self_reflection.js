@@ -42,7 +42,7 @@
     const captureErrors = auditLedger.filter(a => a.status === 0).length;
     const totalDocsRetrieved = documents.length;
     const durationMinutes = Math.max(0.1, (endTime - startTime) / 60000);
-    const crawlRate = (totalPagesCrawled / durationMinutes).toFixed(1);
+    const crawlRate = (requestAttempts / durationMinutes).toFixed(1);
 
     // 1. Route Yield Analysis
     const routeStats = {};

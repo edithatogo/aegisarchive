@@ -35,3 +35,8 @@ test('saved redirects agree with coverage', () => {
  const report = engine.analyze({auditLedger:[{url:'https://example.test/',status:302,digest:'sha256:test'}]});
  assert.equal(report.summary.totalPagesCrawled,1);
 });
+
+test('request rate includes failed retries', () => {
+ const result=engine.analyze({auditLedger:[{status:0},{status:0},{status:200,digest:'x',url:'https://example.test/'}],startTime:0,endTime:60000});
+ assert.equal(result.summary.crawlRateReqPerMin,3);
+});
