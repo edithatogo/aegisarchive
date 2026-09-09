@@ -130,7 +130,8 @@
   *Link: [./tracks/rendered_capture_20260906/index.md](./tracks/rendered_capture_20260906/index.md)*
 
 ---
-- [ ] **Track: Headless jobs, scheduling and automation contracts**
+- [x] **Track: Headless jobs, scheduling and automation contracts**
+  *Status: Completed — versioned job lifecycle, leases, recovery, and bounded operations merged in PR #64*
   *Link: [./tracks/headless_jobs_20260906/index.md](./tracks/headless_jobs_20260906/index.md)*
 
 ---
@@ -147,4 +148,6 @@
   *Status: Completed*
   *Link: [./tracks/fast_acceptance_fixtures_20260908/index.md](./tracks/fast_acceptance_fixtures_20260908/index.md)*
 
-- [ ] [Structured capture diagnostics](tracks/capture_diagnostics_20260909/index.md)
+- [x] **Track: Structured capture diagnostics**
+  *Status: Completed — structured JSON diagnostics, safe intake, and regression workflow merged in PR #79*
+  *Link: [./tracks/capture_diagnostics_20260909/index.md](./tracks/capture_diagnostics_20260909/index.md)*
