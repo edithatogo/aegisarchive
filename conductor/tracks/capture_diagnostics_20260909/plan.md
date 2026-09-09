@@ -6,3 +6,10 @@
   - **Verify**: `python3 scripts/gate.py test`; `node --test tests/js/diagnostic_report.test.js`; `AEGIS_BROWSER_CHANNEL=chrome npm run test:capture -- --grep 'HTTP denial'`; `python3 scripts/gate.py leak`.
   - **Done when**: Commands pass and JSON failure evidence is retained with zero captured responses.
   - **Do not**: Commit private reports, credentials, client names, or unrelated signed-in capture files.
+
+- [x] T2 Fix existing workflow pinning failure exposed by PR validation.
+  - **Files**: `.github/workflows/windows-portable-noadmin.yml`.
+  - **Change**: Reuse repository-established immutable checkout/setup-python pins.
+  - **Verify**: Hosted Workflow lint (zizmor) on updated PR head.
+  - **Done when**: Workflow lint passes; hosted result pending.
+  - **Do not**: Suppress the finding or change runtime behavior.
