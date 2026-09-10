@@ -1,0 +1,2 @@
+{"ts":"2026-09-10T00:00:00Z","kind":"gate_authorized","gate":"G1","actor":"owner","summary":"User authorizes fixing USB-only no-admin Windows operation; standing authorization covers reviewed PR delivery after green checks."}
+{"ts":"2026-09-10T00:00:00Z","kind":"task_started","task":"T1","actor":"codex","summary":"Confirmed absent runtime; previous Windows acceptance generated a fixed receipt using installed Python. Official embedded archive checksum verified and runtime provisioned on USB."}
