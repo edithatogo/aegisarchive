@@ -1,11 +1,15 @@
 $ErrorActionPreference = 'Stop'
-$out = Join-Path $env:RUNNER_TEMP 'aegisarchive-acceptance\mirroring.json'
-$parent = Split-Path $out -Parent
-New-Item -ItemType Directory -Force -Path $parent | Out-Null
-if (Get-Command docker -ErrorAction SilentlyContinue) { Write-Host 'Docker detected but intentionally not used.' }
-python scripts/mirroring_acceptance.py --output $out
-python scripts/mirroring_acceptance.py --check --output $out
-$receipt = Get-Content -Raw $out | ConvertFrom-Json
-if ($receipt.offline.source_requests -ne 0) { throw 'Offline acceptance reported source requests.' }
-if (-not $receipt.capabilities.static_html.Equals('supported')) { throw 'Static HTML capability was not supported.' }
-Write-Host "Windows portable acceptance passed: $out"
+Set-Location (Split-Path $PSScriptRoot -Parent)
+$python = Join-Path (Get-Location) 'runtime/python/python.exe'
+if (-not (Test-Path $python)) { throw 'USB runtime missing' }
+# Remove runner-installed Python and development tools from discovery.
+$env:PATH = "$env:SystemRoot\System32;$env:SystemRoot"
+$env:PYTHONHOME = ''
+$env:PYTHONPATH = ''
+& $python -c 'import ssl, sqlite3, http.server, cli.capture_bridge; print("Bundled imports passed")'
+if ($LASTEXITCODE -ne 0) { throw 'Bundled imports failed' }
+& $python -m unittest discover -s tests -p test_windows_runtime.py -v
+if ($LASTEXITCODE -ne 0) { throw 'USB launcher regression failed' }
+& $python -m unittest discover -s tests -p test_cli.py -v
+if ($LASTEXITCODE -ne 0) { throw 'Actual synthetic capture regression failed' }
+Write-Host 'Bundled Windows runtime and capture acceptance passed without system Python.'

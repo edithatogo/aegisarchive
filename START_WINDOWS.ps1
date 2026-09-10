@@ -9,22 +9,22 @@ Write-Host "==========================================================" -Foregro
 
 if (Test-Path "runtime\python\python.exe") {
     Write-Host "[Info] Using bundled portable Python: runtime\python\python.exe" -ForegroundColor Green
-    & "runtime\python\python.exe" cli\launch.py
+    & "runtime\python\python.exe" -B cli\launch.py @args
 } elseif (Test-Path "tools\python\python.exe") {
     Write-Host "[Info] Using bundled portable Python: tools\python\python.exe" -ForegroundColor Green
-    & "tools\python\python.exe" cli\launch.py
+    & "tools\python\python.exe" -B cli\launch.py @args
 } elseif (Test-Path "..\runtime\python\python.exe") {
     Write-Host "[Info] Using parent portable Python runtime" -ForegroundColor Green
-    & "..\runtime\python\python.exe" cli\launch.py
+    & "..\runtime\python\python.exe" -B cli\launch.py @args
 } elseif (Test-Path "..\tools\python\python.exe") {
     Write-Host "[Info] Using parent portable Python runtime" -ForegroundColor Green
-    & "..\tools\python\python.exe" cli\launch.py
+    & "..\tools\python\python.exe" -B cli\launch.py @args
 } elseif (Get-Command py -ErrorAction SilentlyContinue) {
-    py -3 cli\launch.py
+    py -3 cli\launch.py @args
 } elseif (Get-Command python -ErrorAction SilentlyContinue) {
-    python cli\launch.py
+    python cli\launch.py @args
 } else {
-    Write-Host "[Error] Python 3 was not found. Please install Python 3 for your system, or place a portable Python runtime into runtime\python\" -ForegroundColor Red
+    Write-Host "[Error] USB runtime missing. Prepare it on a setup computer using scripts/prepare_windows_runtime.py. No target installation is required." -ForegroundColor Red
     Read-Host "Press Enter to exit..."
 }
 

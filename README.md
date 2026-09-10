@@ -30,7 +30,8 @@ Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic e
 | `.warc.gz` input in verifier and viewer | Implemented |
 | `.warc.gz` output | Planned |
 | WACZ export and service-worker replay | Planned |
-| Bundled portable runtimes and offline AI features | Planned |
+| Windows x64 portable Python | Maintainer preparation supported; see Windows USB setup below |
+| Offline AI features | Optional, separately qualified |
 
 Evidence limitation: features marked Planned are described in `conductor/` tracks and are not yet present in code.
 
@@ -48,9 +49,9 @@ You do **not** need Docker, Node.js, `npm`, or database installations. AegisArch
 3. Your web browser will open automatically to the AegisArchive Web Console.
 
 ### On Windows
-1. Download or clone this repository.
-2. Double-click **`START_WINDOWS.cmd`** (or right-click `START_WINDOWS.ps1` → *Run with PowerShell*).
-3. Your browser will open automatically.
+1. On a setup computer, download or clone this repository and [prepare the portable runtime](docs/WINDOWS_USB.md). Copy the whole application folder, including `runtime/`, to the USB. Git clones and source ZIPs do not include Python.
+2. On the target Windows x64 computer, double-click **`START_WINDOWS.cmd`**. No Python installation, administrator rights, or launch-time downloads are required.
+3. Your browser will open automatically. Keep the launcher window open while capturing.
 
 ### On Linux
 ```bash
