@@ -1,7 +1,7 @@
 # AegisArchive Track Registry
 
-- [ ] **Track: Windows USB runtime deployment**
-  *Status: In progress*
+- [x] **Track: Windows USB runtime deployment**
+  *Status: Completed*
   *Link: [./tracks/windows_usb_runtime_20260910/index.md](./tracks/windows_usb_runtime_20260910/index.md)*
 
 - [x] **Track: Core Engine & Server Preservation Suite**
