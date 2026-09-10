@@ -167,3 +167,6 @@ Atomic checkpointing and content verification make interrupted captures resumabl
 ## 2026-09-10 — headless_jobs_20260906
 - **Surprise**: Scheduling state needs explicit leases and recovery semantics to remain portable.
 - **Change for the next planner**: Keep lifecycle, lease, and recovery contracts covered by synthetic tests.
+# Windows USB deployment, 2026-09-10
+
+Portable-runtime detection is not portable-runtime delivery. A fresh source checkout has no ignored binaries. Prepare a checksum-pinned runtime on the setup computer and test the same embedded executable with system Python removed from PATH. Fixed capability receipts are not capture evidence. macOS AppleDouble sidecars are not runtime manifest entries. Target-workstation policy and authentication acceptance remain separate from hosted CI.

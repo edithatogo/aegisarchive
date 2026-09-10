@@ -31,8 +31,9 @@ def prepare(archive, destination, lock):
         if len(paths) != 1:
             raise ValueError('Missing isolated import configuration')
         paths[0].write_text(paths[0].read_text() + '\n..\\..\n', encoding='utf-8')
+        # macOS may create AppleDouble companions on exFAT; they are not runtime files.
         manifest = dict(lock, files={p.name: hashlib.sha256(p.read_bytes()).hexdigest()
-                                    for p in stage.iterdir()})
+                                    for p in stage.iterdir() if not p.name.startswith('._')})
         (stage / 'runtime-manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
         stage.rename(destination)
 
