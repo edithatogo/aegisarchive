@@ -23,7 +23,7 @@ class DiagnosticsTests(unittest.TestCase):
             response = MagicMock()
             response.__enter__.return_value = response
             response.read.return_value = b'12345'
-            with patch('cli.capture_bridge.MAX_BODY', 4), patch('cli.capture_bridge.urllib.request.build_opener') as opener:
+            with patch('cli.capture_bridge.MAX_BODY', 4), patch('cli.capture_bridge.route_handlers', return_value=[]), patch('cli.capture_bridge.urllib.request.build_opener') as opener:
                 opener.return_value.open.return_value = response
                 with self.assertRaises(CaptureFailure) as caught:
                     bridge.fetch(sid, 'https://example.test/')

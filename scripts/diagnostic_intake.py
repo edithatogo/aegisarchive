@@ -13,7 +13,8 @@ import tempfile
 STAGES = frozenset(('preflight', 'fetch', 'request', 'response', 'decode', 'hash',
                     'extract', 'discovery', 'robots', 'archive', 'storage', 'export',
                     'capture', 'coverage', 'transport', 'response_body',
-                    'archive_write', 'captured', 'http_response', 'unknown'))
+                    'archive_write', 'captured', 'http_response', 'proxy_resolution',
+                    'dns', 'tcp_connect', 'proxy_tunnel', 'tls', 'request_headers', 'response_headers', 'unknown'))
 ERROR_TYPES = frozenset(('TypeError', 'Error', 'AbortError', 'TimeoutError',
                          'SecurityError', 'NetworkError', 'QuotaExceededError',
                          'InvalidStateError', 'NotAllowedError', 'EncodingError',
@@ -23,7 +24,7 @@ ERROR_TYPES = frozenset(('TypeError', 'Error', 'AbortError', 'TimeoutError',
                          'OSError', 'URLError', 'SSLError', 'gaierror',
                          'ConnectionError', 'ConnectionResetError',
                          'ConnectionRefusedError', 'BrokenPipeError',
-                         'UnicodeDecodeError', 'ValueError', 'unknown'))
+                         'UnicodeDecodeError', 'ValueError', 'ProxyDiscoveryError', 'unknown'))
 STATES = ('proposed', 'reproduced', 'fixed', 'verified')
 HEX = re.compile(r'^[0-9a-f]{64}$')
 MAX_BYTES = 32 * 1024 * 1024

@@ -8,6 +8,7 @@ import json
 import secrets
 import ssl
 import socket
+import sys
 import threading
 import time
 import urllib.error
@@ -16,10 +17,12 @@ import urllib.request
 from pathlib import Path
 
 try:
+    from .network_transport import NetworkTrace, route_handlers
     from .usb_archive import UsbArchiveStore
     from .politeness import PolitenessEngine
     from .auth import request_headers, ssl_context, SENSITIVE, redact_headers
 except ImportError:
+    from network_transport import NetworkTrace, route_handlers
     from usb_archive import UsbArchiveStore
     from politeness import PolitenessEngine
     from auth import request_headers, ssl_context, SENSITIVE, redact_headers
@@ -33,7 +36,12 @@ def failure_details(error):
                 'dns' if isinstance(cause, socket.gaierror) else
                 'timeout' if isinstance(cause, TimeoutError) else
                 'connection' if isinstance(cause, ConnectionError) else 'transport_unclassified')
-    return {'error_type': type(error).__name__, 'cause_type': type(cause).__name__, 'category': category}
+    result = {'error_type': type(error).__name__, 'cause_type': type(cause).__name__, 'category': category}
+    for key in ('errno', 'winerror'):
+        value = getattr(cause, key, None)
+        if type(value) is int:
+            result[key] = value
+    return result
 
 
 class CaptureFailure(ValueError):
@@ -95,6 +103,8 @@ class CaptureBridge:
                            log=self.log_dir / (sid + '.jsonl'))
             self.session = session
             self.event(session, 'started', hosts=hosts, robots_policy=policy.get('robots_policy', 'respect'))
+            self.event(session, 'runtime', platform=sys.platform, python_version=list(sys.version_info[:3]),
+                       network_transport='urllib_windows_auto_v1', browser_session_inherited=False)
             return {'id': sid, 'log_file': str(session['log'])}
 
     @staticmethod
@@ -151,6 +161,7 @@ class CaptureBridge:
             started = time.monotonic()
             self.event(session, 'request', url=url)
             stage, reason_code = 'preflight', 'authentication_config'
+            trace = NetworkTrace(lambda **fields: self.event(session, 'network_stage', **fields))
             try:
                 authentication = session['authentication']
                 headers = {'user-agent': 'AegisArchive/1.0', 'accept-encoding': 'identity', 'host': parsed.netloc, 'connection': 'close', **forwarded}
@@ -158,8 +169,9 @@ class CaptureBridge:
                 headers['host'] = parsed.netloc
                 handlers = [NoRedirect()]
                 context = ssl_context(authentication, url=url)
-                if context is not None:
-                    handlers.append(urllib.request.HTTPSHandler(context=context))
+                stage, reason_code = 'transport', 'proxy_resolution_failed'
+                handlers.extend(route_handlers(url, trace))
+                handlers.extend(trace.handlers(context))
                 opener = urllib.request.build_opener(*handlers)
                 stage, reason_code = 'transport', 'request_failed'
                 try:
@@ -191,7 +203,7 @@ class CaptureBridge:
             except Exception as error:
                 session['engine'].record_failure(url, 0)
                 # Keep credential values and exception objects out of persisted logs.
-                details = {**failure_details(error), "stage": stage, "reason_code": reason_code}
+                details = {**failure_details(error), "stage": trace.stage if stage == 'transport' else stage, "reason_code": reason_code}
                 self.event(session, 'failure', url=url, elapsed_ms=round((time.monotonic() - started) * 1000), **details)
                 raise CaptureFailure(details) from error
 
