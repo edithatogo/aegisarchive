@@ -35,7 +35,7 @@ class CaptureBridgeTests(unittest.TestCase):
         class Handler(AegisArchiveHandler): pass
         self.station = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
         Handler.allowed_hosts = {'127.0.0.1:' + str(self.station.server_port)}
-        self.bridge = CaptureBridge(self.temp.name, self.station.server_port)
+        self.bridge = CaptureBridge(Path(self.temp.name) / 'logs', self.station.server_port)
         self.station.capture_bridge = self.bridge
         threading.Thread(target=self.station.serve_forever, daemon=True).start()
         self.station_url = 'http://127.0.0.1:' + str(self.station.server_port)
@@ -67,6 +67,26 @@ class CaptureBridgeTests(unittest.TestCase):
             with self.assertRaises(ValueError): self.bridge.fetch(sid, url)
         self.assertEqual(len(self.seen), 1)
 
+    def test_archive_routes_require_token_and_bound_writes(self):
+        url = self.station_url + '/__station/capture/archive-start'
+        for headers in ({}, {'X-Capture-Token': self.bridge.token, 'Origin': 'https://outside.test'}):
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                urllib.request.urlopen(urllib.request.Request(url, data=b'{}', headers=headers))
+            self.assertEqual(caught.exception.code, 403)
+        headers = {'X-Capture-Token': self.bridge.token}
+        with urllib.request.urlopen(urllib.request.Request(url, data=b'{}', headers=headers)) as response:
+            sid = json.load(response)['archive_id']
+        payload = json.dumps({'archive_id': sid, 'kind': '../escape', 'offset': 0, 'data': 'YQ=='}).encode()
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            urllib.request.urlopen(urllib.request.Request(self.station_url + '/__station/capture/archive-chunk', data=payload, headers=headers))
+        self.assertEqual(caught.exception.code, 400)
+        with mock.patch.object(self.bridge.archives, 'chunk', side_effect=OSError('private synthetic path')):
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                urllib.request.urlopen(urllib.request.Request(self.station_url + '/__station/capture/archive-chunk', data=payload, headers=headers))
+            self.assertEqual(caught.exception.code, 507)
+            body = json.load(caught.exception)
+            self.assertEqual(body['diagnostic']['stage'], 'storage')
+            self.assertNotIn('private synthetic path', json.dumps(body))
     def test_credentials_are_scoped_and_not_returned_or_logged(self):
         self.profile['authentication']={'mode':'cookies_env','source':'private=credential','allowed_domains':['127.0.0.1']}
         session = self.bridge.configure(self.profile)

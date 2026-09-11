@@ -13,3 +13,5 @@ if ($LASTEXITCODE -ne 0) { throw 'USB launcher regression failed' }
 & $python -m unittest discover -s tests -p test_cli.py -v
 if ($LASTEXITCODE -ne 0) { throw 'Actual synthetic capture regression failed' }
 Write-Host 'Bundled Windows runtime and capture acceptance passed without system Python.'
+& $python -m unittest discover -s tests -p test_usb_archive.py -v
+if ($LASTEXITCODE -ne 0) { throw 'USB archive storage regression failed' }

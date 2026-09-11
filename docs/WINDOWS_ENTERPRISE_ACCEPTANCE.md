@@ -1,10 +1,12 @@
 # Windows enterprise acceptance
 
-`windows-portable-noadmin.yml` exercises the portable acceptance path on a
-Windows runner without installing packages, starting services, requiring
-Docker, or writing to a system directory. It writes only to the runner's
-user-writable temporary directory and validates the hash-bound offline receipt.
+`windows-portable-noadmin.yml` prepares checksum-pinned embedded Python and
+executes the real CMD launcher with system Python removed from PATH. It runs
+synthetic capture and USB storage regressions. Browser acceptance also uses
+the bundled runtime on Windows. Preparation occurs on the setup runner;
+normal target-machine launch performs no package installation.
 
-This is an enterprise-style no-admin simulation. It does not claim that a
-Windows Docker container ran. Windows-container validation requires a Windows
-host with Windows container mode and a registered self-hosted runner.
+These are hosted integration tests, not execution under a corporate non-admin
+identity or in a Windows container. They do not reproduce application-control
+policy or automatic integrated SSO. See [requirement acceptance](REQUIREMENTS_ACCEPTANCE.md)
+for explicit deployment limits and [USB setup](WINDOWS_USB.md) for preparation.

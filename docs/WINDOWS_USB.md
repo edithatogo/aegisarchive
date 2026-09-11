@@ -8,4 +8,8 @@ The application uses only the embedded standard library and its own source. The 
 
 Windows CI prepares the same pinned runtime, removes system Python from PATH, starts the actual CMD launcher, retrieves the console, and captures synthetic pages with the CLI regression suite. It does not establish corporate policy acceptance or successful authenticated intranet capture. Corporate application control can still prohibit USB executables; browser login state is not automatically inherited by native HTTP requests.
 
-Capture diagnostics remain on the USB under `archive/capture-logs/`. Keep the whole application folder and captured data together when moving the USB.
+Launcher captures stream into `archive/captures/<capture-id>/` on the USB. The application writes `archive.warc`, `archive.cdx` and `receipt.json`, verifies saved bytes, and shows the path when storage completes. No download is needed to retain the archive. Interrupted or failed writes can leave `.partial` files; these are not a successful archive receipt.
+
+Capture diagnostics remain on the USB under `archive/capture-logs/`. The console does not use OPFS or localStorage for new captures; pause state stays in memory, so reloading does not restore that frontier. Keep the console open while capturing. The existing browser may still maintain its own history/cache, and optional manual exports use its chosen download location. Keep the whole application folder and captured data together when moving the USB.
+
+See [requirement acceptance](REQUIREMENTS_ACCEPTANCE.md) for tested behavior and authentication limits. In particular, native capture does not automatically reuse a Chrome login or Windows integrated SSO.

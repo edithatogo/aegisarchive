@@ -34,23 +34,33 @@ async function setup(page, path='/') {
   await page.getByLabel('Quick capture address:').fill(origin + path);
 }
 test('normal UI captures a multi-page non-CORS site and exports actual responses', async ({page}) => {
+  const downloads = [];
+  page.on('download', item => downloads.push(item));
+  await page.addInitScript(() => {
+    Storage.prototype.setItem = () => { throw Error('Host storage is forbidden'); };
+    navigator.storage.getDirectory = () => { throw Error('OPFS is forbidden'); };
+  });
   await setup(page);
   await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
   await expect(page.locator('#captureState')).toHaveText('COMPLETE — discovered resources saved');
   await expect(page.locator('#captureOutcome')).toContainText('7 responses saved');
   expect(requests).toEqual(expect.arrayContaining(['/robots.txt','/','/redirect','/second','/third','/site.css','/image.svg','/document.pdf']));
-  const downloads=[];page.on('download', d => downloads.push(d));
-  await page.getByRole('button', {name:'📦 Download WARC + CDX'}).click();
-  await expect.poll(() => downloads.length).toBe(2);
-  const warc=downloads.find(d=>d.suggestedFilename().endsWith('.warc'));
-  const bytes=await fs.readFile(await warc.path());
+  const receipt = await page.evaluate(() => finalResults.storageReceipt);
+  expect(receipt.warc_path).toContain('captures');
+  const bytes=await fs.readFile(receipt.warc_path);
+  const savedReceipt = JSON.parse(await fs.readFile(receipt.receipt_path, 'utf8'));
+  expect(savedReceipt.archives.warc.sha256).toBe(require('node:crypto').createHash('sha256').update(bytes).digest('hex'));
+  expect(savedReceipt.complete).toBe(true);
+  await page.getByRole('button', {name:'📦 Show saved archive location'}).click();
+  expect(downloads).toEqual([]);
   expect(bytes.toString()).toContain('WARC-Type: response');
+  expect(bytes.toString()).toContain('WARC-Filename: archive.warc');
   expect(bytes.toString()).toContain('Third page');
   expect(bytes.toString()).toContain('synthetic-document');
   const replayRequests=[];
   page.on('request', request => { if (request.url().startsWith(origin)) replayRequests.push(request.url()); });
   await page.goto('/viewer.html');
-  await page.locator('#warcFileInput').setInputFiles(await warc.path());
+  await page.locator('#warcFileInput').setInputFiles(receipt.warc_path);
   const frame=page.frameLocator('#replayFrame');
   await expect(frame.getByRole('heading', {name:'Seed page'})).toBeVisible();
   await frame.getByRole('link', {name:'Next'}).click();
@@ -58,8 +68,7 @@ test('normal UI captures a multi-page non-CORS site and exports actual responses
   await frame.getByRole('link', {name:'Third'}).click();
   await expect(frame.getByRole('heading', {name:'Third page'})).toBeVisible();
   expect(replayRequests).toEqual([]);
-  const cdx=downloads.find(d=>d.suggestedFilename().endsWith('.cdx'));
-  expect((await fs.readFile(await cdx.path(),'utf8')).trim().split('\n').length).toBeGreaterThanOrEqual(7);
+  expect((await fs.readFile(receipt.cdx_path,'utf8')).trim().split('\n').length).toBeGreaterThanOrEqual(7);
 });
 test('HTTP denial is visibly a failure, not one saved page', async ({page}) => {
   await setup(page,'/denied');
@@ -108,13 +117,33 @@ test('pause, resume and stop preserve an explicitly incomplete archive', async (
   await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
   await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
   await page.getByRole('button', {name:'⏸️ Pause'}).click();
-  await expect(page.locator('#captureState')).toHaveText('PAUSED — checkpoint saved');
+  await expect(page.locator('#captureState')).toHaveText('PAUSED — capture held in memory');
   await page.getByRole('button', {name:'▶️ Resume', exact:true}).click();
   await page.getByRole('button', {name:'⏹️ Stop & Finalize'}).click();
   await expect(page.locator('#captureState')).toHaveText('INCOMPLETE — some resources not saved');
   await expect(page.locator('#captureOutcome')).toContainText(/[1-9][0-9]* pending/);
-  await expect(page.getByRole('button', {name:'📦 Download WARC + CDX'})).toBeEnabled();
+  await expect(page.getByRole('button', {name:'📦 Show saved archive location'})).toBeEnabled();
+  expect(await page.evaluate(() => finalResults.storageReceipt.complete)).toBe(false);
 });
+
+for (const endpoint of ['archive-chunk', 'archive-finalize']) {
+  test(`USB ${endpoint} failure does not claim an archive was saved`, async ({page}) => {
+    await setup(page);
+    await page.route(`**/__station/capture/${endpoint}`, route => route.fulfill({
+      status: 507, contentType: 'application/json',
+      body: JSON.stringify({error: 'Synthetic USB write failure', diagnostic: {stage: 'storage', error_type: 'OSError'}})
+    }));
+    await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+    await expect(page.locator('#captureState')).toHaveText('FAILED — capture interrupted');
+    await expect(page.locator('#captureOutcome')).toContainText('USB write failure');
+    await expect(page.getByRole('button', {name:'📦 Show saved archive location'})).toBeDisabled();
+    expect(await page.evaluate(() => finalResults)).toBeNull();
+    await expect(page.locator('#logContainer')).toContainText('JSON saved on USB');
+    const report = await page.evaluate(() => JSON.parse(currentReportJSON));
+    expect(report.outcome).toBe('failed');
+    expect(report.events[0].stage).toBe('storage');
+  });
+}
 
 test('reload can recover the native session without restarting the launcher', async ({page}) => {
   await setup(page,'/long');

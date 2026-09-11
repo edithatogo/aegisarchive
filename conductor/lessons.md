@@ -1,5 +1,10 @@
 # Lessons Ledger
 
+## 2026-09-11 — usb_capture_storage_20260911
+
+- **Surprise**: A USB-resident launcher does not imply USB-resident browser capture output; OPFS and default downloads can use the host profile.
+- **Change for the next planner**: Verify physical output files, receipt hashes and storage failures through the user-visible path. Run Windows browser tests with the bundled executable and Windows command separators. Keep corporate authentication acceptance distinct from fixture success.
+
 - 2026-09-08: Keep pull-request acceptance on local synthetic fixtures and fast probes; reserve multi-gigabyte native qualification for an explicit manual workflow so feedback remains bounded and reproducible.
 - 2026-09-08: `browser_capture_acceptance_20260908` is accepted only against reserved local fixtures; private-site access remains an external gate.
 

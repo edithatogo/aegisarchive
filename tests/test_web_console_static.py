@@ -27,7 +27,7 @@ class TestWebConsoleStatic(unittest.TestCase):
         self.assertNotIn("BUILTIN_PROFILES = {", self.index)
 
     def test_checkpoint_and_launcher_handoff_present(self):
-        self.assertIn("aegis.checkpoint.v1", self.index)
+        self.assertNotIn("localStorage.setItem", self.index)
         self.assertIn("URLSearchParams(location.search).get('profile')", self.index)
 
     def test_profiles_bundle_up_to_date(self):
