@@ -2,6 +2,10 @@
 
 The capture diagnostic export is JSON. Keep the original report on the USB: it can contain private target URLs and error details. No account, installation, administrator access, or remote logging service is required. Diagnostic intake is a maintainer utility using Python's standard library; capture does not require running it on the restricted computer.
 
+Native JSONL logs include a runtime event and `network_stage` events: `proxy_resolution`, `dns`, `tcp_connect`, `proxy_tunnel` (HTTPS through an HTTP proxy), `tls`, `request_headers`, and `response_headers`. A final failure retains the stage plus numeric `errno`/`winerror` when available. Route events describe the source and direct/proxy decision without proxy addresses, PAC URLs, credentials, resolved IPs or raw exception text. Existing request URL fields remain private; never upload the whole log. Stage timestamps are elapsed time since transport setup, not individual stage durations. A stage entry means work started there; it is not proof that the stage completed. The final error stage is also carried into browser diagnostic reports for intake.
+
+A timeout before response headers does not prove an authentication failure. Diagnose the recorded failing stage first. PAC support and synthetic proxy tests close the missing routing capability, not an unresolved target-network timeout finding. Keep that finding `proposed` until a later real run provides confirming evidence.
+
 ## Intake
 
 From the repository root, using an available Python runtime:

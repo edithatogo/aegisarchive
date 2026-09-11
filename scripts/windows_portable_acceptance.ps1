@@ -12,6 +12,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Bundled imports failed' }
 if ($LASTEXITCODE -ne 0) { throw 'USB launcher regression failed' }
 & $python -m unittest discover -s tests -p test_cli.py -v
 if ($LASTEXITCODE -ne 0) { throw 'Actual synthetic capture regression failed' }
-Write-Host 'Bundled Windows runtime and capture acceptance passed without system Python.'
 & $python -m unittest discover -s tests -p test_usb_archive.py -v
 if ($LASTEXITCODE -ne 0) { throw 'USB archive storage regression failed' }
+& $python -m unittest discover -s tests -p test_windows_proxy.py -v
+if ($LASTEXITCODE -ne 0) { throw 'Windows native proxy discovery regression failed' }
+& $python -m unittest discover -s tests -p test_network_transport.py -v
+if ($LASTEXITCODE -ne 0) { throw 'Network route diagnostics regression failed' }
+Write-Host 'Bundled Windows runtime and synthetic capture acceptance passed without system Python.'
