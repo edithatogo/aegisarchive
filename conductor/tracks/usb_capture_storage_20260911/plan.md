@@ -1,6 +1,6 @@
 # Plan
 
-- [ ] T1 Persist launcher captures directly on the USB. *(AC1–AC5)*
+- [x] T1 Persist launcher captures directly on the USB. *(AC1–AC5)* — implementation a2e5178, Windows CI path repair ed25d59
   - **Files**: `cli/capture_bridge.py`, `cli/usb_archive.py`, `web/lib/native_capture.js`, `web/lib/core_crawler.js`, `web/index.html`, `tests/test_capture_bridge.py`, `tests/test_usb_archive.py`, `tests/js/`, `tests/browser/capture.spec.js`, `.gitignore`, `docs/WINDOWS_USB.md`, `docs/REQUIREMENTS_ACCEPTANCE.md`, `conductor/backlog.md`, `conductor/tracks.md`, `conductor/lessons.md`, `conductor/reviews/usb_capture_storage_20260911.md`.
   - **Change**: Add token-protected bounded USB archive streaming, wire the console to it, preserve honest failure reporting, and record evidence against user requirements.
   - **Additional regression file**: `tests/test_web_console_static.py` (retire the assertion requiring browser-profile checkpoint persistence).

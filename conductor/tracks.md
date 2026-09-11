@@ -1,7 +1,7 @@
 # AegisArchive Track Registry
 
-- [ ] **Track: USB-local capture storage**
-  *Status: In progress*
+- [x] **Track: USB-local capture storage**
+  *Status: Completed*
   *Link: [./tracks/usb_capture_storage_20260911/index.md](./tracks/usb_capture_storage_20260911/index.md)*
 
 - [x] **Track: Windows USB runtime deployment**
