@@ -1,6 +1,6 @@
 # Progressive USB debug recording
 
-Status: in_progress
+Status: completed (2026-09-11)
 
 - [Spec](spec.md)
 - [Plan](plan.md)
