@@ -7,6 +7,25 @@ from cli.debug_journal import DebugJournal
 
 
 class DebugJournalTests(unittest.TestCase):
+    def test_symlink_directory_is_rejected_without_external_writes(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); outside = root / 'outside'; outside.mkdir()
+            link = root / 'logs'
+            try: link.symlink_to(outside, target_is_directory=True)
+            except OSError: self.skipTest('Symlinks unavailable without host privilege')
+            with self.assertRaises(OSError): DebugJournal(link).start()
+            self.assertEqual(list(outside.iterdir()), [])
+
+    def test_directory_replaced_by_symlink_after_start_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder); directory = root / 'logs'; outside = root / 'outside'; outside.mkdir()
+            journal = DebugJournal(directory); session = journal.start()
+            directory.rename(root / 'saved')
+            try: directory.symlink_to(outside, target_is_directory=True)
+            except OSError: self.skipTest('Symlinks unavailable without host privilege')
+            with self.assertRaises(OSError): journal.batch(session['client_id'], 0, [{'event':'progress'}])
+            self.assertEqual(list(outside.iterdir()), [])
+
     def test_debug_endpoints_require_station_token_and_same_origin(self):
         from http.server import ThreadingHTTPServer
         from cli.capture_bridge import CaptureBridge

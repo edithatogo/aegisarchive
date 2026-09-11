@@ -60,6 +60,19 @@ test('Debug storage failures are visible without asking for a download', async (
   await expect(page.locator('#debugStatus')).toContainText('DEBUG SAVE FAILED');
   await expect(page.locator('#debugStatus')).not.toContainText('download');
 });
+test('failed Debug activation blocks capture until recording can start', async ({page}) => {
+  await page.route('**/__station/capture/debug-status', route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({active:false})}));
+  await page.route('**/__station/capture/debug-start', route=>route.fulfill({status:507,contentType:'application/json',body:JSON.stringify({error:'Synthetic storage failure',diagnostic:{stage:'storage'}})}));
+  await setup(page);
+  await page.getByRole('button',{name:'Debug',exact:true}).click();
+  await expect(page.locator('#debugStatus')).toContainText('recording could not start');
+  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#captureState')).toHaveText('READY — nothing is running');
+  await page.unroute('**/__station/capture/debug-start');
+  await page.getByRole('button',{name:'Debug',exact:true}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  expect(await page.evaluate(()=>debugRecorder.terminal)).toBe(false);
+});
 test('normal UI captures a multi-page non-CORS site and exports actual responses', async ({page}) => {
   const downloads = [];
   page.on('download', item => downloads.push(item));

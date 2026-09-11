@@ -281,7 +281,10 @@
         await debugRecorder.enable(create);
         if (debugRecorder.active) document.getElementById('btnDebug').textContent = 'Debug enabled';
       } catch (_) {
-        if (create) document.getElementById('debugStatus').textContent = 'DEBUG SAVE FAILED — start the USB launcher and check drive access. No log download is required.';
+        if (create) {
+          debugRecorder.terminal = true;
+          document.getElementById('debugStatus').textContent = 'DEBUG SAVE FAILED — recording could not start. Check the USB launcher and drive access, then click Debug again. Capture is blocked until recording starts.';
+        }
       }
     }
     setInterval(() => {

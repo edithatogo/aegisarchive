@@ -65,15 +65,57 @@ class DebugJournal:
             if len(self.clients) >= 64:
                 raise ValueError('Debug client limit reached; restart the launcher')
             if self.path is None:
+                if self.directory.is_symlink():
+                    raise OSError('Debug directory must not be a symlink')
                 self.directory.mkdir(parents=True, exist_ok=True)
                 path = self.directory / ('debug-' + secrets.token_hex(12) + '.jsonl')
-                with path.open('x', encoding='utf-8'):
-                    pass
+                descriptor = self._open_file(path, create=True)
+                os.close(descriptor)
                 self.path = path
                 self._append([{'event': 'debug_started'}], 'server')
             client = secrets.token_hex(12)
             self.clients[client] = {'next': 0, 'last': None}
             return {**self.status(), 'client_id': client, 'next_sequence': 0}
+
+    def _open_file(self, path, create=False):
+        """Anchor POSIX opens to a no-follow directory descriptor.
+
+        Windows lacks dir_fd opens; reject directory reparse links and changed
+        directory/file identity before writing through the opened descriptor.
+        This is not protection against arbitrary concurrent filesystem owners.
+        """
+        if self.directory.is_symlink():
+            raise OSError('Debug directory must not be a symlink')
+        before = self.directory.stat(follow_symlinks=False)
+        if not stat.S_ISDIR(before.st_mode):
+            raise OSError('Debug directory is not a directory')
+        flags = os.O_WRONLY | os.O_APPEND | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+        if create:
+            flags |= os.O_CREAT | os.O_EXCL
+        directory_fd = descriptor = None
+        try:
+            if os.open in os.supports_dir_fd:
+                directory_fd = os.open(self.directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+                if not os.path.samestat(before, os.fstat(directory_fd)):
+                    raise OSError('Debug directory changed')
+                descriptor = os.open(path.name, flags, 0o600, dir_fd=directory_fd)
+                current = os.stat(path.name, dir_fd=directory_fd, follow_symlinks=False)
+            else:
+                descriptor = os.open(path, flags, 0o600)
+                after = self.directory.stat(follow_symlinks=False)
+                if not os.path.samestat(before, after) or not stat.S_ISDIR(after.st_mode):
+                    raise OSError('Debug directory changed')
+                current = path.stat(follow_symlinks=False)
+            opened = os.fstat(descriptor)
+            if not stat.S_ISREG(opened.st_mode) or not os.path.samestat(opened, current):
+                raise OSError('Debug journal changed')
+            result, descriptor = descriptor, None
+            return result
+        finally:
+            if descriptor is not None:
+                os.close(descriptor)
+            if directory_fd is not None:
+                os.close(directory_fd)
 
     def _append(self, events, source):
         if self.failed:
@@ -83,10 +125,7 @@ class DebugJournal:
         data = ''.join(json.dumps(row, ensure_ascii=True) + '\n' for row in rows).encode()
         descriptor = None
         try:
-            descriptor = os.open(self.path, os.O_WRONLY | os.O_APPEND | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0))
-            info = os.fstat(descriptor)
-            if not stat.S_ISREG(info.st_mode) or not os.path.samestat(info, self.path.stat(follow_symlinks=False)):
-                raise OSError('Debug journal is not a regular file')
+            descriptor = self._open_file(self.path)
             with os.fdopen(descriptor, 'ab') as stream:
                 descriptor = None
                 stream.write(data)

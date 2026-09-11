@@ -14,7 +14,7 @@ test('records progressively and redacts URL credentials before sending', async (
   recorder.record('request',{url:'https://user:password@example.test/path?token=secret',message:'secret',body:'secret'});
   await tick();
   assert.equal(recorder.queue.length,0);
-  assert.ok(JSON.stringify(batches).includes('https://example.test/path'));
+  assert.equal(batches[1].events[0].url,'https://example.test/path');
   assert.ok(!JSON.stringify(batches).includes('secret'));
   assert.ok(!JSON.stringify(batches).includes('password'));
 });

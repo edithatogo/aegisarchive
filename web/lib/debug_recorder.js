@@ -15,7 +15,7 @@ class DebugRecorder {
     if (!create && !status.active) return;
     const result = await this.call('debug-start', {});
     this.client = result.client_id; this.path = result.log_file;
-    this.sequence = result.next_sequence; this.active = true;
+    this.sequence = result.next_sequence; this.active = true; this.terminal = false;
     this.notify({saved: result.saved_events, pending: 0, path: this.path});
     this.record('browser_attached');
   }
