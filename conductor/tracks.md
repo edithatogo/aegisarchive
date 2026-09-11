@@ -1,5 +1,9 @@
 # AegisArchive Track Registry
 
+- [ ] **Track: Progressive USB debug recording**
+  *Status: In Progress*
+  *Link: [./tracks/progressive_debug_20260911/index.md](./tracks/progressive_debug_20260911/index.md)*
+
 - [x] **Track: Windows network routing and diagnostics**
   *Status: Completed*
   *Link: [./tracks/windows_network_route_20260911/index.md](./tracks/windows_network_route_20260911/index.md)*

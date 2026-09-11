@@ -1,0 +1,9 @@
+{
+  "track_id": "progressive_debug_20260911",
+  "type": "feature",
+  "status": "in_progress",
+  "created_at": "2026-09-11T06:26:52.758514+00:00",
+  "updated_at": "2026-09-11T06:26:52.758514+00:00",
+  "description": "Progressive USB debug recording",
+  "dependencies": []
+}
