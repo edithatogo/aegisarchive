@@ -5,6 +5,7 @@ Browser cookies are not inherited; an explicit authentication profile is require
 """
 import base64
 import json
+import os
 import secrets
 import ssl
 import socket
@@ -17,11 +18,13 @@ import urllib.request
 from pathlib import Path
 
 try:
+    from .debug_journal import DebugJournal
     from .network_transport import NetworkTrace, route_handlers
     from .usb_archive import UsbArchiveStore
     from .politeness import PolitenessEngine
     from .auth import request_headers, ssl_context, SENSITIVE, redact_headers
 except ImportError:
+    from debug_journal import DebugJournal
     from network_transport import NetworkTrace, route_handlers
     from usb_archive import UsbArchiveStore
     from politeness import PolitenessEngine
@@ -59,6 +62,7 @@ class CaptureBridge:
     def __init__(self, log_dir, station_port):
         self.token = secrets.token_urlsafe(32)
         self.log_dir = Path(log_dir)
+        self.debug = DebugJournal(self.log_dir)
         self.archives = UsbArchiveStore(self.log_dir.parent / 'captures')
         self.station_port = station_port
         self.session = None
@@ -107,13 +111,13 @@ class CaptureBridge:
                        network_transport='urllib_windows_auto_v1', browser_session_inherited=False)
             return {'id': sid, 'log_file': str(session['log'])}
 
-    @staticmethod
-    def event(session, event, **fields):
+    def event(self, session, event, **fields):
         if 'url' in fields:
             u = urllib.parse.urlsplit(fields['url'])
             fields['url'] = urllib.parse.urlunsplit((u.scheme, u.netloc.rsplit('@', 1)[-1], u.path, '', ''))
         with session['log'].open('a', encoding='utf-8') as stream:
             stream.write(json.dumps({'schema_version': 1, 'session_id': session['id'], 'timestamp': time.time(), 'event': event, **fields}) + '\n')
+        self.debug.native({'event': event, 'session_id': session['id'], **fields})
 
     def get_session(self, sid):
         session = self.session
@@ -124,7 +128,11 @@ class CaptureBridge:
     def close(self, sid):
         session = self.get_session(sid)
         session['stop'].set()
-        self.event(session, 'stopped')
+        try:
+            self.event(session, 'stopped')
+        except OSError:
+            # Logging failure must never prevent an operator from stopping.
+            return {'stopped': True, 'logging_failed': True}
         return {'stopped': True}
 
     def recover(self):
@@ -242,12 +250,21 @@ def handle(handler):
             payload = json.loads(handler.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError('JSON object required')
-            if path == '/__station/capture/archive-start':
+            if path == '/__station/capture/debug-start':
+                result = bridge.debug.start()
+            elif path == '/__station/capture/debug-status':
+                result = bridge.debug.status()
+            elif path == '/__station/capture/debug-events':
+                result = bridge.debug.batch(payload['client_id'], payload['sequence'], payload['events'])
+            elif path == '/__station/capture/archive-start':
                 result = bridge.archives.start()
+                bridge.debug.native({'event': 'archive_started', 'archive_id': result['archive_id']})
             elif path == '/__station/capture/archive-chunk':
                 result = bridge.archives.chunk(payload['archive_id'], payload['kind'], payload['offset'], payload['data'])
+                bridge.debug.native({'event': 'archive_chunk_saved', 'archive_id': payload['archive_id'], 'offset': result['offset'], 'stage': 'archive_write'})
             elif path == '/__station/capture/archive-finalize':
                 result = bridge.archives.finalize(payload['archive_id'], payload['summary'])
+                bridge.debug.native({'event': 'archive_finalized', 'archive_id': payload['archive_id'], 'complete': payload['summary']['complete']})
             elif path == '/__station/capture/start':
                 result = bridge.configure(payload['profile'])
             elif path == '/__station/capture/fetch':
@@ -260,6 +277,8 @@ def handle(handler):
                 report_path = bridge.log_dir / ('diagnostic-' + secrets.token_hex(12) + '.json')
                 with report_path.open('x', encoding='utf-8') as stream:
                     json.dump(report, stream, indent=2)
+                    stream.flush()
+                    os.fsync(stream.fileno())
                 result = {'log_file': str(report_path)}
             elif path == '/__station/capture/recover':
                 result = bridge.recover()

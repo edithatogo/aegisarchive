@@ -33,6 +33,33 @@ async function setup(page, path='/') {
   await page.getByRole('button', {name:'Apply Profile'}).click();
   await page.getByLabel('Quick capture address:').fill(origin + path);
 }
+test('Debug saves audit and native events before completion and survives reload without downloads', async ({page}) => {
+  const downloads=[];page.on('download',item=>downloads.push(item));
+  await setup(page,'/long');
+  await page.getByRole('button',{name:'Debug',exact:true}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  const path=await page.evaluate(()=>debugRecorder.path);
+  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
+  await expect.poll(async()=>await fs.readFile(path,'utf8')).toContain('"event": "audit"');
+  const live=await fs.readFile(path,'utf8');
+  expect(live).toContain('"event": "network_stage"');
+  expect(live).toContain('"event": "discovery"');
+  expect(live).not.toContain('"event": "capture_complete"');
+  await page.getByRole('button',{name:'⏹️ Stop'}).click();
+  await expect.poll(async()=>await fs.readFile(path,'utf8')).toContain('"event": "capture_complete"');
+  await page.reload();
+  await expect(page.locator('#debugStatus')).toContainText(path);
+  expect(downloads).toEqual([]);
+});
+
+test('Debug storage failures are visible without asking for a download', async ({page}) => {
+  await setup(page);
+  await page.route('**/__station/capture/debug-events',route=>route.fulfill({status:507,contentType:'application/json',body:JSON.stringify({error:'Synthetic storage failure'})}));
+  await page.getByRole('button',{name:/^Debug/}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG SAVE FAILED');
+  await expect(page.locator('#debugStatus')).not.toContainText('download');
+});
 test('normal UI captures a multi-page non-CORS site and exports actual responses', async ({page}) => {
   const downloads = [];
   page.on('download', item => downloads.push(item));
