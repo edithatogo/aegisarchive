@@ -14,6 +14,7 @@
   <script src="lib/mirror_resources.js"></script>
   <script src="lib/core_crawler.js"></script>
   <script src="lib/native_capture.js"></script>
+  <script src="lib/debug_recorder.js"></script>
 </head>
 <body>
   <div class="container">
@@ -61,6 +62,8 @@
       <select id="robotsPolicy"><option value="respect">Respect robots.txt</option><option value="ignore_authorised">Ignore robots.txt — I am authorised</option></select>
     </div>
     <button id="btnRecoverNative" class="btn btn-secondary" hidden onclick="recoverNativeSession()">Stop previous local capture session</button>
+    <button id="btnDebug" class="btn btn-secondary" onclick="enableDebug()">Debug</button>
+    <p id="debugStatus" role="status">Debug is off. Enable it before capture to save detailed logs progressively on the USB.</p>
     <p id="captureOutcome" role="status">Local capture uses this computer’s network access. Browser logins are not automatically shared; authenticated sites require an explicit authentication profile. HTTP 401/403 cannot be overridden by the robots option.</p>
 
     <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
@@ -260,11 +263,49 @@
     let currentReportJSON = "";
     let pendingCheckpoint = null;
     let memoryCheckpoint = null;
+    let debugSession = null;
+    const debugRecorder = new DebugRecorder(async (action, payload) => {
+      if (!debugSession) {
+        const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
+        if (!response.ok) throw Error('Local launcher unavailable');
+        debugSession = new NativeCapture((await response.json()).token);
+      }
+      return debugSession.call(action, payload);
+    }, state => {
+      document.getElementById('debugStatus').textContent = state.failed
+        ? `DEBUG SAVE FAILED — ${state.pending} events pending${state.overflow ? '; backlog full, some new events could not be queued' : ''}. Capture paused. Check USB access/free space. ${state.permanent ? 'Recording stopped: restart the launcher and reload this page after fixing storage.' : 'Retrying delivery automatically.'} Saved log: ${state.path}`
+        : `DEBUG ON — ${state.saved} events saved; ${state.pending} pending.${state.dropped ? ` Recording gap: ${state.dropped} events could not be queued.` : ''} ${state.path}`;
+    }, () => { if (crawler?.isRunning && !crawler.isPaused) togglePause(); });
+    async function enableDebug(create = true) {
+      try {
+        await debugRecorder.enable(create);
+        if (debugRecorder.active) document.getElementById('btnDebug').textContent = 'Debug enabled';
+      } catch (_) {
+        if (create) {
+          debugRecorder.terminal = true;
+          document.getElementById('debugStatus').textContent = 'DEBUG SAVE FAILED — recording could not start. Check the USB launcher and drive access, then click Debug again. Capture is blocked until recording starts.';
+        }
+      }
+    }
+    setInterval(() => {
+      if (debugRecorder.active) {
+        debugRecorder.record('heartbeat', crawler ? crawler.getProgressStats() : {});
+        void debugRecorder.flush();
+      }
+    }, 1000);
+    window.addEventListener('error', event => debugRecorder.record('browser_error', {error_type: event.error?.name || 'Error'}));
+    window.addEventListener('unhandledrejection', event => debugRecorder.record('unhandled_rejection', {error_type: event.reason?.name || 'Error'}));
+    window.addEventListener('pagehide', () => { debugRecorder.record('page_hidden'); void debugRecorder.flush(); });
+    document.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (button) debugRecorder.record('control', {action: button.id || 'button'});
+    });
 
     // Built-in profiles come from the generated bundle (single source of truth: profiles/*.json) (V4).
     const BUILTIN_PROFILES = (typeof AEGIS_BUNDLED_PROFILES !== 'undefined') ? AEGIS_BUNDLED_PROFILES : {};
 
     function init() {
+      void enableDebug(false);
       const select = document.getElementById('profileSelect');
       const customOpt = select.querySelector('option[value="custom"]');
       for (const [id, p] of Object.entries(BUILTIN_PROFILES)) {
@@ -430,6 +471,11 @@
       } catch (error) { log('[Recovery] ' + error.message); }
     }
     async function startHarvest() {
+      if (debugRecorder.terminal) {
+        document.getElementById('captureOutcome').textContent = 'Debug storage failed. Restart the launcher and reload this page after fixing USB access/free space.';
+        return;
+      }
+      debugRecorder.record('capture_start_requested', {route: document.getElementById('captureRoute').value});
       if (!activeProfile) return;
       const quick = document.getElementById('simpleTarget').value.trim();
       if (quick) {
@@ -440,6 +486,7 @@
         log(`[Capture] Quick target selected: ${parsed.href}`);
       }
       activeProfile = {...activeProfile, politeness: {...activeProfile.politeness, robots_policy: document.getElementById('robotsPolicy').value}};
+      debugRecorder.record('capture_configuration', {...activeProfile.politeness, max_pages: activeProfile.target.max_pages, max_depth: activeProfile.target.max_depth});
       finalResults = null;
       currentReportJSON = "";
       document.getElementById('docsTableBody').textContent = '';
@@ -450,9 +497,11 @@
       try {
         usbStorage = await NativeCapture.archive();
         nativeCapture = document.getElementById('captureRoute').value === 'native' ? await NativeCapture.start(activeProfile) : null;
+        debugRecorder.record('capture_connected', {native_log_name: nativeCapture?.logFile?.split(/[\\/]/).pop() || 'browser'});
         document.getElementById('btnRecoverNative').hidden = true;
         log(nativeCapture ? '[Route] Local Python; persistent request log: ' + nativeCapture.logFile : '[Route] Browser fetch: target must permit cross-origin reads.');
       } catch (error) {
+        debugRecorder.record('capture_start_failed', {error_type: error.diagnostic?.error_type || error.name, stage: error.diagnostic?.stage || 'preflight'});
         document.getElementById('btnStart').disabled = false;
         document.getElementById('captureState').textContent = 'FAILED — capture did not start';
         document.getElementById('captureOutcome').textContent = error.message;
@@ -468,6 +517,8 @@
           return response;
         } : undefined,
         onLog: (msg) => log(msg),
+        onAudit: event => debugRecorder.record('audit', event),
+        onDebug: (event, fields) => debugRecorder.record(event, fields),
         onProgress: (stats) => updateProgress(stats),
         onStatusChange: (status) => updateStatus(status),
         onDocumentFound: (doc) => addDocumentRow(doc),
@@ -489,6 +540,7 @@
       document.getElementById('captureState').textContent = 'RUNNING — archiving selected scope';
 
       crawler.start().catch(error => {
+        debugRecorder.record('capture_failed', {stage: error.diagnostic?.stage || 'capture', error_type: error.diagnostic?.error_type || error.name});
         log('[Error] ' + error.message);
         updateStatus('STOPPED');
         document.getElementById('btnStart').disabled = false;
@@ -530,6 +582,7 @@
     }
 
     function updateProgress(stats) {
+      debugRecorder.record('progress', {...stats, ...stats.telemetry});
       document.getElementById('telemetryCrawled').textContent = stats.visitedCount.toLocaleString();
       document.getElementById('telemetryQueue').textContent = stats.queueLength.toLocaleString();
       document.getElementById('telemetryDocs').textContent = stats.documentsFound.toLocaleString();
@@ -559,6 +612,7 @@
     }
 
     function updateStatus(status) {
+      debugRecorder.record('capture_state', {state: status});
       document.getElementById('captureState').textContent = status === 'STOPPED' ? 'STOPPED — archive finalized' : status === 'PAUSED' ? 'PAUSED — capture held in memory' : status;
       if (status === 'STOPPED') {
         document.getElementById('captureState').textContent = 'FINALIZING — preparing archive';
@@ -577,12 +631,13 @@
       if (nativeCapture) nativeCapture.close().catch(error => log(error.message));
       const counts = results.coverage?.counts || {};
       const captured = counts.captured || 0;
+      debugRecorder.record('capture_complete', {...counts, complete: !!results.coverage?.complete, archive_storage_verified: !!results.storageReceipt, archive_id: usbStorage?.id});
       document.getElementById('captureState').textContent = captured === 0 ? 'FAILED — no responses saved' : results.coverage?.complete ? 'COMPLETE — discovered resources saved' : 'INCOMPLETE — some resources not saved';
       document.getElementById('captureOutcome').textContent = `${captured} responses saved; ${counts.failed || 0} failed; ${counts.excluded || 0} excluded; ${counts.pending || 0} pending; ${counts.unsupported || 0} unsupported. ` + (captured ? 'Archive saved on USB: ' + results.storageReceipt.warc_path + '. ' : 'No website content was archived. ') + 'Inspect the audit log and diagnostic report for HTTP, robots, scope or access failures.';
       currentReportJSON = JSON.stringify(SelfReflectionEngine.generateJSONReport(results, {
         route: nativeCapture ? 'native' : 'browser', native_log_file: nativeCapture?.logFile
       }), null, 2);
-      NativeCapture.saveReport(JSON.parse(currentReportJSON)).then(saved => log('[Diagnostics] JSON saved on USB: ' + saved.log_file)).catch(error => log('[Diagnostics] Automatic save failed. Download JSON diagnostics to the USB.'));
+      NativeCapture.saveReport(JSON.parse(currentReportJSON)).then(saved => log('[Diagnostics] JSON saved on USB: ' + saved.log_file)).catch(error => log('[Diagnostics] Automatic save failed. Check USB access and free space.'));
       log(`[AegisArchive] Archival session finalized. Output: ${results.warcStats.recordCount} WARC records (${(results.warcStats.totalBytes / 1024).toFixed(1)} KB).`);
     }
 
@@ -606,6 +661,7 @@
     }
 
     function log(msg) {
+      debugRecorder.record('activity', {label: /^\[([A-Za-z ]+)/.exec(String(msg))?.[1]?.trim() || 'application'});
       const container = document.getElementById('logContainer');
       const entry = document.createElement('div');
       entry.className = 'log-entry';

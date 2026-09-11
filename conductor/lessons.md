@@ -179,3 +179,7 @@ Portable-runtime detection is not portable-runtime delivery. A fresh source chec
 ## 2026-09-11 — windows_network_route_20260911
 
 A pre-response timeout cannot identify the failing network stage. Default urllib proxy discovery does not evaluate Windows PAC settings. Evaluate automatic routes per destination, preserve explicit configuration, and log stage and numeric error evidence without proxy endpoints or credentials. Native Windows PAC fixtures establish routing capability, not the cause of a target failure or browser-authentication parity.
+
+## 2026-09-11 — progressive_debug_20260911
+
+End-of-run reports miss interrupted sessions. Save structured browser and native events progressively with acknowledged sequence numbers, and expose pending counts and permanent write failures. Serialize activation to prevent client/sequence races, retain usable pause/resume controls, and persist gap counts when bounded queues overflow. Validate real files before capture completion and after reload; do not promise to retain unacknowledged events on browser termination.

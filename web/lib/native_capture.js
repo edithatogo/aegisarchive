@@ -17,7 +17,7 @@ class NativeCapture {
   }
   static async saveReport(report) {
     const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
-    if (!response.ok) throw Error('Local diagnostic storage unavailable; download JSON to the USB.');
+    if (!response.ok) throw Error('Local diagnostic storage unavailable; check that the USB launcher is running.');
     const {token} = await response.json();
     return new NativeCapture(token).call('diagnostics', {report});
   }
@@ -29,8 +29,12 @@ class NativeCapture {
   }
   constructor(token) { this.token = token; }
   async call(action, payload) {
+    const controller = action.startsWith('debug-') ? new AbortController() : null;
+    const timeout = controller ? setTimeout(() => controller.abort(), 5000) : null;
+    try {
     const response = await fetch('/__station/capture/' + action, {
-      method: 'POST', keepalive: action === 'stop', headers: {'Content-Type': 'application/json', 'X-Capture-Token': this.token},
+      method: 'POST', keepalive: action === 'stop' || action === 'debug-events', signal: controller?.signal,
+      headers: {'Content-Type': 'application/json', 'X-Capture-Token': this.token},
       body: JSON.stringify(payload)
     });
     const result = await response.json();
@@ -40,6 +44,7 @@ class NativeCapture {
       throw error;
     }
     return result;
+    } finally { if (timeout) clearTimeout(timeout); }
   }
   async fetch(url, options = {}) {
     const result = await this.call('fetch', {id: this.id, url, options: {method: options.method || 'GET', headers: options.headers || {}}});

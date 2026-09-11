@@ -33,6 +33,62 @@ async function setup(page, path='/') {
   await page.getByRole('button', {name:'Apply Profile'}).click();
   await page.getByLabel('Quick capture address:').fill(origin + path);
 }
+test('Debug saves audit and native events before completion and survives reload without downloads', async ({page}) => {
+  const downloads=[];page.on('download',item=>downloads.push(item));
+  await setup(page,'/long');
+  await page.getByRole('button',{name:'Debug',exact:true}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  const path=await page.evaluate(()=>debugRecorder.path);
+  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
+  await expect.poll(async()=>await fs.readFile(path,'utf8')).toContain('"event": "audit"');
+  const live=await fs.readFile(path,'utf8');
+  expect(live).toContain('"event": "network_stage"');
+  expect(live).toContain('"event": "discovery"');
+  expect(live).not.toContain('"event": "capture_complete"');
+  await page.getByRole('button',{name:'⏹️ Stop'}).click();
+  await expect.poll(async()=>await fs.readFile(path,'utf8')).toContain('"event": "capture_complete"');
+  await page.reload();
+  await expect(page.locator('#debugStatus')).toContainText(path);
+  expect(downloads).toEqual([]);
+});
+
+test('Debug storage failures are visible without asking for a download', async ({page}) => {
+  await setup(page);
+  await page.route('**/__station/capture/debug-events',route=>route.fulfill({status:507,contentType:'application/json',body:JSON.stringify({error:'Synthetic storage failure'})}));
+  await page.getByRole('button',{name:/^Debug/}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG SAVE FAILED');
+  await expect(page.locator('#debugStatus')).not.toContainText('download');
+});
+test('failed Debug activation blocks capture until recording can start', async ({page}) => {
+  await page.route('**/__station/capture/debug-status', route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify({active:false})}));
+  await page.route('**/__station/capture/debug-start', route=>route.fulfill({status:507,contentType:'application/json',body:JSON.stringify({error:'Synthetic storage failure',diagnostic:{stage:'storage'}})}));
+  await setup(page);
+  await page.getByRole('button',{name:'Debug',exact:true}).click();
+  await expect(page.locator('#debugStatus')).toContainText('recording could not start');
+  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#captureState')).toHaveText('READY — nothing is running');
+  await page.unroute('**/__station/capture/debug-start');
+  await page.getByRole('button',{name:'Debug',exact:true}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  expect(await page.evaluate(()=>debugRecorder.terminal)).toBe(false);
+});
+test('transient debug delivery failure offers Resume after recovery', async ({page}) => {
+  await setup(page,'/long');
+  await page.getByRole('button',{name:/^Debug/}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
+  await page.route('**/__station/capture/debug-events',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic transient failure'})}));
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG SAVE FAILED');
+  await expect(page.locator('#btnPause')).toHaveText('▶️ Resume');
+  await page.unroute('**/__station/capture/debug-events');
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  await page.getByRole('button',{name:'▶️ Resume'}).click();
+  await expect(page.locator('#captureState')).toHaveText('RUNNING');
+  await page.getByRole('button',{name:'⏹️ Stop & Finalize'}).click();
+  await expect(page.locator('#captureState')).toContainText('INCOMPLETE');
+});
 test('normal UI captures a multi-page non-CORS site and exports actual responses', async ({page}) => {
   const downloads = [];
   page.on('download', item => downloads.push(item));

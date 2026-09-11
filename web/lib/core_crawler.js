@@ -38,6 +38,8 @@
       this.fetchResource = callbacks.fetchResource || ((...args) => fetch(...args));
       this.callbacks = {
         onLog: callbacks.onLog || (() => {}),
+        onAudit: callbacks.onAudit || (() => {}),
+        onDebug: callbacks.onDebug || (() => {}),
         onProgress: callbacks.onProgress || (() => {}),
         onStatusChange: callbacks.onStatusChange || (() => {}),
         onDocumentFound: callbacks.onDocumentFound || (() => {}),
@@ -214,7 +216,7 @@
       this.callbacks.onLog(`[AegisArchive] Engine started. Seeded ${this.queue.length} target URLs.`);
       if (this.robotsPolicy === 'ignore_authorised' && !this.robotsPolicyLogged) {
         this.robotsPolicyLogged = true;
-        this.auditLedger.push({ url: 'robots_policy', status: -1, mimeType: 'robots_policy', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, timestamp: new Date().toISOString() });
+        this.recordAudit({ url: 'robots_policy', status: -1, mimeType: 'robots_policy', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, timestamp: new Date().toISOString() });
         this.callbacks.onLog('[Robots] Policy ignore_authorised: robots.txt is NOT consulted. Operator asserts authorisation for these targets.');
       }
       this.callbacks.onStatusChange('RUNNING');
@@ -262,7 +264,7 @@
           return;
         }
         this.resourceOutcomes.set(url,{url,state:'excluded',reason:'robots_policy'});
-        this.auditLedger.push({ url, status: -1, mimeType: 'robots_disallow', latency_ms: 0, size_bytes: 0, timestamp: new Date().toISOString() });
+        this.recordAudit({ url, status: -1, mimeType: 'robots_disallow', latency_ms: 0, size_bytes: 0, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] Skipped (Disallow): ${url}`);
         return;
       }
@@ -297,7 +299,7 @@
           this.resourceOutcomes.set(url,{url,state:'failed',reason:'http_error',status:resp.status});
           const retryAfter = resp.headers.get('retry-after');
           this.politeness.recordFailure(url, resp.status, retryAfter);
-          this.auditLedger.push({
+          this.recordAudit({
             url,
             status: resp.status,
             mimeType: resp.headers.get('content-type') || 'error',
@@ -326,7 +328,7 @@
         const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: resp.aegisRequest || { method: 'GET', headers: REQUEST_HEADERS } });
 
         this.resourceOutcomes.set(url,{url,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length});
-        this.auditLedger.push({
+        this.recordAudit({
           url,
           status: resp.status,
           mimeType: contentType.split(';')[0].trim(),
@@ -378,7 +380,7 @@
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
         this.politeness.recordFailure(url, 0, null);
-        this.auditLedger.push({
+        this.recordAudit({
           url,
           status: 0,
           mimeType: 'capture_error',
@@ -452,7 +454,7 @@
         // An unavailable robots policy must not silently grant access.
         if (status === 0 || status === 401 || status === 403 || status === 429 || status >= 500 || (status >= 300 && status < 400)) rules = ['/'];
         this.robotsRules.set(origin, rules);
-        this.auditLedger.push({ url: robotsUrl, status, mimeType: 'robots_txt', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, disallow_count: rules.length, timestamp: new Date().toISOString() });
+        this.recordAudit({ url: robotsUrl, status, mimeType: 'robots_txt', latency_ms: 0, size_bytes: 0, robots_policy: this.robotsPolicy, disallow_count: rules.length, timestamp: new Date().toISOString() });
         this.callbacks.onLog(`[Robots] ${robotsUrl} -> HTTP ${status}; ${rules.length} Disallow rule(s) honoured.`);
       }
       return !this.isPathDisallowed(urlStr, this.robotsRules.get(origin));
@@ -462,7 +464,13 @@
      * Puts a task back on the queue after a countable failure (D3). Back-off is applied by
      * acquirePermission() because the engine is now THROTTLED/TRIPPED.
      */
+    recordAudit(event) {
+      this.auditLedger.push(event);
+      this.callbacks.onAudit(event);
+    }
+
     requeueForRetry(task) {
+      this.callbacks.onDebug('retry', {url: task.url, attempt: (task.retries || 0) + 1});
       const retries = (task.retries || 0) + 1;
       if (retries > this.maxRetries) {
         this.callbacks.onLog(`[Retry] Abandoning ${task.url} after ${this.maxRetries} retries.`);
@@ -486,14 +494,17 @@
     enqueueReference(raw, baseUrl, nextDepth, tier) {
       const url = this.canonicalizeUrl(raw, baseUrl);
       if (!url) {
+        this.callbacks.onDebug('discovery', {reason_code: 'unsupported_seed_or_reference'});
         this.discoveryLimitations.push({source:baseUrl,reason:'unsupported_seed_or_reference'});
         return;
       }
       if (!this.isUrlInScope(url) || nextDepth > this.maxDepth) {
+        this.callbacks.onDebug('discovery', {url, state: 'excluded', reason_code: nextDepth > this.maxDepth ? 'depth_limit' : 'scope'});
         if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'excluded',reason:nextDepth > this.maxDepth ? 'depth_limit' : 'scope'});
         return;
       }
       if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'pending',reason:null});
+      this.callbacks.onDebug('discovery', {url, state: this.visited.has(url) ? 'visited' : 'pending'});
       if (!this.visited.has(url) && !this.queue.some(q => q.url === url)) this.queue.push({url,tier,depth:nextDepth,parentUrl:baseUrl});
     }
 
