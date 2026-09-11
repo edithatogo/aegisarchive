@@ -14,6 +14,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 
 | priority | track_id | task | status | owner | blocked_by |
 | --- | --- | --- | --- | --- | --- |
+| P0 | windows_network_route_20260911 | T1 | in_progress | codex | - |
 | P0 | usb_capture_storage_20260911 | T1 | done | - | - |
 | P0 | windows_usb_runtime_20260910 | T1 | done | - | - |
 | P0 | capture_diagnostics_20260909 | T1 | done | - | - |

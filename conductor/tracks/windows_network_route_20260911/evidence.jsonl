@@ -1,0 +1,2 @@
+{"ts": "2026-09-11T06:00:00Z", "kind": "gate_authorized", "gate": "G1", "actor": "user", "summary": "Proceed: implement network routing and diagnostics, review, check Actions and merge under standing authorization."}
+{"ts": "2026-09-11T06:00:00Z", "kind": "task_started", "task": "T1", "actor": "codex", "summary": "Observed pre-response timeout remains proposed; confirmed missing PAC capability to reproduce."}
