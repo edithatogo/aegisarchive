@@ -7,6 +7,12 @@ from cli.debug_journal import DebugJournal
 
 
 class DebugJournalTests(unittest.TestCase):
+    def test_windows_directory_junction_is_rejected(self):
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(Path, 'is_junction', return_value=True, create=True):
+                with self.assertRaises(OSError): DebugJournal(folder).start()
+            self.assertEqual(list(Path(folder).iterdir()), [])
+
     def test_symlink_directory_is_rejected_without_external_writes(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder); outside = root / 'outside'; outside.mkdir()

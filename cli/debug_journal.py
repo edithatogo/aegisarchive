@@ -65,7 +65,7 @@ class DebugJournal:
             if len(self.clients) >= 64:
                 raise ValueError('Debug client limit reached; restart the launcher')
             if self.path is None:
-                if self.directory.is_symlink():
+                if self.directory.is_symlink() or getattr(self.directory, 'is_junction', lambda: False)():
                     raise OSError('Debug directory must not be a symlink')
                 self.directory.mkdir(parents=True, exist_ok=True)
                 path = self.directory / ('debug-' + secrets.token_hex(12) + '.jsonl')
@@ -84,7 +84,7 @@ class DebugJournal:
         directory/file identity before writing through the opened descriptor.
         This is not protection against arbitrary concurrent filesystem owners.
         """
-        if self.directory.is_symlink():
+        if self.directory.is_symlink() or getattr(self.directory, 'is_junction', lambda: False)():
             raise OSError('Debug directory must not be a symlink')
         before = self.directory.stat(follow_symlinks=False)
         if not stat.S_ISDIR(before.st_mode):
