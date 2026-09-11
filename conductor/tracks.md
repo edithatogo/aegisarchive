@@ -1,7 +1,7 @@
 # AegisArchive Track Registry
 
-- [ ] **Track: Windows network routing and diagnostics**
-  *Status: In Progress*
+- [x] **Track: Windows network routing and diagnostics**
+  *Status: Completed*
   *Link: [./tracks/windows_network_route_20260911/index.md](./tracks/windows_network_route_20260911/index.md)*
 
 - [x] **Track: USB-local capture storage**

@@ -175,3 +175,7 @@ Atomic checkpointing and content verification make interrupted captures resumabl
 ## 2026-09-10 — windows_usb_runtime_20260910
 
 Portable-runtime detection is not portable-runtime delivery. A fresh source checkout has no ignored binaries. Prepare a checksum-pinned runtime on the setup computer and test the same embedded executable with system Python removed from PATH. Fixed capability receipts are not capture evidence. macOS AppleDouble sidecars are not runtime manifest entries. Target-workstation policy and authentication acceptance remain separate from hosted CI.
+
+## 2026-09-11 — windows_network_route_20260911
+
+A pre-response timeout cannot identify the failing network stage. Default urllib proxy discovery does not evaluate Windows PAC settings. Evaluate automatic routes per destination, preserve explicit configuration, and log stage and numeric error evidence without proxy endpoints or credentials. Native Windows PAC fixtures establish routing capability, not the cause of a target failure or browser-authentication parity.

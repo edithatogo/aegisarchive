@@ -1,6 +1,6 @@
 # Windows network routing
 
-Status: in_progress
+Status: completed (2026-09-11)
 
 - [Specification](spec.md)
 - [Plan](plan.md)
