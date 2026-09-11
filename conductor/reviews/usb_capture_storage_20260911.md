@@ -7,3 +7,5 @@ Second independent reviewer: approve for integration, with no blocking findings.
 Recommended option: persist launcher archives to the application's USB directory and stop on storage failure. Retaining OPFS and default downloads was rejected because it violates the user's storage requirement. Routine delivery is covered by standing owner authorization, subject to final-head checks.
 
 Acceptance boundary: hosted fixtures do not prove corporate application-control compatibility, integrated SSO, or completeness of the real intranet. See `docs/REQUIREMENTS_ACCEPTANCE.md`.
+
+Hosted review follow-up: two file-check/open race findings were addressed by opening with no-follow where available, validating current file identity and size through `fstat` on the same descriptor used for writes/hashing, and verifying published bytes again. Two injected substituted-descriptor regressions pass. Creation-time identifiers are not retained: the actual USB changed its file identifier after allocation. External modification after finalization remains detectable by the receipt hashes; files are not claimed immutable against other processes with filesystem access.

@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import stat
 import threading
 
 CHUNK_LIMIT = 256 * 1024
@@ -42,6 +43,23 @@ class UsbArchiveStore:
             raise ValueError('Archive is no longer writable')
         return item
 
+    def open_partial(self, item, kind, writable=False):
+        path = item['folder'] / ('archive.' + kind + '.partial')
+        flags = (os.O_RDWR if writable else os.O_RDONLY) | getattr(os, 'O_BINARY', 0) | getattr(os, 'O_NOFOLLOW', 0)
+        fd = os.open(path, flags)
+        try:
+            info = os.fstat(fd)
+            named = path.stat(follow_symlinks=False)
+            if (not stat.S_ISREG(info.st_mode) or
+                    not stat.S_ISREG(named.st_mode) or
+                    (info.st_dev, info.st_ino) != (named.st_dev, named.st_ino) or
+                    info.st_size != item['sizes'][kind]):
+                raise OSError('Archive file changed')
+            return os.fdopen(fd, 'r+b' if writable else 'rb')
+        except BaseException:
+            os.close(fd)
+            raise
+
     def chunk(self, sid, kind, offset, data):
         with self.lock:
             item = self.session(sid)
@@ -52,11 +70,9 @@ class UsbArchiveStore:
             raw = base64.b64decode(data, validate=True)
             if not raw or len(raw) > CHUNK_LIMIT:
                 raise ValueError('Invalid archive chunk')
-            path = item['folder'] / ('archive.' + kind + '.partial')
             try:
-                if path.is_symlink() or path.stat().st_size != offset:
-                    raise OSError('Archive file changed')
-                with path.open('ab') as output:
+                with self.open_partial(item, kind, writable=True) as output:
+                    output.seek(offset)
                     output.write(raw)
                     output.flush()
                     os.fsync(output.fileno())
@@ -83,15 +99,23 @@ class UsbArchiveStore:
             try:
                 for kind in ('warc', 'cdx'):
                     source = folder / ('archive.' + kind + '.partial')
-                    if source.is_symlink() or source.stat().st_size != item['sizes'][kind]:
-                        raise OSError('Archive file changed')
                     actual = hashlib.sha256()
-                    with source.open('rb') as saved:
+                    with self.open_partial(item, kind) as saved:
                         for block in iter(lambda: saved.read(1024 * 1024), b''):
                             actual.update(block)
                     if actual.hexdigest() != item['hashes'][kind].hexdigest():
                         raise OSError('Archive verification failed')
                     os.replace(source, folder / ('archive.' + kind))
+                    # Re-read published bytes: exFAT file identifiers can change
+                    # after allocation/rename, so creation-time IDs are not portable.
+                    published_hash = hashlib.sha256()
+                    with (folder / ('archive.' + kind)).open('rb') as published:
+                        if not stat.S_ISREG(os.fstat(published.fileno()).st_mode):
+                            raise OSError('Invalid published archive')
+                        for block in iter(lambda: published.read(1024 * 1024), b''):
+                            published_hash.update(block)
+                    if published_hash.hexdigest() != item['hashes'][kind].hexdigest():
+                        raise OSError('Archive changed during finalization')
                 with (folder / 'receipt.partial.json').open('x', encoding='utf-8') as output:
                     json.dump(receipt, output, indent=2)
                     output.flush()

@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -64,3 +65,23 @@ class UsbArchiveTests(unittest.TestCase):
     def test_chunk_limit(self):
         with self.assertRaises(ValueError):
             self.chunk(b'x' * (256 * 1024 + 1))
+
+    def test_replaced_file_descriptor_is_rejected_before_writing(self):
+        outside = Path(self.temp.name) / 'outside'
+        outside.write_bytes(b'')
+        original_open = os.open
+        with patch('cli.usb_archive.os.open', side_effect=lambda path, flags: original_open(outside, flags)):
+            with self.assertRaises(OSError):
+                self.chunk(b'never write here')
+        self.assertEqual(outside.read_bytes(), b'')
+        self.assertFalse((self.store.root/self.sid/'receipt.json').exists())
+
+    def test_replaced_file_descriptor_is_rejected_before_hashing(self):
+        self.chunk(b'original')
+        outside = Path(self.temp.name) / 'outside'
+        outside.write_bytes(b'original')
+        original_open = os.open
+        with patch('cli.usb_archive.os.open', side_effect=lambda path, flags: original_open(outside, flags)):
+            with self.assertRaises(OSError):
+                self.store.finalize(self.sid, {'complete': True})
+        self.assertFalse((self.store.root/self.sid/'receipt.json').exists())
