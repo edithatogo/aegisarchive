@@ -3,6 +3,26 @@ const assert = require('node:assert/strict');
 const {DebugRecorder} = require('../../web/lib/debug_recorder.js');
 const tick = () => new Promise(resolve => setImmediate(resolve));
 
+test('concurrent Debug clicks share one server client', async () => {
+  let release;const gate=new Promise(resolve=>release=resolve);let starts=0;const batches=[];
+  const recorder=new DebugRecorder(async (action,payload)=>{
+    if(action==='debug-status')return {active:false};
+    if(action==='debug-start'){
+      starts++;await gate;
+      return {client_id:'only-client',log_file:'debug.jsonl',next_sequence:0};
+    }
+    batches.push(payload);
+    return {next_sequence:payload.sequence+payload.events.length,saved_events:2};
+  });
+  const enabling=[recorder.enable(),recorder.enable(),recorder.enable()];
+  await tick();assert.equal(starts,1);release();
+  await Promise.all(enabling);await tick();
+  recorder.record('later');await tick();
+  assert.equal(starts,1);assert.equal(recorder.queue.length,0);
+  assert.deepEqual(batches.map(batch=>batch.sequence),[0,1]);
+  assert.ok(batches.every(batch=>batch.client_id==='only-client'));
+});
+
 test('records progressively and redacts URL credentials before sending', async () => {
   const batches=[];
   const recorder=new DebugRecorder(async (action, payload) => {
@@ -67,4 +87,18 @@ test('queue overflow is explicit and calls the capture pause hook', () => {
   for(let i=0;i<1025;i++)recorder.record('progress');
   assert.equal(recorder.queue.length,1024);
   assert.equal(state.overflow,true);assert.equal(paused,1);
+});
+
+test('overflow leaves a durable gap marker after delivery recovers', async () => {
+  const events=[];
+  const recorder=new DebugRecorder(async (_,payload)=>{
+    events.push(...payload.events);
+    return {next_sequence:payload.sequence+payload.events.length,saved_events:events.length};
+  });
+  recorder.active=true;recorder.client='client';recorder.sending=true;
+  for(let i=0;i<1025;i++)recorder.record('progress');
+  recorder.sending=false;await recorder.flush();
+  while(recorder.sending||recorder.queue.length)await tick();
+  assert.deepEqual(events.find(event=>event.event==='debug_gap'),{event:'debug_gap',dropped_events:1});
+  assert.equal(recorder.droppedTotal,1);
 });

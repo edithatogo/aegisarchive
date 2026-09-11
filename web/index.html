@@ -274,8 +274,8 @@
     }, state => {
       document.getElementById('debugStatus').textContent = state.failed
         ? `DEBUG SAVE FAILED — ${state.pending} events pending${state.overflow ? '; backlog full, some new events could not be queued' : ''}. Capture paused. Check USB access/free space. ${state.permanent ? 'Recording stopped: restart the launcher and reload this page after fixing storage.' : 'Retrying delivery automatically.'} Saved log: ${state.path}`
-        : `DEBUG ON — ${state.saved} events saved; ${state.pending} pending. ${state.path}`;
-    }, () => { if (crawler?.isRunning && !crawler.isPaused) crawler.pause(); });
+        : `DEBUG ON — ${state.saved} events saved; ${state.pending} pending.${state.dropped ? ` Recording gap: ${state.dropped} events could not be queued.` : ''} ${state.path}`;
+    }, () => { if (crawler?.isRunning && !crawler.isPaused) togglePause(); });
     async function enableDebug(create = true) {
       try {
         await debugRecorder.enable(create);

@@ -18,7 +18,7 @@ NUMBERS = frozenset(('status', 'elapsed_ms', 'latency_ms', 'size_bytes', 'bytes'
                      'visitedCount', 'queueLength', 'documentsFound', 'availableTokens',
                      'ewmaLatencyMs', 'consecutiveErrors', 'errno', 'winerror', 'captured',
                      'failed', 'pending', 'excluded', 'unsupported', 'max_pages', 'max_depth',
-                     'min_delay_ms', 'max_delay_ms', 'max_requests_per_minute', 'offset'))
+                     'min_delay_ms', 'max_delay_ms', 'max_requests_per_minute', 'offset', 'dropped_events'))
 FLAGS = frozenset(('complete', 'archive_storage_verified', 'auto_detect', 'pac_present',
                    'static_proxy_present', 'bypass_present', 'bypass', 'proxy_configured'))
 

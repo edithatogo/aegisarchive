@@ -9,3 +9,5 @@ The implementation flushes and syncs each append before acknowledging it, preser
 Verification: focused Python and JavaScript suites, existing baseline, and real Chrome browser tests read the journal during capture and after reload with no download. Hosted multi-platform execution remains the final merge gate.
 
 Hosted-review follow-up: directory opens now reject symlink substitution and use anchored POSIX directory descriptors; Windows validates directory/file identity before writing. Two symlink regressions and actual USB smoke pass. The CodeQL URL assertion now compares the precise URL property. Failed Debug activation blocks capture until successful retry. Independent re-review approved these changes; Windows fallback awaits hosted execution.
+
+Late automated interaction review: concurrent Debug activation is serialized to one client, and transient failure/recovery maintains the correct Resume control. Independent re-review approved both fixes. Queue overflow now leaves a counted gap marker in the journal after delivery recovers and a persistent UI gap count.

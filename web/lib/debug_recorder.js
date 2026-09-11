@@ -3,8 +3,19 @@ class DebugRecorder {
   constructor(call, notify = () => {}, failed = () => {}) {
     this.call = call; this.notify = notify; this.onFailure = failed;
     this.queue = []; this.active = false; this.sending = false; this.sequence = 0;
+    this.dropped = 0; this.droppedTotal = 0;
   }
   async enable(create = true) {
+    if (this.active) return;
+    if (this.enabling) {
+      await this.enabling;
+      return this.enable(create);
+    }
+    this.enabling = this.open(create);
+    try { await this.enabling; }
+    finally { this.enabling = null; }
+  }
+  async open(create) {
     if (this.active) return;
     const status = await this.call('debug-status', {});
     if (status.failed) {
@@ -22,6 +33,7 @@ class DebugRecorder {
   record(event, fields = {}) {
     if (!this.active || this.terminal) return;
     if (this.queue.length >= 1024) {
+      this.dropped++; this.droppedTotal++;
       this.notify({failed: true, path: this.path, pending: this.queue.length, overflow: true});
       this.onFailure(); return;
     }
@@ -48,7 +60,11 @@ class DebugRecorder {
       if (result.next_sequence !== this.sequence + this.batch.length) throw Error('Debug acknowledgement mismatch');
       this.sequence = result.next_sequence;
       this.queue.splice(0, this.batch.length); this.batch = null;
-      this.notify({saved: result.saved_events, pending: this.queue.length, path: this.path});
+      if (this.dropped) {
+        this.queue.push({event: 'debug_gap', dropped_events: this.dropped});
+        this.dropped = 0;
+      }
+      this.notify({saved: result.saved_events, pending: this.queue.length, path: this.path, dropped: this.droppedTotal});
     } catch (error) {
       this.terminal = error.diagnostic?.stage === 'storage';
       this.notify({failed: true, permanent: this.terminal, pending: this.queue.length, path: this.path});

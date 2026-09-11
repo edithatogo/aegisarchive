@@ -73,6 +73,22 @@ test('failed Debug activation blocks capture until recording can start', async (
   await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
   expect(await page.evaluate(()=>debugRecorder.terminal)).toBe(false);
 });
+test('transient debug delivery failure offers Resume after recovery', async ({page}) => {
+  await setup(page,'/long');
+  await page.getByRole('button',{name:/^Debug/}).click();
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
+  await page.route('**/__station/capture/debug-events',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic transient failure'})}));
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG SAVE FAILED');
+  await expect(page.locator('#btnPause')).toHaveText('▶️ Resume');
+  await page.unroute('**/__station/capture/debug-events');
+  await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
+  await page.getByRole('button',{name:'▶️ Resume'}).click();
+  await expect(page.locator('#captureState')).toHaveText('RUNNING');
+  await page.getByRole('button',{name:'⏹️ Stop & Finalize'}).click();
+  await expect(page.locator('#captureState')).toContainText('INCOMPLETE');
+});
 test('normal UI captures a multi-page non-CORS site and exports actual responses', async ({page}) => {
   const downloads = [];
   page.on('download', item => downloads.push(item));
