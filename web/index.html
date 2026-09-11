@@ -111,7 +111,7 @@
         <button class="btn btn-danger" id="btnStop" onclick="stopHarvest()" disabled>⏹️ Stop &amp; Finalize</button>
       </div>
       <div class="button-cluster">
-        <button class="btn btn-primary" id="btnExportWarc" onclick="exportWarc()" disabled>📦 Download WARC + CDX</button>
+        <button class="btn btn-primary" id="btnExportWarc" onclick="exportWarc()" disabled>📦 Show saved archive location</button>
         <button class="btn btn-secondary" id="btnExportCsv" onclick="exportAuditCsv()" disabled>📋 Export Audit CSV</button>
         <button class="btn btn-secondary" id="btnReport" onclick="openReportModal()" disabled>📊 Diagnostic Report</button>
       </div>
@@ -259,7 +259,7 @@
     let finalResults = null;
     let currentReportJSON = "";
     let pendingCheckpoint = null;
-    const CHECKPOINT_KEY = 'aegis.checkpoint.v1';
+    let memoryCheckpoint = null;
 
     // Built-in profiles come from the generated bundle (single source of truth: profiles/*.json) (V4).
     const BUILTIN_PROFILES = (typeof AEGIS_BUNDLED_PROFILES !== 'undefined') ? AEGIS_BUNDLED_PROFILES : {};
@@ -281,13 +281,11 @@
     }
 
     function saveCheckpoint(cp) {
-      try {
-        if (cp === null) localStorage.removeItem(CHECKPOINT_KEY);
-        else localStorage.setItem(CHECKPOINT_KEY, JSON.stringify(cp));
-      } catch (e) { log(`[Checkpoint] Not saved: ${e.message}`); }
+      // Never persist source URLs or the frontier in the host browser profile.
+      memoryCheckpoint = cp;
     }
     function loadCheckpoint() {
-      try { const raw = localStorage.getItem(CHECKPOINT_KEY); return raw ? JSON.parse(raw) : null; } catch (e) { return null; }
+      return memoryCheckpoint;
     }
     function showResumeBanner(cp) {
       document.getElementById('resumeBannerText').textContent =
@@ -420,6 +418,7 @@
     }
 
     let nativeCapture = null;
+    let usbStorage = null;
     window.addEventListener('pagehide', () => {
       if (nativeCapture) nativeCapture.close().catch(() => {});
     });
@@ -449,6 +448,7 @@
       document.getElementById('captureState').textContent = 'CONNECTING — preparing acquisition';
       document.getElementById('captureOutcome').textContent = 'Preparing capture…';
       try {
+        usbStorage = await NativeCapture.archive();
         nativeCapture = document.getElementById('captureRoute').value === 'native' ? await NativeCapture.start(activeProfile) : null;
         document.getElementById('btnRecoverNative').hidden = true;
         log(nativeCapture ? '[Route] Local Python; persistent request log: ' + nativeCapture.logFile : '[Route] Browser fetch: target must permit cross-origin reads.');
@@ -460,6 +460,7 @@
         log('[Error] ' + error.message); return;
       }
       crawler = new CoreCrawler(activeProfile, {
+        streamer: usbStorage,
         fetchResource: nativeCapture ? async (url, options) => {
           log('[Request] GET ' + url);
           const response = await nativeCapture.fetch(url, options);
@@ -493,6 +494,15 @@
         document.getElementById('btnStart').disabled = false;
         document.getElementById('captureState').textContent = 'FAILED — capture interrupted';
         document.getElementById('captureOutcome').textContent = error.message;
+        const report = {schema_version: 1, generated_at: new Date().toISOString(), outcome: 'failed',
+          coverage: {complete: false, counts: {captured: 0}, archive_storage_verified: false},
+          events: [{stage: error.diagnostic?.stage || 'capture',
+            error_type: error.diagnostic?.error_type || 'Error', timestamp: new Date().toISOString()}],
+          limitations: ['No successful archive receipt was produced. Partial bytes may remain on the USB.']};
+        currentReportJSON = JSON.stringify(report, null, 2);
+        document.getElementById('btnReport').disabled = false;
+        NativeCapture.saveReport(report).then(saved => log('[Diagnostics] JSON saved on USB: ' + saved.log_file))
+          .catch(() => log('[Diagnostics] USB diagnostic write also failed. Keep the visible error for troubleshooting.'));
         if (nativeCapture) nativeCapture.close().catch(() => {});
       });
     }
@@ -549,7 +559,7 @@
     }
 
     function updateStatus(status) {
-      document.getElementById('captureState').textContent = status === 'STOPPED' ? 'STOPPED — archive finalized' : status === 'PAUSED' ? 'PAUSED — checkpoint saved' : status;
+      document.getElementById('captureState').textContent = status === 'STOPPED' ? 'STOPPED — archive finalized' : status === 'PAUSED' ? 'PAUSED — capture held in memory' : status;
       if (status === 'STOPPED') {
         document.getElementById('captureState').textContent = 'FINALIZING — preparing archive';
         document.getElementById('btnPause').disabled = true;
@@ -568,7 +578,7 @@
       const counts = results.coverage?.counts || {};
       const captured = counts.captured || 0;
       document.getElementById('captureState').textContent = captured === 0 ? 'FAILED — no responses saved' : results.coverage?.complete ? 'COMPLETE — discovered resources saved' : 'INCOMPLETE — some resources not saved';
-      document.getElementById('captureOutcome').textContent = `${captured} responses saved; ${counts.failed || 0} failed; ${counts.excluded || 0} excluded; ${counts.pending || 0} pending; ${counts.unsupported || 0} unsupported. ` + (captured ? 'Download WARC + CDX to keep the archive. ' : 'No website content was archived. ') + 'Inspect the audit log and diagnostic report for HTTP, robots, scope or access failures.';
+      document.getElementById('captureOutcome').textContent = `${captured} responses saved; ${counts.failed || 0} failed; ${counts.excluded || 0} excluded; ${counts.pending || 0} pending; ${counts.unsupported || 0} unsupported. ` + (captured ? 'Archive saved on USB: ' + results.storageReceipt.warc_path + '. ' : 'No website content was archived. ') + 'Inspect the audit log and diagnostic report for HTTP, robots, scope or access failures.';
       currentReportJSON = JSON.stringify(SelfReflectionEngine.generateJSONReport(results, {
         route: nativeCapture ? 'native' : 'browser', native_log_file: nativeCapture?.logFile
       }), null, 2);
@@ -613,6 +623,11 @@
 
     function exportWarc() {
       if (!finalResults) return;
+      if (finalResults.storageReceipt) {
+        log('[Archive] Already saved on USB: ' + finalResults.storageReceipt.warc_path);
+        log('[Index] Already saved on USB: ' + finalResults.storageReceipt.cdx_path);
+        return;
+      }
       const warcBlob = finalResults.warcBlob;
       const cdxBlob = finalResults.cdxBlob;
       const prefix = activeProfile.archival ? activeProfile.archival.warc_prefix : 'archive';

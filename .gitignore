@@ -27,6 +27,7 @@ archive/incoming/
 
 # Local acquisition diagnostics
 archive/capture-logs/
+archive/captures/
 
 # Portable runtime and acceptance artefacts (kept on the drive, never committed)
 artifacts/

@@ -63,13 +63,14 @@
       // Submodules
       this.politeness = new PolitenessEngine(profile.politeness || {});
       this.warc = new WarcWriter({
+        ...(callbacks.streamer?.isUsb ? {filename: 'archive.warc'} : {}),
         prefix: profile.archival ? profile.archival.warc_prefix : 'archive',
         operator: profile.archival ? profile.archival.operator : 'AegisArchive Preservationist',
         organization: profile.archival ? profile.archival.organization : 'Public Preservation',
         deduplicate: profile.archival ? profile.archival.deduplicate_payloads : true
       });
       const wantsOpfs = !profile.archival || profile.archival.enable_opfs_streaming !== false;
-      this.streamer = (wantsOpfs && typeof OpfsStreamer !== 'undefined') ? new OpfsStreamer(this.warc.filename) : null;
+      this.streamer = callbacks.streamer || ((wantsOpfs && typeof OpfsStreamer !== 'undefined') ? new OpfsStreamer(this.warc.filename) : null);
       this.streamerAttached = false;
 
       // Config shortcuts
@@ -207,7 +208,7 @@
         const onDisk = await this.streamer.init();
         await this.warc.attachStreamer(this.streamer);
         this.streamerAttached = true;
-        this.callbacks.onLog(onDisk ? '[Storage] Streaming WARC records to origin-private file storage.' : '[Storage] OPFS unavailable; streaming to memory chunks.');
+        this.callbacks.onLog(this.streamer.isUsb ? '[Storage] Streaming archive directly to USB: ' + this.streamer.directory : onDisk ? '[Storage] Streaming WARC records to origin-private file storage.' : '[Storage] OPFS unavailable; streaming to memory chunks.');
       }
 
       this.callbacks.onLog(`[AegisArchive] Engine started. Seeded ${this.queue.length} target URLs.`);
@@ -247,7 +248,7 @@
       this.callbacks.onStatusChange('STOPPED');
       this.callbacks.onCheckpoint(this.queue.length > 0 ? this.exportCheckpoint() : null);
       this.callbacks.onLog(`[AegisArchive] Run complete. Attempted ${this.visited.size} URLs; archived ${this.documents.length} assets.`);
-      this.callbacks.onComplete(await this.getFinalResults());
+      await this.callbacks.onComplete(await this.getFinalResults());
     }
 
     async processUrl(task) {
@@ -367,6 +368,11 @@
         }
 
       } catch (err) {
+        if (err.diagnostic?.stage === 'storage') {
+          this.isRunning = false;
+          this.shouldStop = true;
+          throw err;
+        }
         stage = err.diagnostic?.stage || stage;
         this.resourceOutcomes.set(url,{url,state:'failed',reason:'capture_error',stage,error_type:err.diagnostic?.error_type || err.name || 'Error',attempt});
         const reqEndTime = performance.now();
@@ -565,7 +571,7 @@
         endTime: this.endTime
       }, this.profile);
 
-      const warcBlob = await this.warc.getWarcBlob();
+      const warcBlob = this.streamer?.isUsb ? null : await this.warc.getWarcBlob();
       const cdxBlob = this.warc.getCdxBlob();
       const hashBlob = async blob => Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', await blob.arrayBuffer())), b => b.toString(16).padStart(2,'0')).join('');
       const resources = [...this.resourceOutcomes.values()].sort((a,b) => a.url.localeCompare(b.url));
@@ -573,8 +579,13 @@
       const coverage = {schema_version:1,extractor_version:MirrorResources.VERSION,scope:'discovered_static_resource_graph',
         complete:resources.length > 0 && counts.captured === resources.length && this.discoveryLimitations.length === 0,
         counts,discovered:resources.length,resources,limitations:this.discoveryLimitations,robots_policy:this.robotsPolicy,
-        archives:{warc:{sha256:await hashBlob(warcBlob)},cdx:{sha256:await hashBlob(cdxBlob)}}};
+        archives:{}};
+      const storageReceipt = this.streamer?.isUsb
+        ? await this.streamer.finalize(this.warc.getCdxContent(), coverage.complete) : null;
+      coverage.archives = storageReceipt ? storageReceipt.archives
+        : {warc:{sha256:await hashBlob(warcBlob)},cdx:{sha256:await hashBlob(cdxBlob)}};
       return {
+        storageReceipt,
         coverage,
         warcBlob,
         cdxBlob,

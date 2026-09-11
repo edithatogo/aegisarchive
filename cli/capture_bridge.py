@@ -16,9 +16,11 @@ import urllib.request
 from pathlib import Path
 
 try:
+    from .usb_archive import UsbArchiveStore
     from .politeness import PolitenessEngine
     from .auth import request_headers, ssl_context, SENSITIVE, redact_headers
 except ImportError:
+    from usb_archive import UsbArchiveStore
     from politeness import PolitenessEngine
     from auth import request_headers, ssl_context, SENSITIVE, redact_headers
 
@@ -49,6 +51,7 @@ class CaptureBridge:
     def __init__(self, log_dir, station_port):
         self.token = secrets.token_urlsafe(32)
         self.log_dir = Path(log_dir)
+        self.archives = UsbArchiveStore(self.log_dir.parent / 'captures')
         self.station_port = station_port
         self.session = None
         self.lock = threading.Lock()
@@ -220,12 +223,20 @@ def handle(handler):
                 handler.send_error(403, 'Capture token required')
                 return True
             length = int(handler.headers.get('Content-Length', '0'))
-            if not 0 < length <= (8 * 1024 * 1024 if path == '/__station/capture/diagnostics' else 65536):
+            limit = (8 * 1024 * 1024 if path == '/__station/capture/diagnostics'
+                     else 400000 if path == '/__station/capture/archive-chunk' else 65536)
+            if not 0 < length <= limit:
                 raise ValueError('Invalid request length')
             payload = json.loads(handler.rfile.read(length))
             if not isinstance(payload, dict):
                 raise ValueError('JSON object required')
-            if path == '/__station/capture/start':
+            if path == '/__station/capture/archive-start':
+                result = bridge.archives.start()
+            elif path == '/__station/capture/archive-chunk':
+                result = bridge.archives.chunk(payload['archive_id'], payload['kind'], payload['offset'], payload['data'])
+            elif path == '/__station/capture/archive-finalize':
+                result = bridge.archives.finalize(payload['archive_id'], payload['summary'])
+            elif path == '/__station/capture/start':
                 result = bridge.configure(payload['profile'])
             elif path == '/__station/capture/fetch':
                 result = bridge.fetch(payload['id'], payload['url'], payload.get('options'))
@@ -249,6 +260,10 @@ def handle(handler):
     except CaptureFailure as error:
         body = json.dumps({'error': str(error), 'diagnostic': error.details}).encode('utf-8')
         handler.send_response(400)
+    except OSError:
+        body = json.dumps({'error': 'USB storage failed; capture was not saved successfully. Check drive access and free space.',
+                           'diagnostic': {'stage': 'storage', 'error_type': 'OSError'}}).encode('utf-8')
+        handler.send_response(507)
     except (ValueError, KeyError, TypeError, AttributeError):
         body = json.dumps({'error': 'Native request rejected or failed; check capture scope, network access, TLS and local capture log.'}).encode('utf-8')
         handler.send_response(400)

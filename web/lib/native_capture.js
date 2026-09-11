@@ -1,5 +1,11 @@
 /* Scoped local transport; source response bodies remain inert bytes. */
 class NativeCapture {
+  static async archive() {
+    const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
+    if (!response.ok) throw Error('Launch AegisArchive from the USB before capturing.');
+    const {token} = await response.json();
+    return new UsbArchiveStreamer(new NativeCapture(token));
+  }
   static async start(profile) {
     const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
     if (!response.ok) throw Error('Start the local launcher to use native capture.');
@@ -44,4 +50,44 @@ class NativeCapture {
     return response;
   }
   async close() { return this.call('stop', {id: this.id}); }
+}
+
+class UsbArchiveStreamer {
+  constructor(session) {
+    this.session = session;
+    this.isUsb = true;
+    this.offsets = {warc: 0, cdx: 0};
+    this.failed = false;
+  }
+  async init() {
+    const result = await this.session.call('archive-start', {});
+    this.id = result.archive_id;
+    this.directory = result.directory;
+    return true;
+  }
+  async writeChunk(bytes, kind = 'warc') {
+    if (this.failed) throw Error('USB archive storage has failed');
+    try {
+      for (let start = 0; start < bytes.length; start += 262144) {
+        const part = bytes.subarray(start, start + 262144);
+        let binary = '';
+        for (let i = 0; i < part.length; i += 8192) binary += String.fromCharCode(...part.subarray(i, i + 8192));
+        const result = await this.session.call('archive-chunk', {
+          archive_id: this.id, kind, offset: this.offsets[kind], data: btoa(binary)
+        });
+        if (result.offset !== this.offsets[kind] + part.length) throw Error('USB archive write offset mismatch');
+        this.offsets[kind] = result.offset;
+      }
+    } catch (error) {
+      this.failed = true;
+      error.diagnostic = {stage: 'storage', error_type: 'StorageError'};
+      throw error;
+    }
+  }
+  async finalize(cdxText, complete) {
+    if (this.failed) throw Error('USB archive storage has failed');
+    await this.writeChunk(new TextEncoder().encode(cdxText), 'cdx');
+    return this.session.call('archive-finalize', {archive_id: this.id, summary: {complete}});
+  }
+  getTotalBytes() { return this.offsets.warc; }
 }
