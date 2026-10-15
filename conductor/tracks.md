@@ -129,15 +129,18 @@
   *Link: [./tracks/mirror_resume_20260906/index.md](./tracks/mirror_resume_20260906/index.md)*
 
 ---
-- [ ] **Track: Cross-platform mirroring and capability acceptance**
+- [~] **Track: Cross-platform mirroring and capability acceptance**
+  *Status: In progress — synthetic receipt/CI exists; real capture, offline replay and platform acceptance remain open.*
   *Link: [./tracks/mirroring_platform_acceptance_20260906/index.md](./tracks/mirroring_platform_acceptance_20260906/index.md)*
 
 ---
 - [~] **Track: Crawl controls, previews and site reports**
+  *Status: In progress — T1–T3 verified; browser integration, receipt-bound reports/graphs and final acceptance remain open.*
   *Link: [./tracks/crawl_controls_reports_20260906/index.md](./tracks/crawl_controls_reports_20260906/index.md)*
 
 ---
-- [ ] **Track: Generic document lifecycle, extraction and search**
+- [~] **Track: Generic document lifecycle, extraction and search**
+  *Status: In progress — basic catalogue/extraction/FTS code exists; revision reconciliation, optional adapters, handling enforcement and acceptance remain open.*
   *Link: [./tracks/document_lifecycle_20260906/index.md](./tracks/document_lifecycle_20260906/index.md)*
 
 ---

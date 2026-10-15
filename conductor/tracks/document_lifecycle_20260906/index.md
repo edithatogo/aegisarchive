@@ -1,6 +1,6 @@
 # Generic document lifecycle, extraction and search
 
-Status: completed.
+Status: in progress.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

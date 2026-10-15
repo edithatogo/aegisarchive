@@ -1,6 +1,6 @@
 # Cross-platform mirroring and capability acceptance
 
-Status: completed.
+Status: in progress.
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)

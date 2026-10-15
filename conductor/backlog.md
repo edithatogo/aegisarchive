@@ -24,9 +24,9 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P0 | offline_navigation_20260906 | T8 | done | - | mirror_capture_20260906/T7 |
 | P1 | authenticated_acquisition_20260906 | T1 | done | - | mirror_capture_20260906/T7, crawl_controls_reports_20260906/T7 |
 | P1 | mirror_resume_20260906 | T1 | done | - | mirror_capture_20260906/T7, authenticated_acquisition_20260906/T7 |
-| P0 | mirroring_platform_acceptance_20260906 | T1 | done | - | offline_navigation_20260906/T8, authenticated_acquisition_20260906/T7, mirror_resume_20260906/T8 |
-| P1 | crawl_controls_reports_20260906 | T4 | done | - | mirror_capture_20260906/T7 |
-| P1 | document_lifecycle_20260906 | T1 | done | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
+| P0 | mirroring_platform_acceptance_20260906 | T1 | in_progress | - | offline_navigation_20260906/T8, authenticated_acquisition_20260906/T7, mirror_resume_20260906/T8 |
+| P1 | crawl_controls_reports_20260906 | T4 | in_progress | - | mirror_capture_20260906/T7 |
+| P1 | document_lifecycle_20260906 | T1 | in_progress | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
 | P1 | rendered_capture_20260906 | T1 | done | - | authenticated_acquisition_20260906/T7, crawl_controls_reports_20260906/T7, offline_navigation_20260906/T8 |
 | P1 | headless_jobs_20260906 | T1 | done | - | mirror_resume_20260906/T8, crawl_controls_reports_20260906/T7 |
 | P2 | portable_exports_20260906 | T1 | done | - | offline_navigation_20260906/T8, mirror_resume_20260906/T8 |
@@ -50,7 +50,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
 
-The archived baseline is complete. Static capture is complete; the nine remaining mirroring and extension tracks above are pending; deployment-specific work remains outside the engine completion gates.
+The archived baseline and static capture are complete. Extension work is tracked individually; do not use the former blanket count of nine pending tracks because several registry/backlog statuses were stale. Deployment-specific work remains outside engine completion gates.
 
 ## Scope boundary
 
