@@ -1,0 +1,704 @@
+{
+  "schema_version": "1.0",
+  "track_id": "document_lifecycle_20260906",
+  "date": "2026-10-16",
+  "implementation_revision": "6275f97",
+  "scope": "Local synthetic acceptance; no publication or new hosted/platform qualification",
+  "requirements": {
+    "R1": "Accepted: T1/T2 immutable originals, source identities, acquisitions and revision history",
+    "R2": "Accepted: T3/T4/T5 native/parser/OCR extraction, provenance, locators and explicit exception states within documented limits",
+    "R3": "Accepted: T6/T7 revision-aware citations, duplicates, comparisons and immutable receipts",
+    "R4": "Accepted: T8 handling inheritance, safe exports, retention/holds, logical withdrawal and concurrent policy/write regression"
+  },
+  "criteria": {
+    "AC1": "Original-byte round trips, text-layer/scan fixtures, locators and explicit missing-engine states verified",
+    "AC2": "Equal-byte identities, changed/reverted versions, moves and searchable history verified",
+    "AC3": "Bounds, handling restrictions, cache/export denial, retention and concurrency verified"
+  },
+  "verification": [
+    {
+      "command": "python3 -m unittest tests.test_document_lifecycle",
+      "tests": 91,
+      "skips": 9,
+      "result": "passed"
+    },
+    {
+      "command": "Configured optional parser/OCR Python: python -m unittest tests.test_document_lifecycle",
+      "tests": 102,
+      "skips": 0,
+      "result": "passed"
+    },
+    {
+      "command": "python3 scripts/gate.py test",
+      "python_tests": 245,
+      "python_skips": 12,
+      "station_tests": 18,
+      "javascript_tests": 72,
+      "result": "passed"
+    },
+    {
+      "command": "python3 scripts/track_health.py --strict",
+      "findings": 0,
+      "tracks": 35,
+      "result": "passed"
+    },
+    {
+      "command": "python3 scripts/gate.py leak; py_compile touched Python; git diff --check",
+      "result": "passed"
+    }
+  ],
+  "limitations": [
+    "OCR acceptance is exact-pinned English/POSIX; Windows OCR unsupported; no new Windows/Linux native qualification",
+    "Withdrawal removes derivatives and active retrieval, not immutable originals, shared bytes, backups or forensic remnants",
+    "Raw catalogue/database administration is trusted access; only safe export routes enforce application export eligibility",
+    "Optional parser capability and format limits remain as documented; no arbitrary-format completeness claim",
+    "No push or publication authorised"
+  ],
+  "historical_reference_disposition": {
+    "event_id": "f82be030-3ffa-40a5-a746-24a359086a37",
+    "status": "quarantined_not_used_for_acceptance",
+    "prior_exception_event_id": "ce2edb67-c8a1-40cd-bc5c-133e3c491c70",
+    "reason": "Historical status-only fingerprint has no retained matching bytes. Original ledger remains unchanged; current functional receipts and tests provide acceptance."
+  },
+  "evidence_audit": {
+    "track_id": "document_lifecycle_20260906",
+    "revision": "33ab16945c860ec6dac76115a8fae9cff494d166",
+    "chain_event_count": 38,
+    "chain_tip": "1ff8560e8eb5e9a1af8c1210219cf2199f4eab49b035326c38045e12ce3f0350",
+    "chain_status": "verified",
+    "reference_count": 77,
+    "version_verified": 76,
+    "working_tree_only": 0,
+    "unresolved_count": 1,
+    "unresolved": [
+      {
+        "event_id": "f82be030-3ffa-40a5-a746-24a359086a37",
+        "task_id": null,
+        "path": "conductor/status-reconciliation-20261015.md",
+        "sha256": "4453f1ae04ba0dec429753924b4438c89ada1fdf10597c2b7e9d621e19200789",
+        "resolved_commit": null,
+        "status": "unresolved"
+      }
+    ],
+    "references": [
+      {
+        "event_id": "f82be030-3ffa-40a5-a746-24a359086a37",
+        "task_id": null,
+        "path": "conductor/status-reconciliation-20261015.md",
+        "sha256": "4453f1ae04ba0dec429753924b4438c89ada1fdf10597c2b7e9d621e19200789",
+        "resolved_commit": null,
+        "status": "unresolved"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "conductor/reviews/document-lifecycle-t1-t4-20261016.md",
+        "sha256": "2fe4d2525d0488c30f48e291a8d2bba9b93a1f36531e0d7f41a220e527c728d8",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "portable/document_catalogue.py",
+        "sha256": "3c4cfdee053f9b9ee0184ebfd1b308475014f653bcab2f5ea49f032f5a11c63b",
+        "resolved_commit": "6cfb9504521f2b24646d885ec5eadbff8f24dcd1",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "portable/document_extract.py",
+        "sha256": "f30bc946394d779ff56313d1060767dc0ecb62ac67edef76b1da951b8bdbc5fe",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "optional/document_processing/runner.py",
+        "sha256": "15b2b426d0351d300d605e45091100bd1389bfd23bc24ed6051733658de5b5c9",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "optional/document_processing/worker.py",
+        "sha256": "63371e1896c7dcafd0416fd3bbfd9cc8a3ced63398b10335dfe080dc48c30c02",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "optional/document_processing/requirements.lock",
+        "sha256": "eb0aea1fcbb320e2ff8981334ba37653501446887e8c8fcd5803216ed1f2a7f2",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "91913722da29a58f29e25ebe6fa22cd7bae0f644a93e0ee27db6c21ebc6fb4b2",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "b694a3f7-9fc1-401b-af5e-e0c603339906",
+        "task_id": "T4",
+        "path": "optional/document_processing/test_adapters.py",
+        "sha256": "90278a7f0f342de78bc9dcf5a86aa4f9d10c03f2b800e3387c40196564e1ea3d",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "conductor/reviews/document-lifecycle-t1-t4-20261016.md",
+        "sha256": "2fe4d2525d0488c30f48e291a8d2bba9b93a1f36531e0d7f41a220e527c728d8",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "portable/document_catalogue.py",
+        "sha256": "3c4cfdee053f9b9ee0184ebfd1b308475014f653bcab2f5ea49f032f5a11c63b",
+        "resolved_commit": "6cfb9504521f2b24646d885ec5eadbff8f24dcd1",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "portable/document_extract.py",
+        "sha256": "f30bc946394d779ff56313d1060767dc0ecb62ac67edef76b1da951b8bdbc5fe",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "optional/document_processing/runner.py",
+        "sha256": "15b2b426d0351d300d605e45091100bd1389bfd23bc24ed6051733658de5b5c9",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "optional/document_processing/worker.py",
+        "sha256": "63371e1896c7dcafd0416fd3bbfd9cc8a3ced63398b10335dfe080dc48c30c02",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "optional/document_processing/requirements.lock",
+        "sha256": "eb0aea1fcbb320e2ff8981334ba37653501446887e8c8fcd5803216ed1f2a7f2",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "91913722da29a58f29e25ebe6fa22cd7bae0f644a93e0ee27db6c21ebc6fb4b2",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "9c821359-5f29-4671-9ad6-fcc330d36ba4",
+        "task_id": "T4",
+        "path": "optional/document_processing/test_adapters.py",
+        "sha256": "90278a7f0f342de78bc9dcf5a86aa4f9d10c03f2b800e3387c40196564e1ea3d",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "a5261595-3fe6-481e-b667-19435a719632",
+        "task_id": "T4",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "02cb5e58990ee7accd886fa09c1d82b4ee553e6793bcd2e2276428bbd661d244",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "a5261595-3fe6-481e-b667-19435a719632",
+        "task_id": "T4",
+        "path": "conductor/reviews/document-lifecycle-t1-t4-20261016.md",
+        "sha256": "2fe4d2525d0488c30f48e291a8d2bba9b93a1f36531e0d7f41a220e527c728d8",
+        "resolved_commit": "0c146e8442c881ec5eb3ba80f4b3dc9fd7d8d2d5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d8ec1a67-d902-41b1-a7ae-83331127a8dd",
+        "task_id": "T4",
+        "path": "optional/document_processing/worker.py",
+        "sha256": "54203548126e6ffe057d0ee0cd04c1d87525130f710c1392a39a3fc533583bdd",
+        "resolved_commit": "ef663ef5d6471d56d47f097501bf03bb52bf6a31",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d8ec1a67-d902-41b1-a7ae-83331127a8dd",
+        "task_id": "T4",
+        "path": "optional/document_processing/test_adapters.py",
+        "sha256": "284eec6a168cdec3b8ebdc3f93757623aa8578e563064ef5d3c29a45f2ff7ad7",
+        "resolved_commit": "ef663ef5d6471d56d47f097501bf03bb52bf6a31",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d8ec1a67-d902-41b1-a7ae-83331127a8dd",
+        "task_id": "T4",
+        "path": "optional/document_processing/README.md",
+        "sha256": "f126ea8bacdd21c2136da2b27f0b059be52212c9768a85b67d2000e6a7f68941",
+        "resolved_commit": "ef663ef5d6471d56d47f097501bf03bb52bf6a31",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "portable/document_extract.py",
+        "sha256": "71c9ba5e68cbd6e39b3270b1e882135b7f7641c07f29443bc4209ac5c11902ba",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "optional/document_processing/ocr.py",
+        "sha256": "e7d68d1d9cc006a47e8fbc9d0d5f6455e321f15c3c2625845ee11e8654109cee",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "optional/document_processing/ocr_worker.py",
+        "sha256": "499715621b73af7fccf18446a848c0d6daea4bfeb0a4ce4cb21962f5e10a04e8",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "optional/document_processing/ocr-runtime.json",
+        "sha256": "922879a21a714bdd8cf291e23885902edab3f9d558e49132f98cea8e42c61041",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "optional/document_processing/requirements-ocr.lock",
+        "sha256": "8ebb6fdda900e3b424a32bb050a91abee46e630d680993f3eeb44a0f783cec94",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "optional/document_processing/test_ocr.py",
+        "sha256": "b94b01259dc71ac2da476719ca157f16501e0655c3054bac3c9c5ec4eb12194b",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "9d0d31fe2912039e78935f8851da1ffe7e8544f28404cb10a1a84dd1feeae294",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "dc270ada-8732-4329-8d3b-e105ecdcbbab",
+        "task_id": "T5",
+        "path": "conductor/reviews/document-lifecycle-t5-20261016.md",
+        "sha256": "df9f33e98f9edbbf28bf8a224e26b72412b8553be1b3dfc2eefcf4becade5f8f",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "portable/document_extract.py",
+        "sha256": "71c9ba5e68cbd6e39b3270b1e882135b7f7641c07f29443bc4209ac5c11902ba",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "optional/document_processing/ocr.py",
+        "sha256": "e7d68d1d9cc006a47e8fbc9d0d5f6455e321f15c3c2625845ee11e8654109cee",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "optional/document_processing/ocr_worker.py",
+        "sha256": "499715621b73af7fccf18446a848c0d6daea4bfeb0a4ce4cb21962f5e10a04e8",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "optional/document_processing/ocr-runtime.json",
+        "sha256": "922879a21a714bdd8cf291e23885902edab3f9d558e49132f98cea8e42c61041",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "optional/document_processing/requirements-ocr.lock",
+        "sha256": "8ebb6fdda900e3b424a32bb050a91abee46e630d680993f3eeb44a0f783cec94",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "optional/document_processing/test_ocr.py",
+        "sha256": "b94b01259dc71ac2da476719ca157f16501e0655c3054bac3c9c5ec4eb12194b",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "9d0d31fe2912039e78935f8851da1ffe7e8544f28404cb10a1a84dd1feeae294",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "15111e99-e328-41d7-b7c6-84af73b4c8be",
+        "task_id": "T5",
+        "path": "conductor/reviews/document-lifecycle-t5-20261016.md",
+        "sha256": "df9f33e98f9edbbf28bf8a224e26b72412b8553be1b3dfc2eefcf4becade5f8f",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "67f86762-1fea-40ec-9840-af3cdf5ecbdf",
+        "task_id": "T5",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "202851ed5722a82c1a6d311f68c558d78e9be325c245872fa36260cb2234d622",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "67f86762-1fea-40ec-9840-af3cdf5ecbdf",
+        "task_id": "T5",
+        "path": "conductor/reviews/document-lifecycle-t5-20261016.md",
+        "sha256": "df9f33e98f9edbbf28bf8a224e26b72412b8553be1b3dfc2eefcf4becade5f8f",
+        "resolved_commit": "cbbf214c9411fcfa1f273134a79fac52811e7e78",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "102246e5-d050-46c0-8d3a-439007a325ef",
+        "task_id": "T6",
+        "path": "portable/document_search.py",
+        "sha256": "cd9db0908500178783c852f5fb3f85e4a4deaf9c2d5beb5d513702fd8344bb30",
+        "resolved_commit": "250ba1ac1db32f505d73fc791e1d6410309cbf6f",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "102246e5-d050-46c0-8d3a-439007a325ef",
+        "task_id": "T6",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "0592e9175b3f95ca25ed98a46bc49a3e3361a76551ac884328640841a9d08cc8",
+        "resolved_commit": "250ba1ac1db32f505d73fc791e1d6410309cbf6f",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "102246e5-d050-46c0-8d3a-439007a325ef",
+        "task_id": "T6",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "cdc51c2a1a32bbe253eb6cd4cb32980d79d0ab7fee8b76abf5df4b7b81d93b84",
+        "resolved_commit": "250ba1ac1db32f505d73fc791e1d6410309cbf6f",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e66fcd33-9f26-4954-bfb8-f86c20c8dcfe",
+        "task_id": "T6",
+        "path": "portable/document_search.py",
+        "sha256": "cd9db0908500178783c852f5fb3f85e4a4deaf9c2d5beb5d513702fd8344bb30",
+        "resolved_commit": "250ba1ac1db32f505d73fc791e1d6410309cbf6f",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e66fcd33-9f26-4954-bfb8-f86c20c8dcfe",
+        "task_id": "T6",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "0592e9175b3f95ca25ed98a46bc49a3e3361a76551ac884328640841a9d08cc8",
+        "resolved_commit": "250ba1ac1db32f505d73fc791e1d6410309cbf6f",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e66fcd33-9f26-4954-bfb8-f86c20c8dcfe",
+        "task_id": "T6",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "cdc51c2a1a32bbe253eb6cd4cb32980d79d0ab7fee8b76abf5df4b7b81d93b84",
+        "resolved_commit": "250ba1ac1db32f505d73fc791e1d6410309cbf6f",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e66fcd33-9f26-4954-bfb8-f86c20c8dcfe",
+        "task_id": "T6",
+        "path": "conductor/backlog.md",
+        "sha256": "254866446ab4da63a357d635450c31bdd5fea0b6759634721f378f4f0ba0bc3a",
+        "resolved_commit": "1d1b7d8f8d76bd04a287f791f684ea0b441166ac",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e66fcd33-9f26-4954-bfb8-f86c20c8dcfe",
+        "task_id": "T6",
+        "path": "conductor/tracks.md",
+        "sha256": "3e2224553d871a46908d8e26eb422a9ce4f8f8302a3d7994bb622e7d3814cd8c",
+        "resolved_commit": "1d1b7d8f8d76bd04a287f791f684ea0b441166ac",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e66fcd33-9f26-4954-bfb8-f86c20c8dcfe",
+        "task_id": "T6",
+        "path": "conductor/tracks/document_lifecycle_20260906/index.md",
+        "sha256": "69689e9bf87e1fecbaa9bf88871998ce5b9616dd313dc9b24e86ea7f516c4081",
+        "resolved_commit": "1d1b7d8f8d76bd04a287f791f684ea0b441166ac",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "c6c48c76-71bb-4374-80d0-feb56d618511",
+        "task_id": "T7",
+        "path": "portable/document_catalogue.py",
+        "sha256": "dabff269ce8b0e887bdfea629d9c940bad6e37790988001bb80436552ebf7987",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "c6c48c76-71bb-4374-80d0-feb56d618511",
+        "task_id": "T7",
+        "path": "portable/document_search.py",
+        "sha256": "412128522067f5cd0270cc339c62166b12bbfbf647dc00b2e8a53d7bc1511040",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "c6c48c76-71bb-4374-80d0-feb56d618511",
+        "task_id": "T7",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "c2d3280342479936d3949dd4b7c412463ef44a2c47b4fbfa24c0d9b1ab15e1ad",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "c6c48c76-71bb-4374-80d0-feb56d618511",
+        "task_id": "T7",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "027d33df2104392da3c022150618b23724d86f95d8a6666c9e14e4d9603e78c6",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "portable/document_catalogue.py",
+        "sha256": "dabff269ce8b0e887bdfea629d9c940bad6e37790988001bb80436552ebf7987",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "portable/document_search.py",
+        "sha256": "412128522067f5cd0270cc339c62166b12bbfbf647dc00b2e8a53d7bc1511040",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "c2d3280342479936d3949dd4b7c412463ef44a2c47b4fbfa24c0d9b1ab15e1ad",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "027d33df2104392da3c022150618b23724d86f95d8a6666c9e14e4d9603e78c6",
+        "resolved_commit": "309856d3ae456980298ae6311b83790821b1a348",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "conductor/backlog.md",
+        "sha256": "f2ac57bd314d321089cd23b26dd19fda5dc45f556ee3f08b6f410b5febfdbca7",
+        "resolved_commit": "65dbe9cf36c932c15b12a4ab9edd860aab32d371",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "conductor/tracks.md",
+        "sha256": "9e016df9d3a3e3cacd1901ed3b7a52a27a126e53024990628b6ebd45f50301f4",
+        "resolved_commit": "65dbe9cf36c932c15b12a4ab9edd860aab32d371",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "18fc08e2-423e-4443-88ff-51df15d315a0",
+        "task_id": "T7",
+        "path": "conductor/tracks/document_lifecycle_20260906/index.md",
+        "sha256": "beef92f8c6e60c4d7222225030ed862e25c1bef2fbc85a49c2426c1bcffc657d",
+        "resolved_commit": "65dbe9cf36c932c15b12a4ab9edd860aab32d371",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "8d4da057-24b9-4097-8d37-f3fca7f9f175",
+        "task_id": "T8",
+        "path": "portable/document_catalogue.py",
+        "sha256": "eb2aab301986d7c1db8a6f6c14be4ecbacc9ca0af917c728960042d14b68f974",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "8d4da057-24b9-4097-8d37-f3fca7f9f175",
+        "task_id": "T8",
+        "path": "portable/document_search.py",
+        "sha256": "edc26aa6fc9e5c4f421feb8bbaf7c62b103bf21e3bb86df954d8e257df72d660",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "8d4da057-24b9-4097-8d37-f3fca7f9f175",
+        "task_id": "T8",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "bf01455d52a191ab9e8c94b0d22197cdd3d0ab543b4d4e125d1019a0236264d7",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "8d4da057-24b9-4097-8d37-f3fca7f9f175",
+        "task_id": "T8",
+        "path": "docs/DOCUMENT_LIFECYCLE.md",
+        "sha256": "468a670e39a861dfe82d80435450db74cd87f5cd39ea1306a72ea85deb91aa35",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "8d4da057-24b9-4097-8d37-f3fca7f9f175",
+        "task_id": "T8",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "73160fa3c9ed7d6db3bd330edb8c3faa45b6696a4a941fdfb625ab97efe60c06",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "portable/document_catalogue.py",
+        "sha256": "eb2aab301986d7c1db8a6f6c14be4ecbacc9ca0af917c728960042d14b68f974",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "portable/document_search.py",
+        "sha256": "edc26aa6fc9e5c4f421feb8bbaf7c62b103bf21e3bb86df954d8e257df72d660",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "bf01455d52a191ab9e8c94b0d22197cdd3d0ab543b4d4e125d1019a0236264d7",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "docs/DOCUMENT_LIFECYCLE.md",
+        "sha256": "468a670e39a861dfe82d80435450db74cd87f5cd39ea1306a72ea85deb91aa35",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "73160fa3c9ed7d6db3bd330edb8c3faa45b6696a4a941fdfb625ab97efe60c06",
+        "resolved_commit": "45c559163cef580dbf8fefbcdb573dc27a0bf1da",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "conductor/backlog.md",
+        "sha256": "cee86b20d90b4d847a8615307e984f9d084917be5f42c8374928748e6dd3d3a6",
+        "resolved_commit": "2298cc0bd4123f1c032b3988220cad169cbde063",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "conductor/tracks.md",
+        "sha256": "66329c54b108da053cc42aa7985ff757c6c1e381ba61c796566a9093adb61900",
+        "resolved_commit": "2298cc0bd4123f1c032b3988220cad169cbde063",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "d1da1351-37a8-4172-89ae-8df9f8ea4f74",
+        "task_id": "T8",
+        "path": "conductor/tracks/document_lifecycle_20260906/index.md",
+        "sha256": "43415f0ddf4eab6671ec9b74c03d1f0056771a4e3729e28eb854f4bc0e1a937f",
+        "resolved_commit": "2298cc0bd4123f1c032b3988220cad169cbde063",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e34a52f9-766c-46d1-9aa2-78a782361267",
+        "task_id": "T8",
+        "path": "portable/document_search.py",
+        "sha256": "93775ae2890faf6d597c0ed0073ab2f24f16c3b4c179a1d2868428b0b0f12527",
+        "resolved_commit": "6275f97e61bb1e49c3a98cf44ddd96bf384ca936",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e34a52f9-766c-46d1-9aa2-78a782361267",
+        "task_id": "T8",
+        "path": "tests/test_document_lifecycle.py",
+        "sha256": "6481d908d9ea106f4a83b1fd613c7efc47cd9899ba07a7173288eff48e4d1214",
+        "resolved_commit": "6275f97e61bb1e49c3a98cf44ddd96bf384ca936",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e34a52f9-766c-46d1-9aa2-78a782361267",
+        "task_id": "T8",
+        "path": "docs/DOCUMENT_LIFECYCLE.md",
+        "sha256": "637965a43064ff1696dd17a697b16c067a3cb7b8be8840f74f412db76ee140a3",
+        "resolved_commit": "6275f97e61bb1e49c3a98cf44ddd96bf384ca936",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "e34a52f9-766c-46d1-9aa2-78a782361267",
+        "task_id": "T8",
+        "path": "conductor/tracks/document_lifecycle_20260906/plan.md",
+        "sha256": "4e620e5143c84cdb8061be5dec7141cc5e22a55d1f9f21343336ea1bd0b5f873",
+        "resolved_commit": "6275f97e61bb1e49c3a98cf44ddd96bf384ca936",
+        "status": "version_verified"
+      }
+    ],
+    "core_links": "verified",
+    "dependencies": "completed"
+  }
+}
