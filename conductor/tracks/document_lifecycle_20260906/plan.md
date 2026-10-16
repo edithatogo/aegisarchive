@@ -20,7 +20,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T3 Add bounded native text extraction. (AC1, AC3) — basic text/HTML extraction exists; stable locators and focused lifecycle tests remain to be verified.
+- [x] T3 Add bounded native text extraction. (AC1, AC3) — visible HTML, exact Unicode locators, explicit partial/unsupported outcomes and resource limits verified by 15 lifecycle cases plus the repository gate.
   - **Files**: `portable/document_extract.py`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Extract supported built-in text formats with stable locators and content-free failure diagnostics.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.

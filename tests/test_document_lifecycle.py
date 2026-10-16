@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from portable.document_catalogue import Catalogue
+from portable.document_extract import extract
 
 
 class CatalogueSchemaTests(unittest.TestCase):
@@ -115,6 +116,52 @@ class RegistrationHistoryTests(unittest.TestCase):
         self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM documents').fetchone()[0], 0)
         result = self.catalogue.register('https://fixture.test/a.txt?v=1', b'hello')
         self.assertEqual(result['mime'], 'text/plain')
+
+
+class NativeExtractionTests(unittest.TestCase):
+    def test_html_extracts_visible_blocks_and_skips_active_content(self):
+        content = b'<head><title>hidden</title></head><h1>A &amp; B</h1><script>secret()</script><style>.x{}</style><p>Second <b>paragraph</b></p>'
+        result = extract(content, 'TEXT/HTML; charset=utf-8')
+        self.assertEqual(result['text'], 'A & B\nSecond paragraph')
+        self.assertEqual(result['status'], 'complete')
+        self.assertEqual(content[:6], b'<head>')
+        self.assertEqual(result['locator_space'], 'derivative_text')
+
+    def test_locators_are_exact_unicode_ranges(self):
+        text = 'écho\r\nsecond\nlast'
+        result = extract(text.encode())
+        self.assertEqual([result['text'][p['start']:p['end']] for p in result['locators']], ['écho', 'second', 'last'])
+        self.assertTrue(all(p['end'] <= len(text) for p in result['locators']))
+        self.assertEqual(result['output_hash'], hashlib.sha256(text.encode()).hexdigest())
+        self.assertEqual(result['offset_unit'], 'unicode_codepoint')
+        self.assertEqual(extract(text.encode()), result)
+
+    def test_invalid_encoding_is_partial_but_valid_replacement_character_is_not(self):
+        result = extract(b'prefix\xffsuffix')
+        self.assertEqual(result['status'], 'partial')
+        self.assertEqual(result['reason'], 'invalid_encoding')
+        self.assertEqual(extract('\ufffd'.encode())['status'], 'complete')
+
+    def test_bounds_return_content_free_diagnostics(self):
+        for content, mime, limit in [(b'PRIVATE', 'text/plain', 2), (b'PRIVATE', 'application/pdf', 100)]:
+            result = extract(content, mime, limit)
+            self.assertIn(result['status'], ('failed', 'unsupported'))
+            self.assertEqual(result['text'], '')
+            self.assertNotIn('PRIVATE', json.dumps(result))
+        self.assertEqual(extract(b'a', limit=-1)['reason'], 'invalid_limit')
+        self.assertEqual(extract('secret')['reason'], 'invalid_content')
+
+    def test_empty_and_many_lines_have_valid_locators(self):
+        self.assertEqual(extract(b'')['locators'], [])
+        result = extract(b'x\n' * 20000)
+        self.assertEqual(len(result['locators']), 20000)
+        self.assertEqual(result['locators'][-1]['end'], 39999)
+
+    def test_html_depth_limit_fails_without_exposing_content(self):
+        result = extract(b'<div>' * 600 + b'PRIVATE' + b'</div>' * 600, 'text/html')
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(result['reason'], 'structure_limit')
+        self.assertNotIn('PRIVATE', json.dumps(result))
 
 
 if __name__ == '__main__':
