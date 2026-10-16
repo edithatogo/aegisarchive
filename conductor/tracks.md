@@ -140,7 +140,7 @@
 
 ---
 - [~] **Track: Generic document lifecycle, extraction and search**
-  *Status: In progress — T1–T7 catalogue/history, extraction/OCR, eligible search, revision comparisons and immutable change receipts verified; full handling/retention controls and final acceptance remain open.*
+  *Status: In progress — T1–T8 catalogue/history, extraction/OCR, search/comparisons, receipts and documented handling/retention/logical-withdrawal controls verified; final acceptance remains open.*
   *Link: [./tracks/document_lifecycle_20260906/index.md](./tracks/document_lifecycle_20260906/index.md)*
 
 ---

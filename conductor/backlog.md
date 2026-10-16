@@ -26,7 +26,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P1 | mirror_resume_20260906 | T1 | done | - | mirror_capture_20260906/T7, authenticated_acquisition_20260906/T7 |
 | P0 | mirroring_platform_acceptance_20260906 | T1 | in_progress | - | offline_navigation_20260906/T8, authenticated_acquisition_20260906/T7, mirror_resume_20260906/T8 |
 | P1 | crawl_controls_reports_20260906 | T4 | in_progress | - | mirror_capture_20260906/T7 |
-| P1 | document_lifecycle_20260906 | T8 | open | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
+| P1 | document_lifecycle_20260906 | T9 | open | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
 | P1 | rendered_capture_20260906 | T1 | done | - | authenticated_acquisition_20260906/T7, crawl_controls_reports_20260906/T7, offline_navigation_20260906/T8 |
 | P1 | headless_jobs_20260906 | T1 | done | - | mirror_resume_20260906/T8, crawl_controls_reports_20260906/T7 |
 | P2 | portable_exports_20260906 | T1 | done | - | offline_navigation_20260906/T8, mirror_resume_20260906/T8 |

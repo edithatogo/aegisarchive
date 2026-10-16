@@ -10,3 +10,4 @@ Status: in progress.
 - [T5 implementation and panel review](../../reviews/document-lifecycle-t5-20261016.md)
 - [T6 contract review, panel decisions and acceptance](./plan.md#t6-contract-review-and-acceptance--16-october-2026)
 - [T7 contract review, panel decisions and acceptance](./plan.md#t7-contract-review-and-acceptance--16-october-2026)
+- [T8 contract review, panel decisions and acceptance](./plan.md#t8-contract-review-and-acceptance--16-october-2026)
