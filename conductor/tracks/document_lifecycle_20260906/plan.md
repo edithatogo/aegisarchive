@@ -52,7 +52,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T7 Implement revision changes and duplicates. (AC2)
+- [x] T7 Implement revision changes and duplicates. (AC2) — original-byte comparisons, exact duplicate references, atomic immutable acquisition receipts and bounded policy-checked text comparisons verified; 85 configured lifecycle tests passed with zero skips; two-agent panel approved.
   - **Files**: `portable/document_catalogue.py`, `portable/document_search.py`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Compare revisions without confusing movement with change; emit immutable change receipts.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -128,3 +128,67 @@ with 12 expected skips, 18 station tests and 72 JavaScript tests. Compilation,
 CLI help smoke, profile checks, whitespace and leak gates passed. These are local
 synthetic checks, not new hosted/platform qualification. No user documents were
 processed, no source publication occurred, and no push gate was granted.
+
+## T7 contract review and acceptance — 16 October 2026
+
+Baseline `1d1b7d8`, task claim `0431644`. The owner selected T7 explicitly;
+only this track's catalogue/search/test files and Conductor records were changed.
+No dependencies, network capture, automatic extraction or corpus rebuild were added.
+
+`Catalogue.compare_revisions(before_revision_id, after_revision_id)` compares
+recorded original-byte fingerprints, source identities and sizes. Cross-source
+matches are exact duplicates, not inferred moves or content changes within one
+source. `Catalogue.duplicates(revision_id)` returns matching revision references,
+excluding the queried revision, without merging identities. These are trusted
+local catalogue metadata APIs, like `acquisitions`, not permission-filtered
+export/search interfaces. Semantic/fuzzy equivalence is not claimed.
+
+New acquisitions atomically emit a SHA-256-fingerprinted `change_receipts` row;
+`register` adds `receipt_id` without removing existing result fields. Read receipts
+with `change_receipt(receipt_id)` or `change_receipts(source_id=None)`. Each records
+the acquisition, explicit move declaration, before/after revision/hash references,
+baseline URL, byte-change flag, duplicate-storage observation, and whether the
+destination URL head advanced. The baseline is the existing destination head,
+otherwise the declared origin head. It is explicitly a pre-registration snapshot,
+not an invented chronological predecessor; backdated acquisitions retain that
+distinction. Initial observations have no invented previous revision/change.
+Reversions reuse existing content/revisions but retain a new acquisition receipt.
+
+Registration reserves the write transaction before baseline reads. A real
+second-connection regression verifies that another writer cannot overtake them.
+Original, revision, acquisition and receipt writes roll back together on failure.
+Triggers reject receipt updates, deletion and replacement through either the
+receipt primary key or unique acquisition key. Reads verify payload fingerprints.
+Existing acquisitions receive no fabricated retrospective move receipts on upgrade.
+
+`SearchIndex.compare(before_derivative_id, after_derivative_id)` applies current
+T6 eligibility and metadata-integrity checks before returning either side. It
+retains citations, original references, OCR provenance and partial extraction
+warnings. Original-byte change and derivative-text equality are separate fields.
+The unified display diff is not an applicable patch. Newline-only changes remain
+visible, and differing terminal-linefeed states are annotated. Inputs above
+32,768 characters or 1,000 lines are not diffed; different derivative kinds are
+not mixed. Diff output is capped at 65,536 characters with explicit partial status.
+Comparison performs no persistent writes, automatic OCR or extraction.
+
+Test-first checks covered moves with/without byte changes, repeated declarations,
+duplicates, unrelated sources, reversions, backdated observations, immutable and
+atomic receipts, reopen, old-schema migration, malformed payloads, text-diff
+bounds, newline-only changes and query-time restrictions. One intermediate
+newline-marker regression failed and was fixed without changing its assertion;
+all final verification commands passed.
+
+Panel Nietzsche (`01a142a1-cbea-79a0-b2cf-78949538b4f5`) identified the repeated
+move declaration baseline defect; a RED/GREEN regression and destination-head
+precedence resolved it. The reviewer approved after all 16 T7 tests passed.
+Panel Chandrasekhar (`01a142a5-1928-72a2-b79e-fe0b8e20d608`) independently approved
+after 31 T7/T6 tests and probes of newline/output-limit behavior. Both rechecked
+the final locking/baseline changes; neither edited repository files.
+
+Final checks: mandated stdlib lifecycle command passed 74 tests with 9 expected
+optional-runtime skips; configured lifecycle passed 85 tests with zero skips.
+Repository gate passed 228 Python tests with 12 expected skips, 18 station tests
+and 72 JavaScript tests. Compilation, CLI help, profiles, Conductor links,
+whitespace and leak checks passed. Evidence remains local and synthetic; no user
+documents were processed, no hosted platform acceptance is inferred and no push
+was authorized. T8 handling/retention and T9 final acceptance remain pending.

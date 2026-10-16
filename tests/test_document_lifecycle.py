@@ -246,6 +246,245 @@ class OptionalIntegrationTests(unittest.TestCase):
         self.assertEqual(result['status'], 'complete')
 
 
+class RevisionChangeTests(unittest.TestCase):
+    def setUp(self):
+        self.catalogue = Catalogue()
+        self.addCleanup(self.catalogue.close)
+
+    def register(self, content=b'alpha', url='https://fixture.test/a.txt', **options):
+        return self.catalogue.register(url, content, **options)
+
+    def test_movement_and_byte_changes_are_independent_receipt_fields(self):
+        first = self.register(acquired=1)
+        moved = self.register(url='https://fixture.test/b.txt', moved_from='https://fixture.test/a.txt', acquired=2)
+        changed = self.register(b'beta', 'https://fixture.test/c.txt',
+                                moved_from='https://fixture.test/b.txt', acquired=3)
+        receipts = self.catalogue.change_receipts(first['source_id'])
+        self.assertEqual(len(receipts), 3)
+        self.assertIsNone(receipts[0]['content_changed'])
+        self.assertFalse(receipts[1]['content_changed'])
+        self.assertTrue(receipts[1]['moved'])
+        self.assertTrue(receipts[2]['content_changed'])
+        self.assertTrue(receipts[2]['moved'])
+        self.assertEqual(receipts[1]['before_revision_id'], first['revision_id'])
+        self.assertEqual(receipts[2]['after_revision_id'], changed['revision_id'])
+        self.assertEqual(receipts[1]['receipt_id'], moved['receipt_id'])
+        self.assertEqual(self.catalogue.original(first['revision_id']), b'alpha')
+
+    def test_duplicate_bytes_do_not_invent_a_move_or_merge_sources(self):
+        first = self.register()
+        second = self.register(url='https://fixture.test/b.txt')
+        comparison = self.catalogue.compare_revisions(first['revision_id'], second['revision_id'])
+        self.assertEqual(comparison['relation'], 'duplicate_content')
+        self.assertFalse(comparison['same_source'])
+        self.assertTrue(comparison['same_bytes'])
+        self.assertIsNone(comparison['content_changed'])
+        receipt = self.catalogue.change_receipt(second['receipt_id'])
+        self.assertFalse(receipt['moved'])
+        self.assertTrue(receipt['duplicate_content'])
+        self.assertIsNone(receipt['before_revision_id'])
+        self.assertEqual([r['revision_id'] for r in self.catalogue.duplicates(first['revision_id'])],
+                         [second['revision_id']])
+
+    def test_comparison_distinguishes_changed_unchanged_and_unrelated(self):
+        first = self.register(acquired=1)
+        changed = self.register(b'beta', acquired=2)
+        unrelated = self.register(b'gamma', 'https://fixture.test/other.txt')
+        same = self.catalogue.compare_revisions(first['revision_id'], first['revision_id'])
+        self.assertEqual(same['relation'], 'same_revision')
+        different = self.catalogue.compare_revisions(first['revision_id'], changed['revision_id'])
+        self.assertEqual(different['relation'], 'content_changed')
+        self.assertTrue(different['content_changed'])
+        self.assertEqual(different['size_delta'], -1)
+        other = self.catalogue.compare_revisions(first['revision_id'], unrelated['revision_id'])
+        self.assertEqual(other['relation'], 'distinct_sources')
+        self.assertIsNone(other['content_changed'])
+        with self.assertRaises(LookupError):
+            self.catalogue.compare_revisions(first['revision_id'], 'missing')
+        with self.assertRaises(LookupError):
+            self.catalogue.duplicates('missing')
+
+    def test_backdated_capture_receipt_does_not_claim_current_head_advanced(self):
+        current = self.register(b'current', acquired=10)
+        late = self.register(b'old capture', acquired=1)
+        receipt = self.catalogue.change_receipt(late['receipt_id'])
+        self.assertFalse(receipt['advances_url_head'])
+        self.assertEqual(receipt['comparison_basis'], 'url_head_before_registration')
+        self.assertEqual(receipt['before_revision_id'], current['revision_id'])
+        self.assertEqual(self.catalogue.db.execute('SELECT revision_id FROM urls').fetchone()[0], current['revision_id'])
+
+    def test_repeat_acquisitions_have_distinct_immutable_receipts(self):
+        first, second = self.register(), self.register()
+        self.assertNotEqual(first['receipt_id'], second['receipt_id'])
+        self.assertEqual(len(self.catalogue.change_receipts()), 2)
+        receipt = self.catalogue.change_receipt(first['receipt_id'])
+        for sql, values in (
+                ('UPDATE change_receipts SET payload_json=? WHERE receipt_id=?', ('{}', first['receipt_id'])),
+                ('DELETE FROM change_receipts WHERE receipt_id=?', (first['receipt_id'],)),
+                ('INSERT OR REPLACE INTO change_receipts VALUES (?,?,?,?)',
+                 (first['receipt_id'], receipt['acquisition_id'], first['source_id'], '{}')),
+                ('INSERT OR REPLACE INTO change_receipts VALUES (?,?,?,?)',
+                 ('different-id', receipt['acquisition_id'], first['source_id'], '{}'))):
+            with self.subTest(sql=sql), self.assertRaises(sqlite3.IntegrityError), self.catalogue.db:
+                self.catalogue.db.execute(sql, values)
+        self.assertEqual(self.catalogue.change_receipt(first['receipt_id']), receipt)
+
+    def test_receipt_failure_rolls_back_acquisition_and_original_changes(self):
+        first = self.register()
+        self.assertIn('receipt_id', first)
+        self.catalogue.db.execute("CREATE TRIGGER synthetic_receipt_failure BEFORE INSERT ON change_receipts "
+                                  "BEGIN SELECT RAISE(ABORT,'synthetic_failure'); END")
+        self.catalogue.db.commit()
+        with self.assertRaisesRegex(sqlite3.IntegrityError, 'synthetic_failure'):
+            self.register(b'beta')
+        self.assertEqual(len(self.catalogue.acquisitions('https://fixture.test/a.txt')), 1)
+        self.assertEqual(len(self.catalogue.revisions('https://fixture.test/a.txt')), 1)
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM content_objects').fetchone()[0], 1)
+        self.assertEqual(len(self.catalogue.change_receipts()), 1)
+
+    def test_reopen_preserves_receipts_without_fabricating_legacy_events(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'catalogue.sqlite'
+            original = Catalogue(path)
+            result = original.register('https://fixture.test/a.txt', b'alpha')
+            self.assertIn('receipt_id', result)
+            receipt = original.change_receipt(result['receipt_id'])
+            original.close()
+            reopened = Catalogue(path)
+            self.addCleanup(reopened.close)
+            self.assertEqual(reopened.change_receipts(), [receipt])
+            with self.assertRaises(LookupError):
+                reopened.change_receipt('missing')
+
+    def test_legacy_acquisitions_are_not_backfilled_with_invented_move_receipts(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'legacy.sqlite'
+            previous = Catalogue(path)
+            original = previous.register('https://fixture.test/old.txt', b'alpha')
+            # Synthetic pre-T7 schema: retain original acquisition, omit the new table.
+            previous.db.execute('DROP TABLE change_receipts')
+            previous.db.commit()
+            previous.close()
+            current = Catalogue(path)
+            self.addCleanup(current.close)
+            self.assertEqual(current.change_receipts(), [])
+            self.assertEqual(current.original(original['revision_id']), b'alpha')
+            moved = current.register('https://fixture.test/new.txt', b'alpha',
+                                     moved_from='https://fixture.test/old.txt')
+            self.assertEqual(len(current.change_receipts()), 1)
+            self.assertTrue(current.change_receipt(moved['receipt_id'])['moved'])
+
+    def test_receipt_fingerprint_detects_malformed_stored_payload(self):
+        result = self.register()
+        # Simulate damaged storage in an isolated synthetic database.
+        self.catalogue.db.execute('DROP TRIGGER immutable_change_receipts_UPDATE')
+        self.catalogue.db.execute('UPDATE change_receipts SET payload_json=?', ('[]',))
+        with self.assertRaisesRegex(ValueError, '^change_receipt_integrity$'):
+            self.catalogue.change_receipt(result['receipt_id'])
+
+    def test_reverted_bytes_reuse_revision_but_keep_the_new_change_event(self):
+        first = self.register(acquired=1)
+        changed = self.register(b'beta', acquired=2)
+        reverted = self.register(acquired=3)
+        self.assertEqual(first['revision_id'], reverted['revision_id'])
+        receipt = self.catalogue.change_receipt(reverted['receipt_id'])
+        self.assertEqual(receipt['before_revision_id'], changed['revision_id'])
+        self.assertTrue(receipt['content_changed'])
+        self.assertFalse(receipt['moved'])
+        self.assertEqual(len(self.catalogue.change_receipts()), 3)
+
+    def test_repeated_move_declaration_compares_existing_destination_head(self):
+        self.register(acquired=1)
+        target = self.register(b'beta', 'https://fixture.test/b.txt',
+                               moved_from='https://fixture.test/a.txt', acquired=2)
+        repeated = self.register(b'beta', 'https://fixture.test/b.txt',
+                                 moved_from='https://fixture.test/a.txt', acquired=3)
+        receipt = self.catalogue.change_receipt(repeated['receipt_id'])
+        self.assertEqual(receipt['before_revision_id'], target['revision_id'])
+        self.assertFalse(receipt['content_changed'])
+        self.assertTrue(receipt['moved'])
+
+    def test_receipt_baseline_is_read_under_the_registration_write_lock(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'concurrent.sqlite'
+            primary, other = Catalogue(path), Catalogue(path)
+            self.addCleanup(primary.close)
+            self.addCleanup(other.close)
+            first = primary.register('https://fixture.test/a', b'alpha', acquired=1)
+            other.db.execute('PRAGMA busy_timeout=0')
+            outcomes = []
+
+            def interleave(statement):
+                if statement.startswith('SELECT content FROM content_objects') and not outcomes:
+                    outcomes.append('attempted')
+                    try:
+                        other.register('https://fixture.test/a', b'gamma', acquired=2)
+                        outcomes.append('wrote')
+                    except sqlite3.OperationalError:
+                        outcomes.append('locked')
+
+            # A real second connection attempts a write after the first has read
+            # its baseline, before its first INSERT. It must not overtake it.
+            primary.db.set_trace_callback(interleave)
+            latest = primary.register('https://fixture.test/a', b'beta', acquired=3)
+            primary.db.set_trace_callback(None)
+            self.assertEqual(outcomes, ['attempted', 'locked'])
+            self.assertEqual(primary.change_receipt(latest['receipt_id'])['before_revision_id'], first['revision_id'])
+
+
+class DerivativeComparisonTests(unittest.TestCase):
+    def setUp(self):
+        self.catalogue = Catalogue()
+        self.addCleanup(self.catalogue.close)
+        self.index = SearchIndex(self.catalogue)
+
+    def add(self, content, mime='text/plain', **changes):
+        revision = self.catalogue.register('https://fixture.test/a', content, handling='public')
+        result = dict(extract(content, mime), **changes)
+        return self.index.add(result, revision['source_id'], revision['revision_id'])
+
+    def test_text_diff_is_separate_from_original_byte_comparison(self):
+        first, second = self.add(b'alpha\nold'), self.add(b'alpha\nnew')
+        result = self.index.compare(first, second)
+        self.assertFalse(result['same_output'])
+        self.assertTrue(result['original_content_changed'])
+        self.assertEqual(result['diff_status'], 'complete')
+        self.assertIn('-old\n+new', result['text_diff'])
+        same_text = self.add(b'<p>alpha</p>', 'text/html')
+        other_bytes = self.add(b'<div>alpha</div>', 'text/html')
+        equal = self.index.compare(same_text, other_bytes)
+        self.assertTrue(equal['same_output'])
+        self.assertTrue(equal['original_content_changed'])
+        self.assertEqual(equal['text_diff'], '')
+
+    def test_comparison_checks_current_handling_and_preserves_partial_warning(self):
+        first = self.add(b'alpha')
+        second = self.add(b'alpha\xff')
+        result = self.index.compare(first, second)
+        self.assertEqual(result['after']['status'], 'partial')
+        self.assertEqual(result['after']['reason'], 'invalid_encoding')
+        self.catalogue.db.execute("UPDATE documents SET handling='restricted'")
+        with self.assertRaisesRegex(LookupError, 'derivative_unavailable'):
+            self.index.compare(first, second)
+
+    def test_large_text_diffs_are_explicitly_not_generated(self):
+        first = self.add(b'alpha' * 7000)
+        second = self.add(b'beta' * 9000)
+        result = self.index.compare(first, second)
+        self.assertEqual(result['diff_status'], 'not_generated_size_limit')
+        self.assertIsNone(result['text_diff'])
+        self.assertFalse(result['same_output'])
+
+    def test_line_ending_changes_are_not_hidden_in_an_empty_diff(self):
+        for old, new in ((b'alpha', b'alpha\n'), (b'alpha\r\n', b'alpha\n')):
+            with self.subTest(old=old):
+                result = self.index.compare(self.add(old), self.add(new))
+                self.assertFalse(result['same_output'])
+                self.assertEqual(result['diff_status'], 'complete')
+                self.assertIn('-alpha', result['text_diff'])
+                self.assertIn('+alpha', result['text_diff'])
+
+
 class RevisionSearchTests(unittest.TestCase):
     def setUp(self):
         self.catalogue = Catalogue()

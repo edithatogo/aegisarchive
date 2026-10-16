@@ -13,6 +13,7 @@ search metadata are ignored until explicitly re-added from extraction results.
 No automatic corpus rebuild, OCR, network access or dependency is required.
 """
 import hashlib
+import difflib
 import json
 import math
 import sqlite3
@@ -176,6 +177,10 @@ class SearchIndex:
             rows = self.db.execute(sql, args).fetchall()
         except sqlite3.OperationalError:
             raise ValueError('invalid_search_query') from None
+        return self._hits(rows)
+
+    @staticmethod
+    def _hits(rows):
         hits = []
         for did, text, sid, rid, stored_kind, status, extractor, digest, locations, metadata, url, source_hash, available in rows:
             try:
@@ -197,3 +202,66 @@ class SearchIndex:
                        original=dict(revision_id=rid, url=url, content_hash=source_hash, available=bool(available)))
             hits.append(hit)
         return hits
+
+    def _comparison_hit(self, derivative_id):
+        if not isinstance(derivative_id, str) or not derivative_id:
+            raise ValueError('invalid_derivative_id')
+        rows = self.db.execute("""
+            SELECT d.derivative_id,d.text,r.source_id,r.revision_id,
+                   d.kind,d.status,d.extractor,d.output_hash,d.locator_json,
+                   x.extraction_json,r.url,r.content_hash,
+                   EXISTS(SELECT 1 FROM content_objects o WHERE o.content_hash=r.content_hash)
+            FROM derivatives d
+            JOIN search_derivative_metadata x ON x.derivative_id=d.derivative_id
+            JOIN revisions r ON r.revision_id=d.revision_id
+            JOIN documents s ON s.source_id=r.source_id
+            JOIN source_metadata m ON m.source_id=s.source_id
+            WHERE d.derivative_id=? AND """ + ELIGIBLE, (derivative_id,)).fetchall()
+        if not rows:
+            raise LookupError('derivative_unavailable')
+        return self._hits(rows)[0]
+
+    def compare(self, before_derivative_id, after_derivative_id):
+        """Bounded text diff with current retrieval policy and full provenance.
+
+        Original-byte equality is reported separately from derivative equality.
+        Partial extraction/coverage warnings remain on each side. A diff is not
+        a semantic or clinical judgement, nor proof that extraction is complete.
+        This is a display comparison, not an applicable patch. Missing terminal
+        linefeeds are annotated when that state differs between the inputs.
+        Large/different-kind inputs are explicitly not diffed. No network, OCR,
+        extraction, cache rebuild or persistent comparison record is triggered.
+        """
+        before, after = self._comparison_hit(before_derivative_id), self._comparison_hit(after_derivative_id)
+        same_output = before['output_hash'] == after['output_hash']
+        same_source = before['source_id'] == after['source_id']
+        same_original = before['original']['content_hash'] == after['original']['content_hash']
+        diff, status = None, 'complete'
+        if before['kind'] != after['kind']:
+            status = 'not_comparable_kind'
+        elif same_output:
+            diff = ''
+        elif max(len(before['text']), len(after['text'])) > 32768:
+            status = 'not_generated_size_limit'
+        else:
+            old, new = before['text'].splitlines(keepends=True), after['text'].splitlines(keepends=True)
+            if max(len(old), len(new)) > 1000:
+                status = 'not_generated_size_limit'
+            else:
+                parts, size = [], 0
+                for line in difflib.unified_diff(old, new, fromfile=before_derivative_id,
+                                                 tofile=after_derivative_id, lineterm='\n'):
+                    if not line.endswith('\n'):
+                        line += '\n'
+                        if before['text'].endswith('\n') != after['text'].endswith('\n'):
+                            line += '\\ No newline at end of file\n'
+                    if size + len(line) > 65536:
+                        status = 'partial_output_limit'
+                        break
+                    parts.append(line)
+                    size += len(line)
+                diff = ''.join(parts)
+        return dict(before=before, after=after, same_output=same_output,
+                    same_source=same_source, same_original_bytes=same_original,
+                    original_content_changed=not same_original if same_source else None,
+                    diff_status=status, text_diff=diff)
