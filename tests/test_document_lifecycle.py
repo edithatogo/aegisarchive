@@ -246,6 +246,192 @@ class OptionalIntegrationTests(unittest.TestCase):
         self.assertEqual(result['status'], 'complete')
 
 
+class HandlingRetentionTests(unittest.TestCase):
+    def setUp(self):
+        self.catalogue = Catalogue()
+        self.addCleanup(self.catalogue.close)
+        self.index = SearchIndex(self.catalogue)
+        self.revision = self.catalogue.register('https://fixture.test/a', b'alpha', handling='public')
+        self.sid, self.rid = self.revision['source_id'], self.revision['revision_id']
+        self.did = self.index.add(extract(b'alpha'), self.sid, self.rid)
+
+    def test_restricting_source_propagates_to_derivatives_and_removes_cached_text(self):
+        self.catalogue.set_handling(self.sid, 'restricted', reason='synthetic classification')
+        self.assertEqual(self.catalogue.db.execute('SELECT handling FROM derivatives').fetchone()[0], 'restricted')
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM text_index').fetchone()[0], 0)
+        self.assertEqual(self.index.search('alpha'), [])
+        with self.assertRaises(LookupError):
+            self.index.export(self.did)
+        with self.assertRaises(LookupError):
+            self.catalogue.export_original(self.rid)
+        self.assertEqual(self.catalogue.original(self.rid), b'alpha')
+
+    def test_flagging_quarantines_existing_and_future_derivatives(self):
+        self.catalogue.flag_source(self.sid, 'review_required', reason='synthetic flag')
+        self.assertEqual(self.catalogue.db.execute('SELECT handling FROM documents').fetchone()[0], 'quarantined')
+        self.assertEqual(json.loads(self.catalogue.db.execute('SELECT flags_json FROM source_metadata').fetchone()[0]),
+                         ['review_required'])
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM text_index').fetchone()[0], 0)
+        other = dict(extract(b'alpha'), extractor='synthetic-alternate')
+        self.index.add(other, self.sid, self.rid, handling='public')
+        self.assertEqual(self.index.search('alpha'), [])
+        self.assertTrue(all(row[0]=='quarantined' for row in self.catalogue.db.execute('SELECT handling FROM derivatives')))
+
+    def test_direct_metadata_restrictions_also_invalidate_the_cache(self):
+        for sql in ("UPDATE documents SET handling='restricted'",
+                    "UPDATE source_metadata SET flags_json='[\"review\"]'",
+                    "UPDATE derivatives SET handling='restricted'"):
+            with self.subTest(sql=sql):
+                # Fresh catalogue for each independent direct-SQL restriction.
+                c = Catalogue()
+                try:
+                    index = SearchIndex(c)
+                    r = c.register('https://fixture.test/a', b'alpha', handling='public')
+                    index.add(extract(b'alpha'), r['source_id'], r['revision_id'])
+                    c.db.execute(sql)
+                    self.assertEqual(c.db.execute('SELECT COUNT(*) FROM text_index').fetchone()[0], 0)
+                    self.assertEqual(index.search('alpha'), [])
+                finally:
+                    c.close()
+
+    def test_restricted_reacquisition_propagates_without_overwriting_history(self):
+        self.catalogue.register('https://fixture.test/a', b'alpha', handling='restricted')
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM text_index').fetchone()[0], 0)
+        self.assertEqual(self.catalogue.db.execute('SELECT handling FROM derivatives').fetchone()[0], 'restricted')
+        self.assertEqual([a['handling'] for a in self.catalogue.acquisitions('https://fixture.test/a')],
+                         ['public', 'restricted'])
+
+    def test_exports_include_current_handling_and_original_lineage(self):
+        derivative = self.index.export(self.did)
+        original = self.catalogue.export_original(self.rid)
+        self.assertEqual(derivative['handling'], 'public')
+        self.assertEqual(derivative['flags'], [])
+        self.assertEqual(derivative['original']['content_hash'], self.revision['content_hash'])
+        self.assertEqual(original['handling'], 'public')
+        self.assertEqual(original['content'], b'alpha')
+        self.assertEqual(original['content_hash'], hashlib.sha256(original['content']).hexdigest())
+        self.catalogue.flag_source(self.sid, 'review', reason='later synthetic restriction')
+        with self.assertRaises(LookupError):
+            self.index.export(self.did)
+        with self.assertRaises(LookupError):
+            self.catalogue.export_original(self.rid)
+
+    def test_no_automatic_clearance_of_nonpublic_sources(self):
+        self.catalogue.set_handling(self.sid, 'restricted', reason='synthetic')
+        with self.assertRaisesRegex(ValueError, 'handling_relaxation_requires_review'):
+            self.catalogue.set_handling(self.sid, 'public', reason='not a clearance')
+        self.assertEqual(self.index.search('alpha'), [])
+
+    def test_explicit_withdrawal_requires_exact_confirmation(self):
+        for confirmation in (None, 'wrong-source'):
+            with self.subTest(confirmation=confirmation), self.assertRaisesRegex(ValueError, 'confirmation_required'):
+                self.catalogue.remove_source(self.sid, confirm_source_id=confirmation, reason='synthetic')
+        self.assertEqual(len(self.index.search('alpha')), 1)
+
+    def test_hold_and_future_retention_block_withdrawal(self):
+        import time
+        self.catalogue.set_retention(self.sid, retain_until=time.time()+3600, reason='synthetic retention')
+        with self.assertRaisesRegex(ValueError, 'retention_active'):
+            self.catalogue.remove_source(self.sid, confirm_source_id=self.sid, reason='synthetic')
+        self.catalogue.set_retention(self.sid, retain_until=0, legal_hold=True, reason='synthetic hold')
+        with self.assertRaisesRegex(ValueError, 'legal_hold'):
+            self.catalogue.remove_source(self.sid, confirm_source_id=self.sid, reason='synthetic')
+        self.assertEqual(len(self.index.search('alpha')), 1)
+
+    def test_withdrawal_removes_derived_text_not_originals_or_receipts(self):
+        self.catalogue.set_retention(self.sid, retain_until=0, reason='synthetic expired retention')
+        result = self.catalogue.remove_source(self.sid, confirm_source_id=self.sid, reason='synthetic withdrawal')
+        self.assertEqual(result['derivatives_deleted'], 1)
+        self.assertTrue(result['originals_retained'])
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM derivatives').fetchone()[0], 0)
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM text_index').fetchone()[0], 0)
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM search_derivative_metadata').fetchone()[0], 0)
+        self.assertEqual(self.catalogue.original(self.rid), b'alpha')
+        self.assertEqual(len(self.catalogue.change_receipts()), 1)
+        with self.assertRaises(LookupError):
+            self.catalogue.export_original(self.rid)
+        with self.assertRaisesRegex(ValueError, 'source_removed'):
+            self.catalogue.register('https://fixture.test/a', b'alpha', handling='public')
+        with self.assertRaisesRegex(ValueError, 'source_removed'):
+            self.index.add(extract(b'alpha'), self.sid, self.rid)
+
+    def test_withdrawing_one_duplicate_preserves_the_other_source(self):
+        second = self.catalogue.register('https://fixture.test/b', b'alpha', handling='public')
+        self.index.add(extract(b'alpha'), second['source_id'], second['revision_id'])
+        self.catalogue.remove_source(self.sid, confirm_source_id=self.sid, reason='synthetic')
+        hits = self.index.search('alpha')
+        self.assertEqual([h['source_id'] for h in hits], [second['source_id']])
+        self.assertEqual(self.catalogue.original(second['revision_id']), b'alpha')
+
+    def test_policy_history_is_immutable_and_failure_rolls_back_restriction(self):
+        self.catalogue.set_handling(self.sid, 'restricted', reason='synthetic review')
+        history = self.catalogue.handling_history(self.sid)
+        self.assertEqual(history[-1]['action'], 'handling')
+        self.assertEqual(history[-1]['reason'], 'synthetic review')
+        with self.assertRaises(sqlite3.IntegrityError), self.catalogue.db:
+            self.catalogue.db.execute("UPDATE handling_events SET reason='changed'")
+        self.catalogue.db.execute("CREATE TRIGGER synthetic_policy_failure BEFORE INSERT ON handling_events "
+                                  "BEGIN SELECT RAISE(ABORT,'synthetic_failure'); END")
+        self.catalogue.db.commit()
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.catalogue.flag_source(self.sid, 'newflag', reason='synthetic failure')
+        self.assertEqual(self.catalogue.db.execute('SELECT flags_json FROM source_metadata').fetchone()[0], '[]')
+        self.assertEqual(self.catalogue.db.execute('SELECT handling FROM documents').fetchone()[0], 'restricted')
+
+    def test_validation_rejects_missing_reasons_and_invalid_retention(self):
+        with self.assertRaises(ValueError):
+            self.catalogue.set_handling(self.sid, 'restricted', reason='')
+        for deadline in (-1, True, float('nan'), float('inf'), 'tomorrow'):
+            with self.subTest(deadline=deadline), self.assertRaises(ValueError):
+                self.catalogue.set_retention(self.sid, retain_until=deadline, reason='synthetic')
+        with self.assertRaises(LookupError):
+            self.catalogue.flag_source('missing', 'review', reason='synthetic')
+        self.assertEqual(len(self.index.search('alpha')), 1)
+
+    def test_retention_updates_preserve_omitted_hold_and_deadline(self):
+        import time
+        deadline = time.time()+3600
+        self.catalogue.set_retention(self.sid, retain_until=deadline, legal_hold=True, reason='synthetic')
+        self.catalogue.set_retention(self.sid, retain_until=deadline+100, reason='date correction only')
+        self.assertEqual(self.catalogue.db.execute('SELECT legal_hold FROM source_policy').fetchone()[0], 1)
+        self.catalogue.set_retention(self.sid, legal_hold=False, reason='explicit synthetic hold release')
+        self.assertEqual(self.catalogue.db.execute('SELECT retain_until FROM source_policy').fetchone()[0], deadline+100)
+
+    def test_withdrawal_audit_failure_rolls_back_text_cache_and_tombstone(self):
+        self.assertTrue(callable(getattr(self.catalogue, 'remove_source', None)))
+        self.catalogue.db.execute("CREATE TRIGGER synthetic_withdrawal_failure BEFORE INSERT ON handling_events "
+                                  "WHEN NEW.action='withdrawal' BEGIN SELECT RAISE(ABORT,'synthetic_failure'); END")
+        self.catalogue.db.commit()
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.catalogue.remove_source(self.sid, confirm_source_id=self.sid, reason='synthetic')
+        self.assertEqual(len(self.index.search('alpha')), 1)
+        self.assertEqual(self.catalogue.db.execute('SELECT removed FROM source_policy').fetchone()[0], 0)
+
+    def test_removed_sources_reject_direct_derivative_insertions(self):
+        self.catalogue.remove_source(self.sid, confirm_source_id=self.sid, reason='synthetic')
+        with self.assertRaises(sqlite3.IntegrityError), self.catalogue.db:
+            self.catalogue.db.execute('INSERT INTO derivatives VALUES (?,?,?,?,?,?,?,?,?)',
+                ('stale-writer', self.rid, 'text', 'synthetic', hashlib.sha256(b'alpha').hexdigest(),
+                 'complete', 'alpha', '[]', 'public'))
+
+    def test_reopen_quarantines_legacy_flagged_sources_and_derivatives(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'legacy.sqlite'
+            old = Catalogue(path)
+            r = old.register('https://fixture.test/legacy', b'alpha', handling='public')
+            index = SearchIndex(old)
+            index.add(extract(b'alpha'), r['source_id'], r['revision_id'])
+            old.db.execute('DROP TRIGGER quarantine_flag_update')
+            old.db.execute("UPDATE source_metadata SET flags_json='[\"legacy-review\"]'")
+            old.db.commit()
+            old.close()
+            current = Catalogue(path)
+            self.addCleanup(current.close)
+            self.assertEqual(current.db.execute('SELECT handling FROM documents').fetchone()[0], 'quarantined')
+            self.assertEqual(current.db.execute('SELECT handling FROM derivatives').fetchone()[0], 'quarantined')
+            self.assertEqual(SearchIndex(current).search('alpha'), [])
+
+
 class RevisionChangeTests(unittest.TestCase):
     def setUp(self):
         self.catalogue = Catalogue()

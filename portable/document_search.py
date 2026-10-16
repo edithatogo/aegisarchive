@@ -4,8 +4,8 @@ SearchIndex.add retains its positional arguments. Search adds keyword-only
 revision_id/kind filters; old source_id/limit positional calls remain valid.
 Only public, unflagged complete/partial nonblank derivatives are searchable.
 An omitted handling label inherits the source label; a caller cannot clear a
-source or acquisition restriction. This is not a general permission/retention
-API (T8). Results include locators and an original revision reference resolved
+source or acquisition restriction. Catalogue policy APIs govern explicit
+quarantine, retention and withdrawal. Results include an original reference resolved
 with catalogue.original(hit['original']['revision_id']), never a live fetch.
 
 Existing catalogue rows remain untouched. Legacy FTS rows lacking validated
@@ -18,20 +18,15 @@ import json
 import math
 import sqlite3
 
-from .document_catalogue import PROCESSING_STATES
+from .document_catalogue import PROCESSING_STATES, REVISION_ELIGIBLE
 
 
 # Policy is checked before LIMIT, so hidden hits cannot crowd eligible results
 # out of a page. Cache insertion uses the same eligibility predicate.
 ELIGIBLE = """
     d.status IN ('complete','partial') AND length(trim(d.text)) > 0
-    AND d.handling='public' AND s.handling='public' AND m.flags_json='[]'
-    AND EXISTS (SELECT 1 FROM acquisitions a WHERE a.revision_id=r.revision_id)
-    AND NOT EXISTS (SELECT 1 FROM acquisitions a WHERE a.revision_id=r.revision_id
-                    AND a.handling!='public')
-    AND NOT EXISTS (SELECT 1 FROM derivatives other WHERE other.revision_id=r.revision_id
-                    AND other.handling!='public')
-"""
+    AND d.handling='public' AND
+""" + REVISION_ELIGIBLE
 JOINS = """
     JOIN derivatives d ON d.derivative_id=text_index.derivative_id
     JOIN search_derivative_metadata x ON x.derivative_id=d.derivative_id
@@ -57,6 +52,28 @@ class SearchIndex:
             self.db.execute('CREATE TABLE IF NOT EXISTS search_derivative_metadata ('
                             'derivative_id TEXT PRIMARY KEY REFERENCES derivatives(derivative_id),'
                             'extraction_json TEXT NOT NULL)')
+            # Incremental cache invalidation, not a corpus rebuild. These triggers
+            # also cover restrictions made through another catalogue connection.
+            for name, event, condition, predicate in (
+                    ('source', 'UPDATE OF handling ON documents', "NEW.handling!='public'", 'source_id=NEW.source_id'),
+                    ('flags', 'UPDATE OF flags_json ON source_metadata', "NEW.flags_json!='[]'", 'source_id=NEW.source_id'),
+                    ('withdrawal', 'UPDATE OF removed ON source_policy', 'NEW.removed=1', 'source_id=NEW.source_id'),
+                    ('acquisition', 'INSERT ON acquisitions', "NEW.handling!='public'", 'revision_id=NEW.revision_id'),
+                    ('derivative_insert', 'INSERT ON derivatives', "NEW.handling!='public'", 'revision_id=NEW.revision_id'),
+                    ('derivative_update', 'UPDATE OF handling,status ON derivatives',
+                     "NEW.handling!='public' OR NEW.status NOT IN ('complete','partial')",
+                     "derivative_id=NEW.derivative_id OR (NEW.handling!='public' AND revision_id=NEW.revision_id)")):
+                self.db.execute('CREATE TRIGGER IF NOT EXISTS invalidate_search_' + name + ' AFTER ' + event +
+                                ' WHEN ' + condition + ' BEGIN DELETE FROM text_index WHERE ' + predicate + '; END')
+            self.db.execute('CREATE TRIGGER IF NOT EXISTS invalidate_search_derivative_delete '
+                            'AFTER DELETE ON derivatives BEGIN DELETE FROM text_index '
+                            'WHERE derivative_id=OLD.derivative_id; END')
+            self.db.execute('DELETE FROM text_index WHERE NOT EXISTS ('
+                            'SELECT 1 FROM derivatives d JOIN search_derivative_metadata x ON x.derivative_id=d.derivative_id '
+                            'JOIN revisions r ON r.revision_id=d.revision_id '
+                            'JOIN documents s ON s.source_id=r.source_id '
+                            'JOIN source_metadata m ON m.source_id=s.source_id '
+                            'WHERE d.derivative_id=text_index.derivative_id AND ' + ELIGIBLE + ')')
 
     def add(self, result, source_id, revision_id, handling=None, kind=None):
         """Store extraction, then replace only its own FTS cache entry.
@@ -71,6 +88,8 @@ class SearchIndex:
             (revision_id, source_id)).fetchone()
         if revision is None:
             raise ValueError('source_revision_mismatch')
+        if self.db.execute('SELECT removed FROM source_policy WHERE source_id=?', (source_id,)).fetchone() == (1,):
+            raise ValueError('source_removed')
         if not isinstance(result, dict):
             raise ValueError('invalid_derivative')
         text, status = result.get('text'), result.get('status')
@@ -265,3 +284,11 @@ class SearchIndex:
                     same_source=same_source, same_original_bytes=same_original,
                     original_content_changed=not same_original if same_source else None,
                     diff_status=status, text_diff=diff)
+
+    def export(self, derivative_id):
+        """Return a freshly policy-checked derivative snapshot with handling.
+
+        No file is written. Existing exported snapshots are not live permissions
+        and cannot be recalled; consumers must enforce their own storage/access.
+        """
+        return dict(self._comparison_hit(derivative_id), handling='public', flags=[], export_kind='derivative')

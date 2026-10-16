@@ -60,7 +60,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T8 Enforce handling and retention boundaries. (AC3)
+- [x] T8 Enforce handling and retention boundaries. (AC3) — restrictive handling/quarantine, cache invalidation, safe lifecycle exports, retention/hold guards and confirmed logical withdrawal verified; 101 configured lifecycle tests passed with zero skips; two-agent panel approved. Immutable originals/history retained; no secure-erasure claim.
   - **Files**: `portable/document_catalogue.py`, `portable/document_search.py`, `docs/DOCUMENT_LIFECYCLE.md`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Propagate restrictions to search/cache/export, quarantine flags and expose explicit deletion semantics without automatic privacy clearance.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -192,3 +192,69 @@ and 72 JavaScript tests. Compilation, CLI help, profiles, Conductor links,
 whitespace and leak checks passed. Evidence remains local and synthetic; no user
 documents were processed, no hosted platform acceptance is inferred and no push
 was authorized. T8 handling/retention and T9 final acceptance remain pending.
+
+## T8 contract review and acceptance — 16 October 2026
+
+Baseline `65dbe9c`, task claim `eeb9484`. Implementation touched only the task's
+catalogue, search, focused tests, lifecycle documentation and Conductor records.
+All processing and deletion fixtures were synthetic; no real source documents
+were deleted. No runtime dependency, network processing or publication was added.
+
+Shared revision eligibility now governs derivative retrieval/comparison/export
+and original lifecycle export. Public, unflagged, non-withdrawn sources must also
+have no nonpublic acquisition/derivative observation. Source handling changes
+propagate to derivatives; flagging quarantines content. Triggers invalidate active
+FTS cache rows on source/flag/acquisition/derivative/withdrawal restrictions,
+including other catalogue connections and direct metadata changes. Reopening
+conservatively quarantines legacy flags, inherits prior restrictions and removes
+ineligible cached text without extracting or rebuilding the corpus.
+
+`set_handling(source_id, handling, reason=...)` restricts handling but cannot clear
+a nonpublic source to public. `flag_source(source_id, flag, reason=...)` adds flags
+and quarantines content. There is no automatic privacy clearance or API for
+clearing flags/nonpublic evidence. Immutable `handling_history(source_id)` records
+explicit policy operations; history and acquisition observations are not rewritten.
+
+`set_retention(source_id, retain_until=..., legal_hold=..., reason=...)` records
+caller decisions. Omitted fields are preserved, timestamps are validated and
+expiry never deletes data. Explicit hold release does not clear the deadline.
+Future retention and legal holds block `remove_source`; exact source confirmation
+and a reason are required. Changes, active derived-store deletion and the audit
+receipt are atomic; audit failure rolls the operation back.
+
+`remove_source(source_id, confirm_source_id=source_id, reason=...)` performs logical
+withdrawal and removes that source's derivative text, extraction metadata and active
+cache rows. It preserves immutable originals, revision/acquisition/change records
+and independently classified duplicate sources sharing the same payload. A permanent
+tombstone blocks recapture under known source URLs; database guards reject stale
+derivative insertions or reassignment after withdrawal. No restoration API exists.
+This task does not delete WARC/source/export files, backups or original archive
+bytes, and does not claim forensic/secure erasure of SQLite/media remnants.
+
+`Catalogue.export_original(revision_id)` and `SearchIndex.export(derivative_id)`
+return fresh, handling-labelled in-memory snapshots with lineage and hashes;
+disallowed sources are denied. No files are written. Returned snapshots cannot be
+recalled after subsequent policy changes; downstream consumers must enforce their
+own destination access and retention. Raw catalogue/database administration remains
+trusted local access, not an application permission sandbox or safe export route.
+The maintained lifecycle documentation explicitly describes these boundaries.
+
+Sixteen new test-first cases cover propagation, quarantine, direct-SQL cache
+invalidation, acquisition history, export lineage/denial, no automatic clearance,
+confirmation, retention/hold guards and omitted-field preservation, shared payloads,
+withdrawal/audit rollback, stale writes and conservative migration. Initial RED
+checks exposed missing controls; follow-up RED/GREEN tests hardened hold preservation,
+withdrawn-source writes and legacy quarantine before final verification.
+
+Panel Nietzsche (`01a142a1-cbea-79a0-b2cf-78949538b4f5`) approved code and docs after
+16 T8 tests and an independent stale-writer probe. Panel Chandrasekhar
+(`01a142a5-1928-72a2-b79e-fe0b8e20d608`) approved after all 47 handling/T7/T6 tests,
+with no material findings. Both confirmed the logical-withdrawal, safe-export and
+raw-administration boundaries. Neither reviewer edited files.
+
+Final verification: mandated stdlib lifecycle command passed 90 tests with 9
+expected optional-runtime skips; configured lifecycle passed 101 tests with zero
+skips. Repository gate passed 244 Python tests with 12 expected skips, 18 station
+tests and 72 JavaScript tests. Compilation, profile checks, CLI help, Conductor
+links, whitespace and leak gates passed. These are local synthetic checks, not
+hosted/platform qualification. No push was authorised. T9 remains pending.
