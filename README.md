@@ -25,7 +25,8 @@ Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic e
 | MCP server with `list_profiles`, `search_archive`, `validate_profile` | Implemented |
 | Hardened loopback station server, status page, bundle checksum verification | Implemented |
 | OPFS streaming of large archives to disk | Implemented; memory fallback when unavailable |
-| Frontier checkpoint/resume | Implemented with localStorage; earlier WARC bytes are not restored |
+| Native folder capture checkpoint/resume | Same-archive reload and retained bytes qualified; [storage-mode limits](docs/MIRRORING_COMPATIBILITY.md) apply |
+| Static-site mirroring on Mac/Windows | Capture/recovery/disconnected replay passes at `4255021`; [evidence and limits](docs/MIRRORING_COMPATIBILITY.md) |
 | Synthesised WARC `request` records | Implemented |
 | `.warc.gz` input in verifier and viewer | Implemented |
 | `.warc.gz` output | Planned |
@@ -41,11 +42,11 @@ AegisArchive is planned to expand with portable runtimes and offline intelligenc
 
 ## Install
 
-You do **not** need Docker, Node.js, `npm`, or database installations. AegisArchive runs directly on any computer with Python 3 and a modern web browser.
+You do **not** need Docker, Node.js, `npm`, or database installations to run the application. Python 3 and a compatible modern browser are required; see the [measured environments and limits](docs/MIRRORING_COMPATIBILITY.md). This is not a guarantee for every computer or website.
 
 ### On macOS
 1. Download or clone this repository.
-2. Double-click **`START_MAC.command`**.
+2. Ensure Python 3 is available and **`START_MAC.command`** has executable permission (a preparer may need `chmod +x START_MAC.command` after extraction). Then double-click it.
 3. Your web browser will open automatically to the AegisArchive Web Console.
 
 ### On Windows

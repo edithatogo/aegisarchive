@@ -94,3 +94,15 @@ retain actual recovery, launcher, authentication and disconnected-replay proof.
 Artifacts are retained under `artifacts/qualification/42550216efa5069870f011d9a9173c6a697ce1fb/`.
 This supersedes the earlier red-CI blocker; it does not complete T7/T8 or claim
 compatibility with every site or machine.
+
+### T7 documentation panel
+
+Cicero and Pasteur approve the updated README and compatibility matrix. Version
+and measurement statements match all three receipts: six payloads, eleven visits
+and zero source/unexpected requests or page errors. Native static scope,
+authentication/storage/packaging limits, optional tiers, local-only evidence
+links and hosted retention are explicit. Neither reviewer treats the later
+documentation HEAD as newly qualified. All local links resolve; all three
+receipt checks and both comparisons pass. Claims audit has zero mismatches;
+leak and strict track-health checks pass. Runtime, workflow and test bytes are
+unchanged from qualified 4255021, whose full functional gates remain applicable.
