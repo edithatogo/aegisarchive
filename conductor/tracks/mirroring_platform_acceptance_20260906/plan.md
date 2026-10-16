@@ -5,7 +5,7 @@
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
 - [~] T1 Define platform receipt contract. (AC1) — synthetic-only receipt exists; real capture/readback and browser/runtime qualification are not bound.
-  - **Files**: `scripts/mirroring_acceptance.py`; focused tests: `tests/browser/mirroring_acceptance.spec.js`.
+  - **Files**: `scripts/mirroring_acceptance.py`, `tests/test_mirroring_acceptance.py`, `tests/browser/fixtures/mirroring-site.json`; focused tests: `tests/browser/mirroring_acceptance.spec.js`.
   - **Change**: Bind revision, fixture hashes, runtime/browser versions, capture/readback results and traffic observations in a machine-readable receipt.
   - **Verify**: `python3 scripts/mirroring_acceptance.py --help; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
   - **Done when**: Bind revision, fixture hashes, runtime/browser versions, capture/readback results and traffic observations in a machine-readable receipt. Relevant assertions demonstrate the stated outcome and no regression is introduced.
