@@ -1,0 +1,325 @@
+{
+  "schema_version": "1.0",
+  "track_id": "crawl_controls_reports_20260906",
+  "date": "2026-10-16",
+  "decision": "accepted_local_functional_scope",
+  "implementation_revision": "197f4a7",
+  "scope": "Synthetic fixtures and loopback HTTP on macOS arm64; no publication or new Windows/Linux qualification",
+  "requirements": {
+    "R1": {
+      "status": "accepted",
+      "tasks": [
+        "T1",
+        "T2",
+        "T3",
+        "T4"
+      ],
+      "proof": [
+        "tests/test_crawl_rules.py: rule schema/evaluation, aliases/sitemaps and CLI integration",
+        "tests/js/crawl_rules.test.js: browser integration and adversarial metadata",
+        "tests/test_capture_bridge.py: native before-body enforcement",
+        "tests/browser/crawl_controls.spec.js: direct/native crawler fixtures",
+        "tests/browser/crawl_startup.spec.js: cold/dependency-failure console acceptance"
+      ]
+    },
+    "R2": {
+      "status": "accepted",
+      "tasks": [
+        "T2",
+        "T4",
+        "T5"
+      ],
+      "proof": [
+        "Pure preview_rules and browser preview; deterministic decisions and rule IDs",
+        "No regex execution: safe rules and bounded literal legacy alternatives",
+        "URL exclusions before requests; MIME/size decisions before body reads; unavailable/conflicting metadata holds downloads"
+      ]
+    },
+    "R3": {
+      "status": "accepted",
+      "tasks": [
+        "T5",
+        "T6"
+      ],
+      "proof": [
+        "Actual CLI coverage receipt -> build_report source-identity regression",
+        "Report/browser Unicode and fractional-metadata parity, counts/identity rejection, no-network previews and stale selection protection",
+        "Recorded-scope graph filters, known endpoints, deterministic deduplication, inert escaped SVG and JSON downloads"
+      ]
+    }
+  },
+  "acceptance_criteria": {
+    "AC1": "Exact schema/rule/discovery vectors and cyclic sitemap/alias fixtures pass across CLI/browser integration",
+    "AC2": "Totals and source identities reconcile; actual WARC/CDX and native capture readbacks verified; inaccessible resources remain failed",
+    "AC3": "Safe bounded matching, malformed/ambiguous metadata rejection, no source requests during previews, escaped cells and scriptless graph exports verified"
+  },
+  "verification": [
+    {
+      "command": "python3 -m unittest tests.test_crawl_rules",
+      "exit_code": 0,
+      "tests": 58,
+      "skips": 0
+    },
+    {
+      "command": "node --test tests/js/crawl_rules.test.js",
+      "exit_code": 0,
+      "tests": 18,
+      "skips": 0
+    },
+    {
+      "command": "python3 scripts/gate.py test",
+      "exit_code": 0,
+      "python_tests": 301,
+      "python_skips": 12,
+      "station_tests": 18,
+      "javascript_tests": 80
+    },
+    {
+      "command": "Cached Playwright CLI with tests/browser/playwright.config.js: capture.spec.js, crawl_controls.spec.js, crawl_startup.spec.js",
+      "exit_code": 0,
+      "browser_tests": 25,
+      "skips": 0,
+      "groups": {
+        "maintained_capture": 12,
+        "crawler_reports_graphs": 9,
+        "startup": 4
+      }
+    },
+    {
+      "command": "python3 scripts/track_health.py --strict",
+      "exit_code": 0,
+      "tracks": 35,
+      "findings": 0
+    },
+    {
+      "command": "python3 scripts/gate.py leak; touched Python compilation; profile required-field validation; three CLI --help commands; git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "runtime": {
+    "python": "3.11.6",
+    "platform": "darwin arm64",
+    "chromium": "153.0.8010.12",
+    "playwright": "1.63.0-alpha-2026-08-31 (existing cached test runtime, not a new dependency installation)",
+    "browser_network_permission": "Ephemeral test context only: loopback fixture access; no user browser profile/settings change"
+  },
+  "panel": {
+    "Chandrasekhar": "Accepted final R1-R3/AC1-AC3 functional coverage; independent 58 Python and18 JS tests; loader/UI reviewed",
+    "Tesla": "Accepted final functional/evidence scope and graph security/readability; closure conditional on append-only exception and final records, supplied in T7"
+  },
+  "historical_exceptions": [
+    {
+      "event_id": "186a30d4-533b-47af-b1f4-b40ec8b32eb6",
+      "type": "unresolved_status_artifact",
+      "disposition": "quarantined_not_used_for_acceptance",
+      "path": "conductor/status-reconciliation-20261015.md",
+      "expected_sha256": "4453f1ae04ba0dec429753924b4438c89ada1fdf10597c2b7e9d621e19200789",
+      "actual_retained_sha256": "62ddd2f00a2e1461a9d6acb629d3fafe1b66b9dccd33c5fbb62dfe8d51900d5e"
+    },
+    {
+      "type": "unavailable_legacy_revisions",
+      "disposition": "preserved_recovered_lineage_not_original_byte_verification",
+      "mappings": {
+        "6bb387c0e96def815af692ae8288d8491805c588": "580cdb2",
+        "e0483b0f82efb734065a63e2370cca3f83c4dd20": "7149730"
+      },
+      "replacement_proof": "Current source/test artifact hashes and final-head executed acceptance; no current success depends on unavailable original commits"
+    }
+  ],
+  "limits": [
+    "Reports reconcile receipt assertions; they do not independently attest archive files, whole-site completeness or organisational absence",
+    "Source-file mode hashes exact validated UTF-8 JSON, preserving fractional metadata; generated canonical mode uses bounded safe-integer JSON",
+    "Graph input/JSON export maximum10000 edges; display/SVG maximum500 with explicit clipping; labels shortened with full URLs in inert titles/JSON",
+    "Unknown recorded scope cannot be classified as internal/external",
+    "Legacy path_*_regex supports bounded literal alternatives only; unsupported regex syntax must migrate to crawl_rules",
+    "Cold parallel console reset resolved by sequential trusted-local loading and fail-closed readiness in tested runtime; no protected launcher edits",
+    "No push or publication; other platform acceptance remains separately tracked"
+  ],
+  "evidence_audit": {
+    "track_id": "crawl_controls_reports_20260906",
+    "revision": "cbcecc1a9f92c7dd17bd84614cedf0dfac0a8693",
+    "chain_event_count": 28,
+    "chain_tip": "2d29e8cf3f75f75a80da38cf1f3e9523c4f22346fafdf6f775f5739d7e2ece75",
+    "chain_status": "verified",
+    "missing_revisions": [
+      {
+        "event_id": "7480fa74-6ad7-4053-8601-b23a6ba2a5e6",
+        "commit": "6bb387c0e96def815af692ae8288d8491805c588"
+      },
+      {
+        "event_id": "4ef6fade-ff62-44d2-839d-f4822084a159",
+        "commit": "e0483b0f82efb734065a63e2370cca3f83c4dd20"
+      }
+    ],
+    "reference_count": 19,
+    "version_verified": 18,
+    "working_tree_only": 0,
+    "unresolved_count": 1,
+    "unresolved": [
+      {
+        "event_id": "186a30d4-533b-47af-b1f4-b40ec8b32eb6",
+        "task_id": null,
+        "path": "conductor/status-reconciliation-20261015.md",
+        "sha256": "4453f1ae04ba0dec429753924b4438c89ada1fdf10597c2b7e9d621e19200789",
+        "resolved_commit": null,
+        "status": "unresolved"
+      }
+    ],
+    "references": [
+      {
+        "event_id": "186a30d4-533b-47af-b1f4-b40ec8b32eb6",
+        "task_id": null,
+        "path": "conductor/status-reconciliation-20261015.md",
+        "sha256": "4453f1ae04ba0dec429753924b4438c89ada1fdf10597c2b7e9d621e19200789",
+        "resolved_commit": null,
+        "status": "unresolved"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "cli/aegis_cli.py",
+        "sha256": "d9811714dc4f3e69440f7bb0c96dd083485ba6f3bf27fff126fb376ba36969c9",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "cli/capture_bridge.py",
+        "sha256": "3e4aad55c3690a6682ce78168ea1058949c8e051121b8be9e757632ebd4c73e0",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "web/lib/core_crawler.js",
+        "sha256": "fa792df1031aa324c6a512ebda8c1be371e49b8a4b677e868e4f78dacd4ae1fa",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "web/lib/native_capture.js",
+        "sha256": "1ba7b3c581941e3aa3c2236520378c96c6508d173b6403b73bdbabdf1d3f4a36",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "web/index.html",
+        "sha256": "24349bb8bdf07498224dffe10451d34df559f41c20c7d3b69f94983affe85a4d",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "tests/test_crawl_rules.py",
+        "sha256": "5f5dd7a1653300b76d961bed2eea9c2421dea608967f28559bbde5b5ecca5c0c",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "tests/test_capture_bridge.py",
+        "sha256": "c07df3d838d1dba9c1638e905e40b1107f28837be0e12706e580861344cd9c32",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "tests/js/crawl_rules.test.js",
+        "sha256": "fa473347e79d16619710c4d1e857b6a7e6d6b9b32a188c6702f4119e08268ffe",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "7c689b93-c64a-4a6f-8ba9-db4af1e9427f",
+        "task_id": "T4",
+        "path": "tests/browser/crawl_controls.spec.js",
+        "sha256": "07e04183d6d3d9125dabbd4d9eff245beabcf4ade42982560ff4af6a1acbddaf",
+        "resolved_commit": "cdd4f7b80ea5d53decf3f336e6787ca6aa0cccf7",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "3a157a2d-3955-4149-bc3a-1a10c24309f3",
+        "task_id": "T5",
+        "path": "cli/crawl_rules.py",
+        "sha256": "bf593500d6b1748cbd3e157c67a363576cafef09a78aa28a9b0ec7721d027e6c",
+        "resolved_commit": "e404606c08891562c5a3f62e98a2f9b5558e10c5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "3a157a2d-3955-4149-bc3a-1a10c24309f3",
+        "task_id": "T5",
+        "path": "web/reports.html",
+        "sha256": "2240dfd36240a6e87e36450bd81e5d2289279ad93fff9d5524f287e26dd48759",
+        "resolved_commit": "e404606c08891562c5a3f62e98a2f9b5558e10c5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "3a157a2d-3955-4149-bc3a-1a10c24309f3",
+        "task_id": "T5",
+        "path": "web/index.html",
+        "sha256": "993ff5673eda74fecf66fde5f8fc74b062f508b63e9885fac7cd41ea4cb20e46",
+        "resolved_commit": "e404606c08891562c5a3f62e98a2f9b5558e10c5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "3a157a2d-3955-4149-bc3a-1a10c24309f3",
+        "task_id": "T5",
+        "path": "tests/test_crawl_rules.py",
+        "sha256": "fe42432ddb5020c857a223f240353a94bbb32d222490572aa8ea411687c4e945",
+        "resolved_commit": "e404606c08891562c5a3f62e98a2f9b5558e10c5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "3a157a2d-3955-4149-bc3a-1a10c24309f3",
+        "task_id": "T5",
+        "path": "tests/browser/crawl_controls.spec.js",
+        "sha256": "f96f8b49a2fc9a8ee151ce9ed93551f1afc59393c00b4c1828bc736ad114ad31",
+        "resolved_commit": "e404606c08891562c5a3f62e98a2f9b5558e10c5",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "11b91651-7ae1-45b3-8ed5-d93891f364b0",
+        "task_id": "T4",
+        "path": "web/index.html",
+        "sha256": "f62195b84dcd28fc01cb0e555b04519c08a63589fd9a9788c98feba2a319298c",
+        "resolved_commit": "87c80225fdcc4d8fb0d346fcdb9c0e1cd3d4149a",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "11b91651-7ae1-45b3-8ed5-d93891f364b0",
+        "task_id": "T4",
+        "path": "tests/browser/crawl_startup.spec.js",
+        "sha256": "7b05b121edf50dadbdec2672c8b1f5304fde32b6b8d2505d7b3c1ac88c90905d",
+        "resolved_commit": "87c80225fdcc4d8fb0d346fcdb9c0e1cd3d4149a",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "f9178e2e-bdc2-465b-bcb4-c3d02d8a57f6",
+        "task_id": "T6",
+        "path": "web/reports.html",
+        "sha256": "7415c5bdc23c87d6ba9378891d251eb29384c298dfb32abac2cedf9ef81dcb25",
+        "resolved_commit": "197f4a7b774d06251582189e20398f7cc1d20333",
+        "status": "version_verified"
+      },
+      {
+        "event_id": "f9178e2e-bdc2-465b-bcb4-c3d02d8a57f6",
+        "task_id": "T6",
+        "path": "tests/browser/crawl_controls.spec.js",
+        "sha256": "6ac4384d72d7af6a31e33cd1fa6e9062a2ba0041fe4eb5a814c0930eb2017fda",
+        "resolved_commit": "197f4a7b774d06251582189e20398f7cc1d20333",
+        "status": "version_verified"
+      }
+    ],
+    "core_links": "verified",
+    "dependencies": "completed"
+  }
+}

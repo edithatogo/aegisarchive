@@ -2,7 +2,7 @@
 
 ## Overview
 
-Extend the generic mirroring roadmap under the user request for additional copying, document lifecycle and automation features. Planning only.
+Extend the generic mirroring roadmap under the user request for additional copying, document lifecycle and automation features. This specification records approved scope; implementation and acceptance status are maintained in the plan and evidence ledger.
 
 ## Authoritative inputs
 
