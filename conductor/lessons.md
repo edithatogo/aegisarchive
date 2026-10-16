@@ -1,5 +1,13 @@
 # Lessons Ledger
 
+## 2026-10-16 — document_lifecycle_20260906
+
+Reserve the SQLite writer before policy reads as well as derivative writes; test
+both insertion and retry with a second connection. Preserve historical evidence
+exceptions explicitly: quarantine unresolvable status-only references rather than
+rewriting hashes or counting them as functional proof.
+
+
 ## 2026-09-11 — usb_capture_storage_20260911
 
 - **Surprise**: A USB-resident launcher does not imply USB-resident browser capture output; OPFS and default downloads can use the host profile.

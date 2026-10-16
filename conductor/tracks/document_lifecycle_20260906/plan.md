@@ -1,6 +1,25 @@
 # Plan: Generic document lifecycle, extraction and search
 
-## Status: IN PROGRESS
+## Status: COMPLETED
+
+## T9 final acceptance — 16 October 2026
+
+Final review and acceptance manifest are linked from this track index. Both
+Nietzsche and Chandrasekhar accepted the local synthetic scope after independent
+verification of the corrected code and 38-event evidence chain: 76 of 77 artifact
+references resolve; the sole inherited status-only reference is quarantined and
+not used for acceptance. Nietzsche independently ran all 102 configured lifecycle
+tests without skips; Chandrasekhar ran 48 focused cases without skips. No material
+findings remain. Neither reviewer edited files or pushed.
+
+Coordinator checks passed: 91 standard-library lifecycle tests (9 optional skips),
+102 configured tests (zero skips), repository gate 245 Python/18 station/72 JS
+tests (12 optional Python skips), compilation, leak and whitespace gates, launcher
+help and strict Conductor health. Completion edits receive a final health rerun.
+All functional fingerprints resolve. No supported claim uses the quarantined
+historical reference. Product/stack/guidelines require no strategic change;
+maintained lifecycle documentation already records the limits. No push or new
+platform qualification is claimed.
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
@@ -68,7 +87,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T9 Final acceptance and claim reconciliation. (AC1–AC3)
+- [x] T9 Final acceptance and claim reconciliation. (AC1–AC3) — local functional criteria accepted; panel approved; historical status-only fingerprint quarantined.
   - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`; `python3 scripts/gate.py test`; full Conductor validation.

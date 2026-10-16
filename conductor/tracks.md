@@ -139,8 +139,8 @@
   *Link: [./tracks/crawl_controls_reports_20260906/index.md](./tracks/crawl_controls_reports_20260906/index.md)*
 
 ---
-- [~] **Track: Generic document lifecycle, extraction and search**
-  *Status: In progress — T1–T8 catalogue/history, extraction/OCR, search/comparisons, receipts and documented handling/retention/logical-withdrawal controls verified; final acceptance remains open.*
+- [x] **Track: Generic document lifecycle, extraction and search**
+  *Status: Completed — T1–T9 locally verified and panel accepted; format/platform limits retained; historical status-only fingerprint quarantined, not acceptance proof.*
   *Link: [./tracks/document_lifecycle_20260906/index.md](./tracks/document_lifecycle_20260906/index.md)*
 
 ---

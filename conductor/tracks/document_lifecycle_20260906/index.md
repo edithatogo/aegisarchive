@@ -1,6 +1,9 @@
 # Generic document lifecycle, extraction and search
 
-Status: in progress.
+Status: completed within documented local synthetic scope.
+
+- [Final acceptance review](../../reviews/document-lifecycle-final-20261016.md)
+- [Acceptance manifest](./acceptance.json)
 
 - [Specification](./spec.md)
 - [Implementation Plan](./plan.md)
