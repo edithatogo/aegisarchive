@@ -55,4 +55,25 @@ Cicero approved a further failure-only diagnostic: sample only the owned,
 still-live Darwin launcher before cleanup, with bounded process/stack commands
 and retained command results. The readiness deadline, production launcher,
 original exception and unconditional cleanup remain unchanged. That diagnostic
-is awaiting full validation and publication; approval alone is not execution.
+was validated and published at `016bde64a1bb8f866c82f9cd5030892bf77196fb`.
+The full baseline passed (353 Python tests, 12 skipped; station and 85 JavaScript
+tests), followed by three behaviour tests and three clean-source Mac tests.
+Both retained Mac receipt checks passed. Direct local diagnostic exercises
+captured process state but stack sampling timed out at five seconds; this
+limitation was retained rather than represented as stack-capture success.
+
+Hosted run `38977432488` supplied the decisive evidence: Windows job
+`117230142022` passed, while Mac job `117230142215` failed readiness. This time
+both its process and stack diagnostic commands passed. The retained Mac stack
+shows the main thread blocked in `socket_gethostbyaddr`, `gethostbyaddr`,
+`mdns_hostbyaddr` and `kevent` during object initialisation before readiness.
+Together with the launcher startup order, this supports the reverse-DNS call in
+`HTTPServer.server_bind()` as the startup blocker. Browser launch occurs later.
+The stack and process files are retained under
+`artifacts/qualification/016bde64a1bb8f866c82f9cd5030892bf77196fb/hosted-darwin-failed/`.
+
+The protected station owner has received the evidence and proposed bounded
+repair: avoid reverse DNS when binding the numerical loopback server while
+preserving loopback-only listening, Host checks and control-token validation.
+No protected launcher edit was made from this track. Overall CI remains failed;
+the passing required local-Mac/hosted-Windows comparison is kept separate.
