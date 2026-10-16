@@ -82,6 +82,15 @@ class SearchIndex:
         OCR confidence, coverage and engine/model provenance survive. Repeated
         adds are idempotent and cannot relax an existing handling restriction.
         """
+        # Reserve the writer before reading policy, not just before INSERT.
+        # Otherwise a concurrent restriction can leave a stale public label on
+        # a new derivative even though retrieval correctly denies its text.
+        with self.db:
+            if not self.db.in_transaction:
+                self.db.execute('BEGIN IMMEDIATE')
+            return self._add_locked(result, source_id, revision_id, handling, kind)
+
+    def _add_locked(self, result, source_id, revision_id, handling, kind):
         revision = self.db.execute(
             'SELECT r.content_hash,s.handling FROM revisions r JOIN documents s '
             'ON s.source_id=r.source_id WHERE r.revision_id=? AND r.source_id=?',

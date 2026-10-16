@@ -258,3 +258,25 @@ skips. Repository gate passed 244 Python tests with 12 expected skips, 18 statio
 tests and 72 JavaScript tests. Compilation, profile checks, CLI help, Conductor
 links, whitespace and leak gates passed. These are local synthetic checks, not
 hosted/platform qualification. No push was authorised. T9 remains pending.
+
+## T8 post-review concurrency correction — 16 October 2026
+
+The subsequent T8 review reproduced a stale-label race: another connection could
+restrict a source after `SearchIndex.add` read its handling but before inserting
+a derivative. Search and safe exports still denied the text, but the derivative's
+stored public label violated inheritance. This supersedes the prior no-outstanding-
+findings conclusion for that code revision; historical receipts remain unchanged.
+
+The public add operation now reserves the writer before all policy reads, and
+delegates validation/storage under that reservation. A real two-connection
+regression failed for both new INSERT and retry UPDATE before the correction and
+passes afterward. A later restriction propagates to the stored derivative. No
+retrieval/clearance rule was weakened, and no corpus rebuild was added.
+
+Reviewer Nietzsche independently approved the correction after 32 focused tests
+and 102 configured lifecycle tests, with zero skips. Coordinator verification:
+mandated stdlib lifecycle 91 tests with 9 optional skips; configured lifecycle
+102 tests with zero skips; repository gate 245 Python tests with 12 expected
+skips, 18 station tests and 72 JavaScript tests. Compilation, whitespace and leak
+checks passed. T9 final reconciliation uses this corrected code, not the older
+T8 code receipt alone.

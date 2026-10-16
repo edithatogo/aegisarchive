@@ -431,6 +431,41 @@ class HandlingRetentionTests(unittest.TestCase):
             self.assertEqual(current.db.execute('SELECT handling FROM derivatives').fetchone()[0], 'quarantined')
             self.assertEqual(SearchIndex(current).search('alpha'), [])
 
+    def test_derivative_add_serializes_policy_reads_with_insert_and_retry(self):
+        for retry in (False, True):
+            with self.subTest(retry=retry), tempfile.TemporaryDirectory() as folder:
+                path = Path(folder) / 'concurrent-policy.sqlite'
+                primary, other = Catalogue(path), Catalogue(path)
+                try:
+                    index = SearchIndex(primary)
+                    r = primary.register('https://fixture.test/a', b'alpha', handling='public')
+                    if retry:
+                        index.add(extract(b'alpha'), r['source_id'], r['revision_id'])
+                    other.db.execute('PRAGMA busy_timeout=0')
+                    outcomes = []
+
+                    def interleave(statement):
+                        if (statement.startswith(('INSERT INTO derivatives', 'UPDATE derivatives SET handling='))
+                                and not outcomes):
+                            outcomes.append('attempted')
+                            try:
+                                other.set_handling(r['source_id'], 'restricted', reason='synthetic concurrent restriction')
+                                outcomes.append('applied')
+                            except sqlite3.OperationalError:
+                                outcomes.append('locked')
+
+                    primary.db.set_trace_callback(interleave)
+                    did = index.add(extract(b'alpha'), r['source_id'], r['revision_id'])
+                    primary.db.set_trace_callback(None)
+                    self.assertEqual(outcomes, ['attempted', 'locked'])
+                    other.set_handling(r['source_id'], 'restricted', reason='synthetic subsequent restriction')
+                    self.assertEqual(primary.db.execute(
+                        'SELECT handling FROM derivatives WHERE derivative_id=?', (did,)).fetchone()[0], 'restricted')
+                    self.assertEqual(index.search('alpha'), [])
+                finally:
+                    primary.close()
+                    other.close()
+
 
 class RevisionChangeTests(unittest.TestCase):
     def setUp(self):

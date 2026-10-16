@@ -50,7 +50,9 @@ catalogue.flag_source(source_id, 'review_required', reason='Source needs review'
 ```
 
 Restriction changes propagate to existing and new derivatives. Flagged sources
-are quarantined. SQLite triggers invalidate active FTS cache entries, including
+are quarantined. Derivative registration reserves the writer before reading
+handling, preventing concurrent restrictions from leaving a stale public label.
+SQLite triggers invalidate active FTS cache entries, including
 restrictions written by another catalogue connection. Reopening removes ineligible
 legacy cache entries; it does not re-extract or rebuild the corpus. Legacy flags
 and nonpublic observations are carried forward conservatively.
