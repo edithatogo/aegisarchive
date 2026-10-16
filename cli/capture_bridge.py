@@ -23,14 +23,26 @@ try:
     from .usb_archive import UsbArchiveStore
     from .politeness import PolitenessEngine
     from .auth import request_headers, ssl_context, SENSITIVE, redact_headers
+    from .crawl_rules import validate_rules, evaluate_rules, scope_hosts, MAX_INTEGER
 except ImportError:
     from debug_journal import DebugJournal
     from network_transport import NetworkTrace, route_handlers
     from usb_archive import UsbArchiveStore
     from politeness import PolitenessEngine
     from auth import request_headers, ssl_context, SENSITIVE, redact_headers
+    from crawl_rules import validate_rules, evaluate_rules, scope_hosts, MAX_INTEGER
 
 MAX_BODY = 32 * 1024 * 1024
+
+
+def single_header(headers, name):
+    """Return unambiguous response metadata; never choose first/last duplicates."""
+    if hasattr(headers, 'get_all'):
+        values = headers.get_all(name, [])
+    else:
+        values = [v for k, v in headers.items() if k.lower() == name]
+    values = {value.strip() for value in values}
+    return values.pop() if len(values) == 1 else None
 
 
 def failure_details(error):
@@ -75,6 +87,7 @@ class CaptureBridge:
             raise ValueError('Choose 1 to 32 allowed hosts')
         if any(not isinstance(h, str) or not h or len(h) > 253 or any(c not in 'abcdefghijklmnopqrstuvwxyz0123456789.-' for c in h) for h in hosts):
             raise ValueError('Allowed hosts must be lowercase hostnames')
+        hosts = scope_hosts(hosts, target.get('domain_aliases'))
         policy = profile.get('politeness') or {}
         # Validate bounded pacing parameters before constructing the engine.
         schema_path = Path(__file__).resolve().parents[1] / 'profiles' / 'schema.json'
@@ -151,7 +164,7 @@ class CaptureBridge:
                 or not any(host == h or host.endswith('.' + h) for h in session['hosts'])
                 or (parsed.port or (443 if parsed.scheme == 'https' else 80)) == self.station_port):
             raise ValueError('URL is outside the explicit capture scope')
-        options = options or {}
+        options = {} if options is None else options
         if not isinstance(options, dict) or options.get('method', 'GET') != 'GET':
             raise ValueError('Only GET acquisition is supported')
         supplied = options.get('headers', {})
@@ -163,7 +176,26 @@ class CaptureBridge:
             if name.lower() not in permitted or not isinstance(value, str) or any(ord(c) < 32 for c in value):
                 raise ValueError('Unsupported request header')
             forwarded[name.lower()] = value
+        rule_config, resource, rule_decision = None, None, None
+        if 'rule_context' in options:
+            context = options['rule_context']
+            if not isinstance(context, dict) or set(context) != {'config', 'resource'}:
+                raise ValueError('Invalid rule context')
+            resource = context['resource']
+            if (not isinstance(resource, dict) or set(resource) != {'url', 'kind', 'depth'} or
+                    resource['url'] != url or type(resource['depth']) is not int or
+                    not 0 <= resource['depth'] <= MAX_INTEGER):
+                raise ValueError('Invalid rule resource')
+            rule_config = validate_rules(context['config'])
+            resource = dict(resource)
+            rule_decision = evaluate_rules(rule_config, resource, in_scope=True)
         with session['lock']:
+            if session['stop'].is_set():
+                raise ValueError('Capture stopped')
+            if rule_decision and rule_decision['state'] == 'decided' and not rule_decision['download']:
+                self.event(session, 'rule_excluded', url=url, rule_id=rule_decision['rule_id'])
+                return {'status': 0, 'headers': {}, 'body': '', 'rule_decision': rule_decision,
+                        'request': {'method': 'GET', 'headers': {}}}
             if session['stop'].is_set() or session['engine'].acquire_permission(url)['aborted']:
                 raise ValueError('Capture stopped')
             started = time.monotonic()
@@ -188,14 +220,34 @@ class CaptureBridge:
                     response = error  # preserve status and Location; never follow implicitly
                 with response:
                     stage, reason_code = 'response_body', 'response_body_read'
-                    body = response.read(MAX_BODY + 1)
-                    if len(body) > MAX_BODY:
-                        reason_code = 'response_too_large'
-                        raise ValueError('Response exceeds native transport 32 MiB limit')
                     status = response.code
                     safe_headers = {k.lower(): v for k, v in response.headers.items()
                                     if k.lower() not in SENSITIVE | {'transfer-encoding'}}
-                if safe_headers.get('content-encoding', 'identity').lower() not in ('identity', ''):
+                    encoding = single_header(response.headers, 'content-encoding')
+                    encoded = (encoding or '').lower() not in ('identity', '')
+                    if encoding is None and 'content-encoding' in safe_headers:
+                        encoded = True
+                    if rule_config is not None:
+                        length = single_header(response.headers, 'content-length') or ''
+                        # Transfer framing overrides Content-Length, including conflicting
+                        # duplicate Transfer-Encoding fields. Inspect original headers.
+                        transferred = any(k.lower() == 'transfer-encoding' for k in response.headers.keys())
+                        size = (int(length) if not encoded and not transferred and length.isascii() and length.isdecimal()
+                                and len(length) <= 16 else None)
+                        if size is not None and size > MAX_INTEGER:
+                            size = None
+                        mime = single_header(response.headers, 'content-type')
+                        if mime is not None and ',' in mime:
+                            mime = None
+                        rule_decision = evaluate_rules(rule_config, {**resource,
+                            'mime': mime, 'bytes': size}, in_scope=True)
+                    download = rule_decision is None or rule_decision['download']
+                    cap = min(MAX_BODY, 262144) if resource and resource['kind'] == 'sitemap' else MAX_BODY
+                    body = response.read(cap + 1) if download else b''
+                    if len(body) > cap:
+                        reason_code = 'response_too_large'
+                        raise ValueError('Response exceeds native transport body limit')
+                if download and encoded:
                     reason_code = 'unsupported_content_encoding'
                     raise ValueError('Server ignored identity encoding; response not archived')
                 elapsed = round((time.monotonic() - started) * 1000)
@@ -204,10 +256,13 @@ class CaptureBridge:
                 else:
                     session['engine'].record_failure(url, status, safe_headers.get('retry-after'))
                 self.event(session, 'response', url=url, status=status, bytes=len(body), elapsed_ms=elapsed)
-                return {'status': status, 'headers': safe_headers,
+                result = {'status': status, 'headers': safe_headers,
                         'body': base64.b64encode(body).decode('ascii'),
                         # The WARC writer synthesizes Host from this same URL once.
                         'request': {'method': 'GET', 'headers': redact_headers({k: v for k, v in headers.items() if k != 'host'})}}
+                if rule_decision is not None:
+                    result['rule_decision'] = rule_decision
+                return result
             except Exception as error:
                 session['engine'].record_failure(url, 0)
                 # Keep credential values and exception objects out of persisted logs.

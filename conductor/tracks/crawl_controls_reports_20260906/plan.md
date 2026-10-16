@@ -28,8 +28,8 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T4 Integrate rule decisions into both crawlers. (AC1, AC2) — CLI integration is present; browser crawler integration is not evidenced.
-  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`, `web/index.html`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`.
+- [x] T4 Integrate rule decisions into both crawlers. (AC1, AC2) — CLI, browser and native bridge enforce URL/header decisions before body reads; aliases, bounded sitemaps, traversal, safe legacy matching and query policy verified. Two independent reviewers approved after fixes; 2 isolated browser fixtures passed.
+  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`, `web/index.html`, `web/lib/native_capture.js`, `cli/capture_bridge.py`; focused tests: `tests/test_crawl_rules.py`; `tests/test_capture_bridge.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`.
   - **Change**: Apply download-without-traversal and exclude rules before body retrieval; preserve politeness for discovery.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
   - **Done when**: Apply download-without-traversal and exclude rules before body retrieval; preserve politeness for discovery. Relevant assertions demonstrate the stated outcome and no regression is introduced.

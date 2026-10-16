@@ -47,11 +47,14 @@ class NativeCapture {
     } finally { if (timeout) clearTimeout(timeout); }
   }
   async fetch(url, options = {}) {
-    const result = await this.call('fetch', {id: this.id, url, options: {method: options.method || 'GET', headers: options.headers || {}}});
+    const result = await this.call('fetch', {id: this.id, url, options: {method: options.method || 'GET', headers: options.headers || {},
+      ...(options.rule_context ? {rule_context:options.rule_context} : {})}});
     const body = Uint8Array.from(atob(result.body), c => c.charCodeAt(0));
-    const response = new Response([204,205,304].includes(result.status) ? null : body,
-      {status: result.status, headers: result.headers});
+    const status=result.status === 0 && result.rule_decision && !result.rule_decision.download ? 204 : result.status;
+    const response = new Response([204,205,304].includes(status) ? null : body,
+      {status, headers: result.headers});
     response.aegisRequest = result.request;
+    response.aegisRuleDecision = result.rule_decision;
     return response;
   }
   async close() { return this.call('stop', {id: this.id}); }

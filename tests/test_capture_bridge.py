@@ -15,6 +15,177 @@ from cli.launch import AegisArchiveHandler
 
 
 class CaptureBridgeTests(unittest.TestCase):
+    def rule_options(self, match, *, kind='asset', url=None):
+        return {'rule_context': {'config': {'version': 1, 'rules': [
+            {'id': 'deny', 'match': match, 'decision': {'download': False}}]},
+            'resource': {'url': url or self.url, 'kind': kind, 'depth': 0}}}
+
+    def test_rules_reject_context_before_network(self):
+        sid = self.bridge.configure(self.profile)['id']
+        options = [self.rule_options({}, url=self.url + '/different'),
+                   {'rule_context': None}, {'rule_context': {}},
+                   {'rule_context': {'config': {'version': 2, 'rules': []},
+                                     'resource': {'url': self.url, 'kind': 'asset', 'depth': 0}}}]
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            for option in options:
+                with self.subTest(option=option), self.assertRaises(ValueError):
+                    self.bridge.fetch(sid, self.url, option)
+            build.assert_not_called()
+        self.assertEqual(self.seen, [])
+
+    def test_predecided_rule_denial_never_opens_network(self):
+        sid = self.bridge.configure(self.profile)['id']
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            value = self.bridge.fetch(sid, self.url, self.rule_options({'path_prefix': '/'}))
+        build.assert_not_called()
+        self.assertEqual(value['body'], '')
+        self.assertFalse(value['rule_decision']['download'])
+
+    def test_response_rules_do_not_read_excluded_bodies(self):
+        sid = self.bridge.configure(self.profile)['id']
+        cases = [({'mime': 'application/pdf'}, {'Content-Type': 'application/pdf'}, 200),
+                 ({'min_bytes': 10}, {'Content-Length': '100'}, 200),
+                 ({'min_bytes': 10}, {'Content-Length': 'invalid'}, 200),
+                 ({'min_bytes': 10}, {'Content-Length': '100', 'Content-Encoding': 'gzip'}, 200),
+                 ({'min_bytes': 10}, {}, 503)]
+        for match, headers, status in cases:
+            response = mock.MagicMock()
+            response.__enter__.return_value = response
+            response.code, response.headers = status, headers
+            with self.subTest(match=match, headers=headers), \
+                 mock.patch('cli.capture_bridge.urllib.request.build_opener') as build, \
+                 mock.patch.object(self.bridge.session['engine'], 'record_failure') as failure:
+                build.return_value.open.return_value = response
+                value = self.bridge.fetch(sid, self.url, self.rule_options(match))
+                response.read.assert_not_called()
+                self.assertEqual(value['status'], status)
+                self.assertEqual(value['body'], '')
+                self.assertFalse(value['rule_decision']['download'])
+                if status == 503:
+                    failure.assert_called_once_with(self.url, 503, None)
+
+    def test_sitemap_native_body_cap(self):
+        sid = self.bridge.configure(self.profile)['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.code, response.headers = 200, {}
+        response.read.return_value = b'<urlset/>'
+        options = self.rule_options({'path_prefix': '/excluded'}, kind='sitemap')
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            self.bridge.fetch(sid, self.url, options)
+        response.read.assert_called_once_with(262144 + 1)
+        from cli.capture_bridge import CaptureFailure
+        response.read.return_value = b'x' * (262144 + 1)
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            with self.assertRaises(CaptureFailure) as caught:
+                self.bridge.fetch(sid, self.url, options)
+        self.assertEqual(caught.exception.details['reason_code'], 'response_too_large')
+
+    def test_response_rule_nonmatch_retains_body(self):
+        from email.message import Message
+        sid = self.bridge.configure(self.profile)['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        headers = Message()
+        headers['Content-Length'] = '2'
+        headers['Content-Length'] = '2'
+        response.code, response.headers = 200, headers
+        response.read.return_value = b'ok'
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            value = self.bridge.fetch(sid, self.url, self.rule_options({'min_bytes': 10}))
+        self.assertEqual(value['body'], 'b2s=')
+        self.assertTrue(value['rule_decision']['download'])
+
+    def test_conflicting_response_metadata_holds_body(self):
+        from email.message import Message
+        sid = self.bridge.configure(self.profile)['id']
+        for name, values, match in [
+                ('Content-Type', ['application/pdf', 'text/html'], {'mime': 'application/pdf'}),
+                ('Content-Type', ['text/html', 'application/pdf'], {'mime': 'application/pdf'}),
+                ('Content-Length', ['100', '2'], {'min_bytes': 10}),
+                ('Content-Length', ['2', '100'], {'min_bytes': 10}),
+                ('Content-Length', ['+100'], {'min_bytes': 10})]:
+            headers = Message()
+            for value in values:
+                headers[name] = value
+            response = mock.MagicMock()
+            response.__enter__.return_value = response
+            response.code, response.headers = 200, headers
+            with self.subTest(name=name, values=values), \
+                    mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+                build.return_value.open.return_value = response
+                value = self.bridge.fetch(sid, self.url, self.rule_options(match))
+                response.read.assert_not_called()
+                self.assertEqual(value['rule_decision']['state'], 'needs_metadata')
+
+    def test_transfer_encoding_makes_declared_size_unknown(self):
+        sid = self.bridge.configure(self.profile)['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.code = 200
+        response.headers = {'Content-Length': '2', 'Transfer-Encoding': 'chunked'}
+        response.read.return_value = b'x' * 100
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            value = self.bridge.fetch(sid, self.url, self.rule_options({'min_bytes': 10}))
+        response.read.assert_not_called()
+        self.assertEqual(value['body'], '')
+        self.assertEqual(value['rule_decision']['state'], 'needs_metadata')
+        self.assertEqual(value['rule_decision']['missing'], ['bytes'])
+
+    def test_comma_joined_mime_is_unknown(self):
+        sid = self.bridge.configure(self.profile)['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.code = 200
+        response.headers = {'Content-Type': 'text/plain, application/pdf'}
+        response.read.return_value = b'synthetic'
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            value = self.bridge.fetch(sid, self.url, self.rule_options({'mime': 'application/pdf'}))
+        response.read.assert_not_called()
+        self.assertEqual(value['body'], '')
+        self.assertEqual(value['rule_decision']['state'], 'needs_metadata')
+        self.assertEqual(value['rule_decision']['missing'], ['mime'])
+
+    def test_incomplete_body_returns_capture_diagnostic(self):
+        from http.client import IncompleteRead
+        from cli.capture_bridge import CaptureFailure
+        sid = self.bridge.configure(self.profile)['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.code, response.headers = 200, {}
+        response.read.side_effect = IncompleteRead(b'synthetic', 100)
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            with self.assertRaises(CaptureFailure) as caught:
+                self.bridge.fetch(sid, self.url)
+        self.assertEqual(caught.exception.details['error_type'], 'IncompleteRead')
+        self.assertEqual(caught.exception.details['stage'], 'response_body')
+
+    def test_alias_scope_is_explicit(self):
+        self.profile['target'] = {'allowed_domains': ['primary.test'],
+                                  'domain_aliases': {'primary.test': ['alias.test']}}
+        sid = self.bridge.configure(self.profile)['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.code, response.headers = 302, {'Location': 'http://redirect.test/'}
+        response.read.return_value = b''
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            self.bridge.fetch(sid, 'http://alias.test/')
+            with self.assertRaises(ValueError):
+                self.bridge.fetch(sid, 'http://redirect.test/')
+            self.assertEqual(build.return_value.open.call_count, 1)
+        self.assertNotIn('redirect.test', self.bridge.session['hosts'])
+        self.bridge.close(sid)
+        self.profile['target']['domain_aliases'] = {'other.test': ['alias.test']}
+        with self.assertRaises(ValueError):
+            self.bridge.configure(self.profile)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.seen = []

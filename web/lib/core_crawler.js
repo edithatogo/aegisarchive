@@ -13,13 +13,13 @@
  */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
-    define(['./mirror_resources'], factory);
+    define(['./mirror_resources', './crawl_rules'], factory);
   } else if (typeof module === 'object' && module.exports) {
-    module.exports = factory(require('./mirror_resources.js'));
+    module.exports = factory(require('./mirror_resources.js'), require('./crawl_rules.js'));
   } else {
-    root.CoreCrawler = factory(root.MirrorResources);
+    root.CoreCrawler = factory(root.MirrorResources, root.CrawlRules);
   }
-}(typeof self !== 'undefined' ? self : this, function (MirrorResources) {
+}(typeof self !== 'undefined' ? self : this, function (MirrorResources, CrawlRules) {
 
   const TRACKING_PARAMS = new Set([
     'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
@@ -60,6 +60,7 @@
       this.documents = [];   // [{ url, title, mimeType, size, hash, date }]
       this.discoveryLimitations = [];
       this.resourceOutcomes = new Map();
+      this.linkEdges = new Map();
       this.auditLedger = []; // [{ url, status, mimeType, latency_ms, size_bytes, timestamp }]
 
       // Submodules
@@ -77,7 +78,19 @@
 
       // Config shortcuts
       this.targetConfig = profile.target || {};
-      this.allowedDomains = (this.targetConfig.allowed_domains || []).map(d => d.toLowerCase());
+      this.allowedDomains = CrawlRules.scopeHosts((this.targetConfig.allowed_domains || []).map(d => d.toLowerCase()), this.targetConfig.domain_aliases || {});
+      this.ruleConfig = CrawlRules.validateRules(this.targetConfig.crawl_rules || {version:1,rules:[]});
+      this.queryPolicy = this.targetConfig.query_policy || 'strip_tracking';
+      if (!['strip_tracking','preserve','drop'].includes(this.queryPolicy)) throw Error('Invalid query policy');
+      this.sitemapSeeds = this.targetConfig.sitemap_seeds || [];
+      if (!Array.isArray(this.sitemapSeeds) || this.sitemapSeeds.length > 32 || !this.sitemapSeeds.every(x=>typeof x==='string')) throw Error('Invalid sitemap seeds');
+      // Legacy profile fields accept only literal path alternatives, never executable regex.
+      this.pathFilters={};
+      for (const field of ['path_blacklist_regex','path_whitelist_regex']) {
+        const value=this.targetConfig[field] || '';
+        if (typeof value!=='string' || value.length>2048 || (value && !/^[A-Za-z0-9_/%.-]+(?:\|[A-Za-z0-9_/%.-]+)*$/.test(value))) throw Error('Unsupported legacy path matcher; use crawl_rules');
+        this.pathFilters[field]=value ? value.toLowerCase().split('|') : [];
+      }
       this.assetExtensions = new Set((this.targetConfig.asset_extensions || [
         '.pdf', '.docx', '.xlsx', '.pptx', '.csv', '.zip'
       ]).map(ext => ext.toLowerCase()));
@@ -104,7 +117,7 @@
         const searchParams = new URLSearchParams(u.search);
         const keysToRemove = [];
         for (const key of searchParams.keys()) {
-          if (TRACKING_PARAMS.has(key.toLowerCase()) || key.toLowerCase().startsWith('utm_')) {
+          if (this.queryPolicy === 'drop' || (this.queryPolicy !== 'preserve' && (TRACKING_PARAMS.has(key.toLowerCase()) || key.toLowerCase().startsWith('utm_')))) {
             keysToRemove.push(key);
           }
         }
@@ -137,16 +150,10 @@
         if (!isInDomain) return false;
 
         // Blacklist check
-        if (this.targetConfig.path_blacklist_regex) {
-          const re = new RegExp(this.targetConfig.path_blacklist_regex, 'i');
-          if (re.test(u.pathname)) return false;
-        }
+        if (this.pathFilters.path_blacklist_regex.some(value=>u.pathname.toLowerCase().includes(value))) return false;
 
         // Whitelist check
-        if (this.targetConfig.path_whitelist_regex) {
-          const re = new RegExp(this.targetConfig.path_whitelist_regex, 'i');
-          if (!re.test(u.pathname)) return false;
-        }
+        if (this.pathFilters.path_whitelist_regex.length && !this.pathFilters.path_whitelist_regex.some(value=>u.pathname.toLowerCase().includes(value))) return false;
 
         // Directory recurrence check (prevent crawler traps)
         const segments = u.pathname.split('/').filter(Boolean);
@@ -189,6 +196,7 @@
       addTier(seeds.tier_1_core, 1);
       addTier(seeds.tier_2_breadth, 2);
       addTier(seeds.tier_3_discovery, 3);
+      for (const raw of this.sitemapSeeds) this.enqueueReference(raw, null, 0, 1, 'sitemap');
     }
 
     /**
@@ -255,6 +263,16 @@
 
     async processUrl(task) {
       const { url, depth, tier } = task; // task.retries is managed by requeueForRetry
+      const kind = task.kind || (this.isAssetUrl(url) ? 'asset' : 'page');
+      let decision = CrawlRules.evaluateRules(this.ruleConfig, {url,kind,depth}, this.isUrlInScope(url) && depth <= this.maxDepth && (kind !== 'sitemap' || this.allowedDomains.includes(new URL(url).hostname)));
+      const exclude = async (reason, response=null) => {
+        if (response?.body?.cancel) await response.body.cancel().catch(()=>{});
+        this.resourceOutcomes.set(url,{...this.resourceOutcomes.get(url),url,parentUrl:task.parentUrl || null,
+          state:'excluded',reason,rule_id:decision.rule_id,decision});
+      };
+      if (!decision.discover || (!decision.download && decision.state !== 'needs_metadata')) {
+        await exclude('rule:' + (decision.rule_id || 'scope')); return;
+      }
 
       // Acquire permission from Politeness Engine (applies rate limit, EWMA backoff, Retry-After, circuit tripwire)
       if (!(await this.isAllowedByRobots(url))) {
@@ -283,11 +301,21 @@
           method: 'GET',
           headers: REQUEST_HEADERS,
           cache: 'no-store',
-          redirect: 'manual'
+          redirect: 'manual',
+          rule_context: {config:this.ruleConfig,resource:{url,kind,depth}}
         });
 
         const reqEndTime = performance.now();
         const latencyMs = Math.round(reqEndTime - reqStartTime);
+
+        // Native transport may see duplicate headers that Fetch flattens. Never
+        // reinterpret its before-body denial as a successful empty capture.
+        if (resp.aegisRuleDecision && !resp.aegisRuleDecision.download) {
+          decision=resp.aegisRuleDecision;
+          this.politeness.recordSuccess(url,latencyMs);
+          await exclude(decision.state === 'needs_metadata' ? 'rule_metadata_unavailable' : 'rule:'+(decision.rule_id || 'default'),resp);
+          return;
+        }
 
         if (resp.type === 'opaque' || resp.type === 'opaqueredirect' || resp.status === 0) {
           this.discoveryLimitations.push({source:url, reason:'unreadable_response_or_redirect'});
@@ -316,18 +344,47 @@
 
         const contentType = resp.headers.get('content-type') || '';
         const mime = contentType.split(';')[0].trim().toLowerCase();
+        const ruleMime = !contentType || contentType.includes(',') ? undefined : mime;
         const isHtml = ['text/html','application/xhtml+xml'].includes(mime);
         const isAsset = this.isAssetUrl(url) || !isHtml;
 
+        const length = resp.headers.get('content-length');
+        const bytes = length !== null && /^\d+$/.test(length) && Number.isSafeInteger(Number(length)) &&
+          !resp.headers.get('content-encoding') ? Number(length) : undefined;
+        decision = CrawlRules.evaluateRules(this.ruleConfig,{url,kind,depth,mime:ruleMime,bytes},true);
+        if (!decision.download) {
+          await exclude(decision.state === 'needs_metadata' ? 'rule_metadata_unavailable' : 'rule:' + (decision.rule_id || 'default'),resp);
+          return;
+        }
+
         stage = 'response_body';
-        const arrayBuffer = await resp.arrayBuffer();
+        let arrayBuffer;
+        if (kind === 'sitemap' && resp.body?.getReader) {
+          const reader = resp.body.getReader(), chunks=[]; let size=0;
+          try {
+            while (true) {
+              const chunk=await reader.read(); if (chunk.done) break;
+              size+=chunk.value.byteLength;
+              if (size>262144) { await reader.cancel(); throw Error('Sitemap byte limit'); }
+              chunks.push(chunk.value);
+            }
+          } finally { reader.releaseLock(); }
+          const joined=new Uint8Array(size);let offset=0;
+          for (const chunk of chunks) { joined.set(chunk,offset);offset+=chunk.byteLength; }
+          arrayBuffer=joined.buffer;
+        } else arrayBuffer = await resp.arrayBuffer();
         const uint8 = new Uint8Array(arrayBuffer);
+        const actual = CrawlRules.evaluateRules(this.ruleConfig,{url,kind,depth,mime:ruleMime,bytes:uint8.length},true);
+        if (!actual.download) { decision=actual; await exclude('rule:'+(decision.rule_id || 'default')); return; }
+        decision=actual;
 
         // Append to WARC / CDX writer (with automatic SHA-256 deduplication revisit records)
         stage = 'archive_write';
         const warcResult = await this.warc.addResponseRecord(url, resp, uint8, { request: resp.aegisRequest || { method: 'GET', headers: REQUEST_HEADERS } });
 
-        this.resourceOutcomes.set(url,{url,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length});
+        this.resourceOutcomes.set(url,{...this.resourceOutcomes.get(url),url,parentUrl:task.parentUrl || null,state:'captured',reason:null,status:resp.status,sha256:warcResult.digest,bytes:uint8.length,
+          rule_id:decision.rule_id,decision,mime,declared_bytes:bytes ?? null,
+          redirect_to:isRedirect && resp.headers.get('location') ? this.canonicalizeUrl(resp.headers.get('location'),url) : null});
         this.recordAudit({
           url,
           status: resp.status,
@@ -353,17 +410,24 @@
           this.callbacks.onDocumentFound(docEntry);
         }
 
-        if (isRedirect) {
+        if (isRedirect && decision.traverse) {
           const location = resp.headers.get('location');
-          if (location) this.enqueueReference(location, url, depth, tier);
+          if (location) this.enqueueReference(location, url, depth, tier, kind);
           else this.discoveryLimitations.push({source:url,reason:'redirect_without_location'});
-        } else if (isHtml || mime === 'text/css') {
+        } else if (kind === 'sitemap' && decision.traverse) {
+          try {
+            const found=CrawlRules.discoverSitemap(new TextDecoder('utf-8',{fatal:true}).decode(uint8),url,this.allowedDomains);
+            for (const ref of found.pages) this.enqueueReference(ref,url,depth+1,tier);
+            for (const ref of found.sitemaps) this.enqueueReference(ref,url,depth+1,tier,'sitemap');
+            for (const ref of found.excluded) this.enqueueReference(ref,url,depth,tier);
+          } catch (_) { this.discoveryLimitations.push({source:url,reason:'unsupported_or_oversized_sitemap'}); }
+        } else if (decision.traverse && (isHtml || mime === 'text/css')) {
           const charset = /charset\s*=\s*["']?([^;\s"']+)/i.exec(contentType)?.[1] || 'utf-8';
           try {
             const text = new TextDecoder(charset, {fatal:true}).decode(uint8);
             const found = MirrorResources.discover(text, contentType, url);
             this.discoveryLimitations.push(...found.unsupported.map(reason => ({source:url,reason})));
-            for (const reference of found.resources) this.enqueueReference(reference.url, url, depth + 1, tier);
+            for (const reference of found.resources) this.enqueueReference(reference.url, url, depth + 1, tier, reference.kind);
           } catch (_) {
             this.discoveryLimitations.push({source:url,reason:'unsupported_or_invalid_charset'});
           }
@@ -491,27 +555,34 @@
       return MirrorResources.discover(html, 'text/html', 'http://discovery.invalid/').resources.map(x => x.url);
     }
 
-    enqueueReference(raw, baseUrl, nextDepth, tier) {
+    enqueueReference(raw, baseUrl, nextDepth, tier, kind=null) {
       const url = this.canonicalizeUrl(raw, baseUrl);
       if (!url) {
         this.callbacks.onDebug('discovery', {reason_code: 'unsupported_seed_or_reference'});
         this.discoveryLimitations.push({source:baseUrl,reason:'unsupported_seed_or_reference'});
         return;
       }
-      if (!this.isUrlInScope(url) || nextDepth > this.maxDepth) {
+      if (baseUrl) {
+        const key=JSON.stringify([baseUrl,url]);
+        if (this.linkEdges.size<10000) this.linkEdges.set(key,{source:baseUrl,target:url});
+        else if (!this.linkEdges.has(key) && !this.discoveryLimitations.some(x=>x.reason==='graph_edge_limit')) this.discoveryLimitations.push({source:null,reason:'graph_edge_limit'});
+      }
+      kind=kind === 'sitemap' ? kind : this.isAssetUrl(url) ? 'asset' : kind || 'page';
+      const decision=CrawlRules.evaluateRules(this.ruleConfig,{url,kind,depth:nextDepth},this.isUrlInScope(url) && nextDepth <= this.maxDepth && (kind !== 'sitemap' || this.allowedDomains.includes(new URL(url).hostname)));
+      if (!decision.discover) {
         this.callbacks.onDebug('discovery', {url, state: 'excluded', reason_code: nextDepth > this.maxDepth ? 'depth_limit' : 'scope'});
-        if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'excluded',reason:nextDepth > this.maxDepth ? 'depth_limit' : 'scope'});
+        if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,parentUrl:baseUrl,state:'excluded',reason:nextDepth > this.maxDepth ? 'depth_limit' : decision.rule_id ? 'rule:'+decision.rule_id : 'scope',rule_id:decision.rule_id,decision});
         return;
       }
-      if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,state:'pending',reason:null});
+      if (!this.resourceOutcomes.has(url)) this.resourceOutcomes.set(url,{url,parentUrl:baseUrl,state:'pending',reason:null,rule_id:decision.rule_id,decision});
       this.callbacks.onDebug('discovery', {url, state: this.visited.has(url) ? 'visited' : 'pending'});
-      if (!this.visited.has(url) && !this.queue.some(q => q.url === url)) this.queue.push({url,tier,depth:nextDepth,parentUrl:baseUrl});
+      if (!this.visited.has(url) && !this.queue.some(q => q.url === url)) this.queue.push({url,tier,depth:nextDepth,parentUrl:baseUrl,kind:kind || (this.isAssetUrl(url)?'asset':'page')});
     }
 
     extractLinks(html, baseUrl, nextDepth, tier) {
       const found = MirrorResources.discover(html, 'text/html', baseUrl);
       this.discoveryLimitations.push(...found.unsupported.map(reason => ({source:baseUrl,reason})));
-      for (const reference of found.resources) this.enqueueReference(reference.url, baseUrl, nextDepth, tier);
+      for (const reference of found.resources) this.enqueueReference(reference.url, baseUrl, nextDepth, tier, reference.kind);
     }
 
     pause() {
@@ -554,7 +625,9 @@
       if (cp.profile_id !== (this.profile.profile_id || null) || !Array.isArray(cp.visited)) return false;
       if (!cp.queue.every(task => task && typeof task.url === 'string' &&
           this.canonicalizeUrl(task.url) === task.url && this.isUrlInScope(task.url) &&
-          Number.isInteger(task.depth) && task.depth >= 0 && Number.isInteger(task.tier) && task.tier >= 1)) return false;
+          Number.isInteger(task.depth) && task.depth >= 0 && task.depth <= this.maxDepth && Number.isInteger(task.tier) && task.tier >= 1 &&
+          (task.kind == null || ['page','asset','sitemap'].includes(task.kind)) &&
+          (task.retries == null || (Number.isInteger(task.retries) && task.retries >= 0 && task.retries <= this.maxRetries)))) return false;
       if (!cp.visited.every(url => typeof url === 'string' && this.isUrlInScope(url))) return false;
       this.discoveryLimitations.push({source:null,reason:'frontier_checkpoint_does_not_restore_archive_bytes'});
       this.queue = cp.queue.slice();
@@ -589,12 +662,12 @@
       const counts = Object.fromEntries(['captured','excluded','failed','pending','unsupported'].map(state => [state,resources.filter(x => x.state === state).length]));
       const coverage = {schema_version:1,extractor_version:MirrorResources.VERSION,scope:'discovered_static_resource_graph',
         complete:resources.length > 0 && counts.captured === resources.length && this.discoveryLimitations.length === 0,
-        counts,discovered:resources.length,resources,limitations:this.discoveryLimitations,robots_policy:this.robotsPolicy,
+        counts,discovered:resources.length,resources,scope_hosts:this.allowedDomains,link_edges:[...this.linkEdges.values()],limitations:this.discoveryLimitations,robots_policy:this.robotsPolicy,
         archives:{}};
       const storageReceipt = this.streamer?.isUsb
         ? await this.streamer.finalize(this.warc.getCdxContent(), coverage.complete) : null;
       coverage.archives = storageReceipt ? storageReceipt.archives
-        : {warc:{sha256:await hashBlob(warcBlob)},cdx:{sha256:await hashBlob(cdxBlob)}};
+        : {warc:{sha256:await hashBlob(warcBlob),bytes:warcBlob.size},cdx:{sha256:await hashBlob(cdxBlob),bytes:cdxBlob.size}};
       return {
         storageReceipt,
         coverage,
