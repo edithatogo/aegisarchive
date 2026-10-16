@@ -4,7 +4,7 @@
 
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
-- [~] T1 Define catalogue and derivative schemas. (AC1, AC2) — basic tables exist; required metadata/history assertions are not covered by the planned dedicated tests.
+- [x] T1 Define catalogue and derivative schemas. (AC1, AC2) — nullable source metadata, explicit processing states, revision references and legacy migration verified by 3 lifecycle tests; task_verified receipt records baseline counts.
   - **Files**: `portable/document_catalogue.py`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Specify source/revision identity, unknown metadata, MIME, hashes, locators, handling flags and explicit processing states.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
