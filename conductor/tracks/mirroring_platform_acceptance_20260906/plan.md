@@ -70,7 +70,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T5 Record actual Apple Silicon acceptance. (AC1, AC2)
+- [x] T5 Record actual Apple Silicon acceptance. (AC1, AC2) — actual clean-source revision ff29f71389bd450c71cc4dcc09e03ceaa626b764 qualified on Darwin arm64/Python 3.15.0/Chromium 155.0.8059.82 with Playwright 1.63.0. Full gate passed (353 Python tests/12 skipped, 18 station, 85 JavaScript); all three browser cases passed in 36.0s. Positive receipt and complete proof retained under artifacts/qualification/ff29f71389bd450c71cc4dcc09e03ceaa626b764/darwin-arm64 and independently verified by two reviewers. This qualifies only the tested Mac/static-site scope; T6 remains pending.
   - **Files**: `scripts/mirroring_acceptance.py`; focused tests: `tests/browser/mirroring_acceptance.spec.js`.
   - **Change**: Execute the harness on the current Mac and retain hashes/results; mocked or hosted-only evidence is not this task.
   - **Verify**: `python3 scripts/mirroring_acceptance.py --help; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
