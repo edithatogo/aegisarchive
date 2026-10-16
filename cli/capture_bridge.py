@@ -78,9 +78,9 @@ class CaptureBridge:
         self.archives = UsbArchiveStore(self.log_dir.parent / 'captures')
         self.station_port = station_port
         self.session = None
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
 
-    def configure(self, profile):
+    def configure(self, profile, archive_id=None, lease=None):
         target = profile.get('target', {})
         hosts = target.get('allowed_domains', [])
         if not isinstance(hosts, list) or not 1 <= len(hosts) <= 32:
@@ -112,17 +112,61 @@ class CaptureBridge:
         with self.lock:
             if self.session and not self.session['stop'].is_set():
                 raise ValueError('A native capture is already active; stop it first')
+            if self.session:
+                if not self.session['lock'].acquire(timeout=35):
+                    raise ValueError('Previous source request has not settled; retry later')
+                self.session['lock'].release()
             stop = threading.Event()
             sid = secrets.token_hex(12)
             self.log_dir.mkdir(parents=True, exist_ok=True)
             session = dict(id=sid, hosts=hosts, authentication=authentication, stop=stop,
                            engine=PolitenessEngine(policy, stop_event=stop), lock=threading.Lock(),
                            log=self.log_dir / (sid + '.jsonl'))
+            if archive_id is not None:
+                item = self.archives.session(archive_id)
+                self.archives.check_lease(item, lease, required=True)
+                session['archive_id'] = archive_id
+                session['archive_lease'] = lease
+                path = self.archives.folder(archive_id) / 'native-pacing.json'
+                if item['generation'] > 0 and not path.exists():
+                    raise ValueError('Saved native pacing journal is missing; recovery is unsafe')
+                if path.exists() or path.is_symlink():
+                    with self.archives.open_file(path) as saved:
+                        raw = saved.read(1024 * 1024 + 1)
+                    if len(raw) > 1024 * 1024:
+                        raise ValueError('Native pacing journal too large')
+                    session['engine'].restore_state(json.loads(raw))
             self.session = session
             self.event(session, 'started', hosts=hosts, robots_policy=policy.get('robots_policy', 'respect'))
             self.event(session, 'runtime', platform=sys.platform, python_version=list(sys.version_info[:3]),
                        network_transport='urllib_windows_auto_v1', browser_session_inherited=False)
             return {'id': sid, 'log_file': str(session['log'])}
+
+    def persist_pacing(self, session):
+        """Independent of archive rollback: a received Retry-After cannot disappear."""
+        if 'archive_id' not in session:
+            return
+        self.check_archive_owner(session)
+        folder = self.archives.folder(session['archive_id'])
+        temporary = folder / ('native-pacing-' + secrets.token_hex(8) + '.partial.json')
+        with temporary.open('x', encoding='utf-8') as output:
+            json.dump(session['engine'].export_state(), output, allow_nan=False)
+            output.flush()
+            os.fsync(output.fileno())
+        os.replace(temporary, folder / 'native-pacing.json')
+        self.archives.sync_directory(folder)
+
+    def check_archive_owner(self, session):
+        if 'archive_id' in session:
+            with self.archives.lock:
+                self.archives.check_lease(self.archives.session(session['archive_id']),
+                                         session['archive_lease'], required=True)
+
+    def reopen_archive(self, archive_id, generation, profile_hash):
+        # Configure cannot enter between request settlement and lease rotation.
+        with self.lock:
+            self.recover()
+            return self.archives.reopen(archive_id, generation, profile_hash)
 
     def event(self, session, event, **fields):
         if 'url' in fields:
@@ -152,6 +196,10 @@ class CaptureBridge:
         with self.lock:
             if self.session:
                 self.close(self.session['id'])
+                # Stop flags alone do not mean an in-flight source request settled.
+                if not self.session['lock'].acquire(timeout=35):
+                    raise ValueError('Previous source request has not settled; retry recovery later')
+                self.session['lock'].release()
         return {'stopped': True}
 
     def fetch(self, sid, url, options=None):
@@ -192,16 +240,19 @@ class CaptureBridge:
         with session['lock']:
             if session['stop'].is_set():
                 raise ValueError('Capture stopped')
+            self.check_archive_owner(session)
             if rule_decision and rule_decision['state'] == 'decided' and not rule_decision['download']:
                 self.event(session, 'rule_excluded', url=url, rule_id=rule_decision['rule_id'])
                 return {'status': 0, 'headers': {}, 'body': '', 'rule_decision': rule_decision,
                         'request': {'method': 'GET', 'headers': {}}}
             if session['stop'].is_set() or session['engine'].acquire_permission(url)['aborted']:
                 raise ValueError('Capture stopped')
+            self.check_archive_owner(session)
             started = time.monotonic()
             self.event(session, 'request', url=url)
             stage, reason_code = 'preflight', 'authentication_config'
             trace = NetworkTrace(lambda **fields: self.event(session, 'network_stage', **fields))
+            http_failure_recorded = False
             try:
                 authentication = session['authentication']
                 headers = {'user-agent': 'AegisArchive/1.0', 'accept-encoding': 'identity', 'host': parsed.netloc, 'connection': 'close', **forwarded}
@@ -223,6 +274,11 @@ class CaptureBridge:
                     status = response.code
                     safe_headers = {k.lower(): v for k, v in response.headers.items()
                                     if k.lower() not in SENSITIVE | {'transfer-encoding'}}
+                    if isinstance(status, int) and not isinstance(status, bool) and 400 <= status <= 599:
+                        # Preserve received server timing even if reading the body fails.
+                        session['engine'].record_failure(url, status, safe_headers.get('retry-after'))
+                        http_failure_recorded = status == 429 or 500 <= status <= 599
+                        self.persist_pacing(session)
                     encoding = single_header(response.headers, 'content-encoding')
                     encoded = (encoding or '').lower() not in ('identity', '')
                     if encoding is None and 'content-encoding' in safe_headers:
@@ -253,8 +309,7 @@ class CaptureBridge:
                 elapsed = round((time.monotonic() - started) * 1000)
                 if status < 400:
                     session['engine'].record_success(url, elapsed)
-                else:
-                    session['engine'].record_failure(url, status, safe_headers.get('retry-after'))
+                self.persist_pacing(session)
                 self.event(session, 'response', url=url, status=status, bytes=len(body), elapsed_ms=elapsed)
                 result = {'status': status, 'headers': safe_headers,
                         'body': base64.b64encode(body).decode('ascii'),
@@ -264,7 +319,9 @@ class CaptureBridge:
                     result['rule_decision'] = rule_decision
                 return result
             except Exception as error:
-                session['engine'].record_failure(url, 0)
+                if not http_failure_recorded:
+                    session['engine'].record_failure(url, 0)
+                self.persist_pacing(session)
                 # Keep credential values and exception objects out of persisted logs.
                 details = {**failure_details(error), "stage": trace.stage if stage == 'transport' else stage, "reason_code": reason_code}
                 self.event(session, 'failure', url=url, elapsed_ms=round((time.monotonic() - started) * 1000), **details)
@@ -299,6 +356,7 @@ def handle(handler):
                 return True
             length = int(handler.headers.get('Content-Length', '0'))
             limit = (8 * 1024 * 1024 if path == '/__station/capture/diagnostics'
+                     else 2 * 1024 * 1024 if path == '/__station/capture/archive-checkpoint'
                      else 400000 if path == '/__station/capture/archive-chunk' else 65536)
             if not 0 < length <= limit:
                 raise ValueError('Invalid request length')
@@ -315,13 +373,20 @@ def handle(handler):
                 result = bridge.archives.start()
                 bridge.debug.native({'event': 'archive_started', 'archive_id': result['archive_id']})
             elif path == '/__station/capture/archive-chunk':
-                result = bridge.archives.chunk(payload['archive_id'], payload['kind'], payload['offset'], payload['data'])
+                result = bridge.archives.chunk(payload['archive_id'], payload['kind'], payload['offset'], payload['data'], payload.get('lease'))
                 bridge.debug.native({'event': 'archive_chunk_saved', 'archive_id': payload['archive_id'], 'offset': result['offset'], 'stage': 'archive_write'})
+            elif path == '/__station/capture/archive-discover':
+                result = {'archives': bridge.archives.discover()}
+            elif path == '/__station/capture/archive-checkpoint':
+                result = bridge.archives.checkpoint(payload['archive_id'], payload['generation'],
+                    payload['state'], payload['profile_hash'], payload['lease'])
+            elif path == '/__station/capture/archive-reopen':
+                result = bridge.reopen_archive(payload['archive_id'], payload['generation'], payload['profile_hash'])
             elif path == '/__station/capture/archive-finalize':
-                result = bridge.archives.finalize(payload['archive_id'], payload['summary'])
+                result = bridge.archives.finalize(payload['archive_id'], payload['summary'], payload.get('lease'))
                 bridge.debug.native({'event': 'archive_finalized', 'archive_id': payload['archive_id'], 'complete': payload['summary']['complete']})
             elif path == '/__station/capture/start':
-                result = bridge.configure(payload['profile'])
+                result = bridge.configure(payload['profile'], payload.get('archive_id'), payload.get('lease'))
             elif path == '/__station/capture/fetch':
                 result = bridge.fetch(payload['id'], payload['url'], payload.get('options'))
             elif path == '/__station/capture/diagnostics':

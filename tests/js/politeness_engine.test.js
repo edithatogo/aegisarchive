@@ -2,6 +2,72 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const PolitenessEngine = require('../../web/lib/politeness_engine.js');
 
+test('durable pacing preserves deadlines, empty bucket and circuit', async t => {
+  let now = 1000000;
+  t.mock.method(Date, 'now', () => now);
+  const config = {min_delay_ms:100,max_delay_ms:100};
+  const engine = new PolitenessEngine(config);
+  engine.tokens = 0;
+  for (let i=0;i<3;i++) engine.recordFailure('http://h.test/',429,'120');
+  const state = JSON.parse(JSON.stringify(engine.exportState()));
+  now -= 10000;
+  const restored = new PolitenessEngine(config);
+  restored.restoreState(state);
+  assert.equal(restored.tokens,0);
+  assert.equal(restored.lastTokenRefill,now);
+  assert.ok(restored.domainCooldowns.get('h.test') >= 1120000);
+  assert.equal(restored.circuitState,'TRIPPED');
+  const waits=[];
+  restored.sleep=async ms=>{waits.push(ms);return false;};
+  assert.equal((await restored.acquirePermission('http://h.test/')).aborted,true);
+  assert.ok(waits[0]>=60000);
+  restored.domainCooldowns.set('h.test',2000000);
+  restored.restoreState(state);
+  assert.equal(restored.domainCooldowns.get('h.test'),2000000);
+});
+
+test('malformed and incompatible pacing restore never partially mutates', t => {
+  t.mock.method(Date,'now',()=>1000000);
+  const engine=new PolitenessEngine();
+  const original=engine.exportState();
+  for (const [field,value] of [['tokens',NaN],['consecutive_errors',true],
+    ['warmup_samples',[Infinity]],['version',2]]) {
+    const state=structuredClone(original);state[field]=value;
+    assert.throws(()=>engine.restoreState(state));
+    assert.deepEqual(engine.exportState(),original);
+  }
+  const state=structuredClone(original);state.config.burst_limit++;
+  assert.throws(()=>engine.restoreState(state));
+});
+
+test('forward restore retains absolute deadlines and saved adaptive state', async t => {
+  let now=1000000;
+  t.mock.method(Date,'now',()=>now);
+  const config={burst_limit:1,max_requests_per_minute:1,min_delay_ms:100,max_delay_ms:100};
+  const engine=new PolitenessEngine(config);
+  engine.recordSuccess('http://h.test/',300);
+  for (let i=0;i<3;i++) engine.recordFailure('http://h.test/',503,'120');
+  engine.tokens=0;engine.nextPermissionAt=1130000;
+  const state=engine.exportState();now+=10000;
+  const restored=new PolitenessEngine(config);restored.restoreState(state);
+  assert.equal(restored.domainCooldowns.get('h.test'),1120000);
+  assert.equal(restored.nextPermissionAt,1130000);
+  assert.equal(restored.ewmaLatencyMs,300);
+  assert.deepEqual(restored.warmupSamples,[300]);
+  assert.equal(restored.currentBackoffDelayMs,engine.currentBackoffDelayMs);
+  const waits=[];
+  restored.sleep=async ms=>{waits.push(ms);now+=ms;return true;};
+  assert.equal((await restored.acquirePermission('http://h.test/')).aborted,false);
+  assert.equal(waits[0],50000);assert.ok(now>=1130000);
+  assert.equal(restored.circuitState,'HALF_OPEN');
+  Object.assign(state,{saved_at_ms:now,last_refill_ms:now,circuit_state:'NOMINAL',
+    circuit_until_ms:null,domain_cooldowns:{}});
+  const fresh=new PolitenessEngine(config);fresh.restoreState(state);
+  const tokenWaits=[];fresh.sleep=async ms=>{tokenWaits.push(ms);return false;};
+  assert.equal((await fresh.acquirePermission('http://h.test/')).aborted,true);
+  assert.equal(tokenWaits[0],60000);
+});
+
 test('PolitenessEngine EWMA baseline warm-up and drift (T1, AC1)', () => {
   const engine = new PolitenessEngine({});
   engine.recordSuccess('http://h.test/', 5);

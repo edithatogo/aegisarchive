@@ -135,6 +135,55 @@
       this.streamer = streamer;
     }
 
+    /** Recovery metadata is published only after the stream has acknowledged bytes. */
+    exportState() {
+      if (!this.streamer || this.records.length) throw Error('Writer is not durably attached');
+      if (this.streamer.offsets && this.streamer.offsets.warc !== this.currentOffset)
+        throw Error('Writer bytes have not been acknowledged');
+      return JSON.parse(JSON.stringify({version:1, filename:this.filename,
+        currentOffset:this.currentOffset, recordCount:this.recordCount,
+        deduplicate:this.deduplicate, cdxLines:this.cdxLines,
+        payloadMap:[...this.payloadMap]}));
+    }
+
+    restoreState(state, streamer) {
+      const bad = () => {throw Error('Invalid or mismatched archive writer checkpoint');};
+      if (!state || state.version !== 1 || typeof state.filename !== 'string' ||
+          !/^[A-Za-z0-9_.-]+\.warc$/.test(state.filename) || state.filename.startsWith('.') ||
+          !Number.isSafeInteger(state.currentOffset) || state.currentOffset < 1 ||
+          !Number.isSafeInteger(state.recordCount) || state.recordCount < 1 ||
+          typeof state.deduplicate !== 'boolean' ||
+          !Array.isArray(state.cdxLines) || !Array.isArray(state.payloadMap) ||
+          !streamer || streamer.offsets?.warc !== state.currentOffset || streamer.offsets.cdx !== 0) bad();
+      const lines = state.cdxLines.slice();
+      for (const line of lines) {
+        if (typeof line !== 'string' || /[\r\n]/.test(line)) bad();
+        const fields = line.split(' ');
+        if (fields.length !== 11 || fields[10] !== state.filename ||
+            !/^[a-f0-9]{64}$/.test(fields[5]) || !/^\d+$/.test(fields[8]) || !/^\d+$/.test(fields[9]) ||
+            Number(fields[8]) < 1 || Number(fields[9]) + Number(fields[8]) > state.currentOffset) bad();
+      }
+      const payloadMap = new Map();
+      for (const entry of state.payloadMap) {
+        if (!Array.isArray(entry) || entry.length !== 2) bad();
+        const [digest, value] = entry;
+        if (typeof digest !== 'string' || !/^[a-f0-9]{64}$/.test(digest) || payloadMap.has(digest) ||
+            !value || typeof value.recordId !== 'string' || !/^<urn:uuid:[a-f0-9-]+>$/.test(value.recordId) ||
+            typeof value.url !== 'string' || !/^https?:\/\//.test(value.url) ||
+            typeof value.date !== 'string' || !Number.isFinite(Date.parse(value.date))) bad();
+        payloadMap.set(digest,{recordId:value.recordId,url:value.url,date:value.date});
+      }
+      // Discard this constructor's unflushed warcinfo; the verified prefix owns it.
+      this.filename = state.filename;
+      this.currentOffset = state.currentOffset;
+      this.recordCount = state.recordCount;
+      this.deduplicate = state.deduplicate;
+      this.cdxLines = lines;
+      this.payloadMap = payloadMap;
+      this.records = [];
+      this.streamer = streamer;
+    }
+
     /** Writes a synthesised WARC request record (Dg); returns its record id. */
     async addRequestRecord(url, request, concurrentToId, warcDate) {
       const recordId = `<urn:uuid:${generateUUID()}>`;

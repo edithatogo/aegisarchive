@@ -184,6 +184,33 @@ class NativeExtractionTests(unittest.TestCase):
         self.assertEqual(result['reason'], 'malformed_input')
         self.assertEqual(result['text'], '')
         self.assertNotIn('PRIVATE', json.dumps(result))
+
+    def test_marked_declaration_boundaries_are_consistent_across_parsers(self):
+        for content in (b'<![PRIVATE]>Visible', b'<![private]>Visible',
+                        b'<div><![UNRECOGNISED]>Visible</div>'):
+            with self.subTest(content=content):
+                result = extract(content, 'text/html')
+                self.assertEqual(result['status'], 'failed')
+                self.assertEqual(result['reason'], 'malformed_input')
+                self.assertEqual(result['text'], '')
+                self.assertEqual(result['locators'], [])
+                self.assertNotIn('PRIVATE', json.dumps(result))
+                self.assertNotIn('UNRECOGNISED', json.dumps(result))
+        controls = (
+            (b'<!DOCTYPE html><p>Visible</p>', 'Visible'),
+            (b'<!-- <![PRIVATE]> --><p>Visible</p>', 'Visible'),
+            (b'<script>const s="<![PRIVATE]>";</script><p>Visible</p>', 'Visible'),
+            (b'<style>/* <![PRIVATE]> */</style><p>Visible</p>', 'Visible'),
+            (b'<p>&lt;![PRIVATE]&gt;</p>', '<![PRIVATE]>'),
+            (b'<![CDATA[Hidden]]><p>Visible</p>', 'Visible'),
+            (b'<!--[if IE]>Hidden<![endif]--><p>Visible</p>', 'Visible'),
+            (b'<![if IE]>Conditional<![endif]>Visible', 'ConditionalVisible'),
+        )
+        for content, text in controls:
+            with self.subTest(content=content):
+                result = extract(content, 'text/html')
+                self.assertEqual(result['status'], 'complete')
+                self.assertEqual(result['text'], text)
     def test_html_extracts_visible_blocks_and_skips_active_content(self):
         content = b'<head><title>hidden</title></head><h1>A &amp; B</h1><script>secret()</script><style>.x{}</style><p>Second <b>paragraph</b></p>'
         result = extract(content, 'TEXT/HTML; charset=utf-8')

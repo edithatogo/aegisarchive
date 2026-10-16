@@ -110,6 +110,7 @@
 
     <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
       <span id="resumeBannerText"></span>
+      <select id="resumeArchive" aria-label="Saved archive to resume"></select>
       <button class="btn btn-emerald" onclick="resumeFromCheckpoint()">▶️ Resume</button>
       <button class="btn btn-secondary" onclick="discardCheckpoint()">Discard</button>
     </div>
@@ -305,6 +306,8 @@
     let currentReportJSON = "";
     let pendingCheckpoint = null;
     let memoryCheckpoint = null;
+    let recoveryArchives = [];
+    let pendingArchive = null;
     let debugSession = null;
     const debugRecorder = new DebugRecorder(async (action, payload) => {
       if (!debugSession) {
@@ -358,7 +361,7 @@
       }
       activeProfile = BUILTIN_PROFILES.default_polite || Object.values(BUILTIN_PROFILES)[0] || null;
       if (activeProfile) select.value = activeProfile.profile_id;
-      const cp = loadCheckpoint(); if (cp && Array.isArray(cp.queue) && cp.queue.length > 0) showResumeBanner(cp);
+      void refreshRecoveryArchives();
       updateProfileDisplay();
       const profileParam = new URLSearchParams(location.search).get('profile'); if (profileParam) applyProfileParam(profileParam);
     }
@@ -370,23 +373,35 @@
     function loadCheckpoint() {
       return memoryCheckpoint;
     }
-    function showResumeBanner(cp) {
-      document.getElementById('resumeBannerText').textContent =
-        `Unfinished session for profile '${cp.profile_id}': ${cp.visited.length} visited, ${cp.queue.length} queued (saved ${cp.savedAt}). Resume restores the frontier only; records captured before the reload must have been exported.`;
-      document.getElementById('resumeBanner').style.display = 'flex';
+    async function refreshRecoveryArchives(preferredId = null) {
+      try {
+        recoveryArchives = await NativeCapture.discoverArchives();
+        const select=document.getElementById('resumeArchive');
+        select.replaceChildren();
+        for (const archive of recoveryArchives) {
+          const option=document.createElement('option');
+          option.value=archive.archive_id;option.textContent=archive.archive_id;
+          select.append(option);
+        }
+        if (preferredId) {
+          select.value=preferredId;
+          pendingArchive=recoveryArchives.find(item=>item.archive_id===preferredId) || null;
+        }
+        document.getElementById('resumeBannerText').textContent =
+          'Saved USB archive available. Reselect or import the same profile and credentials, then Resume. Saved bytes are verified before continuing; credentials are not stored in recovery checkpoints.';
+        document.getElementById('resumeBanner').style.display = recoveryArchives.length ? 'flex' : 'none';
+      } catch (_) { /* A non-launcher preview has no durable archive service. */ }
     }
-    function resumeFromCheckpoint() {
-      pendingCheckpoint = loadCheckpoint();
+    async function resumeFromCheckpoint() {
+      pendingArchive = recoveryArchives.find(item=>item.archive_id===document.getElementById('resumeArchive').value) || null;
+      if (!pendingArchive) return;
       document.getElementById('resumeBanner').style.display = 'none';
-      if (pendingCheckpoint && BUILTIN_PROFILES[pendingCheckpoint.profile_id]) {
-        activeProfile = BUILTIN_PROFILES[pendingCheckpoint.profile_id];
-        document.getElementById('profileSelect').value = pendingCheckpoint.profile_id;
-        updateProfileDisplay();
-      }
-      startHarvest();
+      await startHarvest();
     }
     function discardCheckpoint() {
       saveCheckpoint(null);
+      pendingArchive = null;
+      // Hiding the prompt never deletes source bytes or incomplete archives.
       document.getElementById('resumeBanner').style.display = 'none';
     }
 
@@ -538,7 +553,12 @@
       document.getElementById('captureOutcome').textContent = 'Preparing capture…';
       try {
         usbStorage = await NativeCapture.archive();
-        nativeCapture = document.getElementById('captureRoute').value === 'native' ? await NativeCapture.start(activeProfile) : null;
+        const profileHash=await NativeCapture.profileHash(activeProfile,document.getElementById('captureRoute').value);
+        pendingCheckpoint=pendingArchive ? await usbStorage.reopen(pendingArchive,profileHash) : null;
+        if (pendingArchive) pendingArchive={...pendingArchive,generation:usbStorage.generation};
+        await usbStorage.init();
+        usbStorage.profileHash=profileHash;
+        nativeCapture = document.getElementById('captureRoute').value === 'native' ? await NativeCapture.start(activeProfile,usbStorage) : null;
         debugRecorder.record('capture_connected', {native_log_name: nativeCapture?.logFile?.split(/[\\/]/).pop() || 'browser'});
         document.getElementById('btnRecoverNative').hidden = true;
         log(nativeCapture ? '[Route] Local Python; persistent request log: ' + nativeCapture.logFile : '[Route] Browser fetch: target must permit cross-origin reads.');
@@ -548,6 +568,7 @@
         document.getElementById('captureState').textContent = 'FAILED — capture did not start';
         document.getElementById('captureOutcome').textContent = error.message;
         document.getElementById('btnRecoverNative').hidden = false;
+        if (pendingArchive) await refreshRecoveryArchives(pendingArchive.archive_id);
         log('[Error] ' + error.message); return;
       }
       crawler = new CoreCrawler(activeProfile, {
@@ -565,12 +586,25 @@
         onStatusChange: (status) => updateStatus(status),
         onDocumentFound: (doc) => addDocumentRow(doc),
         onCheckpoint: (cp) => saveCheckpoint(cp),
+        onRecoveryCheckpoint: state => usbStorage.checkpoint(state,usbStorage.profileHash),
         onComplete: (results) => handleComplete(results)
       });
 
       if (pendingCheckpoint) {
-        if (crawler.importCheckpoint(pendingCheckpoint)) log(`[Checkpoint] Resumed ${pendingCheckpoint.visited.length} visited / ${pendingCheckpoint.queue.length} queued URLs.`);
+        try {
+          crawler.importRecoveryState(pendingCheckpoint);
+          for (const doc of crawler.documents) addDocumentRow(doc);
+          log(`[Checkpoint] Verified saved archive; resumed ${crawler.visited.size} visited / ${crawler.queue.length} queued URLs.`);
+        } catch(error) {
+          if (nativeCapture) await nativeCapture.close();
+          document.getElementById('btnStart').disabled=false;
+          document.getElementById('captureState').textContent='FAILED — recovery state rejected';
+          document.getElementById('captureOutcome').textContent=error.message;
+          if (pendingArchive) await refreshRecoveryArchives(pendingArchive.archive_id);
+          return;
+        }
         pendingCheckpoint = null;
+        pendingArchive = null;
       }
 
       document.getElementById('btnStart').disabled = true;

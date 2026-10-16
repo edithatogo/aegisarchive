@@ -74,6 +74,98 @@ class PolitenessEngine:
         self.next_permission_at = 0.0  # paced output slots (seconds)
 
     # -- helpers -------------------------------------------------------------
+    def _state_config(self):
+        return {key: getattr(self, attr) for key, attr in (
+            ('min_delay_ms', 'min_delay_ms'), ('max_delay_ms', 'max_delay_ms'),
+            ('jitter_distribution', 'jitter_distribution'), ('max_rpm', 'max_rpm'),
+            ('burst_limit', 'burst_limit'), ('respect_retry_after', 'respect_retry_after'),
+            ('adaptive_ewma', 'adaptive_ewma'), ('tripwire', 'consecutive_error_tripwire'),
+            ('cooldown_seconds', 'cooldown_seconds'))}
+
+    def export_state(self):
+        """JSON pacing state only; epoch times are milliseconds, never credentials."""
+        return dict(version=1, config=self._state_config(), saved_at_ms=self._clock() * 1000,
+                    tokens=self.tokens, last_refill_ms=self.last_token_refill * 1000,
+                    next_permission_ms=self.next_permission_at * 1000,
+                    circuit_state=self.circuit_state,
+                    circuit_until_ms=(None if self.circuit_trip_timestamp is None else
+                                      (self.circuit_trip_timestamp + self.cooldown_seconds) * 1000),
+                    domain_cooldowns={host: wake * 1000 for host, wake in self.domain_cooldowns.items()},
+                    consecutive_errors=self.consecutive_errors,
+                    backoff_ms=self.current_backoff_delay_ms,
+                    ewma_ms=self.ewma_latency_ms, baseline_ms=self.baseline_latency_ms,
+                    warmup_samples=list(self.warmup_samples))
+
+    def restore_state(self, state):
+        """Validate completely before mutation; merge outstanding waits conservatively."""
+        def number(value, low=0, high=2**53 - 1, integer=False):
+            if (type(value) not in (int, float) or not low <= value <= high
+                    or not math.isfinite(value) or (integer and int(value) != value)):
+                raise ValueError('Invalid pacing number')
+            return value
+        if (type(state) is not dict or set(state) != set(self.export_state())
+                or type(state['version']) is not int or state['version'] != 1):
+            raise ValueError('Invalid pacing state version or fields')
+        config = state['config']
+        expected = self._state_config()
+        if (type(config) is not dict or set(config) != set(expected)
+                or any(type(config[k]) is not type(v) or config[k] != v for k, v in expected.items())):
+            raise ValueError('Incompatible pacing config')
+        saved = number(state['saved_at_ms'])
+        refill = number(state['last_refill_ms'], high=saved)
+        next_at = number(state['next_permission_ms'])
+        tokens = number(state['tokens'], high=self.burst_limit)
+        errors = number(state['consecutive_errors'], integer=True)
+        backoff = number(state['backoff_ms'], low=self.min_delay_ms,
+                         high=max(30000, self.max_delay_ms * 10))
+        circuit = state['circuit_state']
+        if type(circuit) is not str or circuit not in ('NOMINAL', 'THROTTLED', 'TRIPPED', 'HALF_OPEN'):
+            raise ValueError('Invalid circuit state')
+        until = state['circuit_until_ms']
+        if until is not None:
+            number(until)
+        if circuit == CircuitState.TRIPPED and until is None:
+            raise ValueError('Missing circuit deadline')
+        latency = [state['ewma_ms'], state['baseline_ms']]
+        samples = state['warmup_samples']
+        if type(samples) is not list or len(samples) > self.warmup_size:
+            raise ValueError('Invalid warmup samples')
+        for value in samples + [v for v in latency if v is not None]:
+            number(value, high=86400000)
+        if (len(samples) == self.warmup_size) != (latency[1] is not None):
+            raise ValueError('Invalid warmup baseline')
+        domains = state['domain_cooldowns']
+        if type(domains) is not dict or len(domains) > 4096:
+            raise ValueError('Invalid domain cooldowns')
+        for host, wake in domains.items():
+            if (type(host) is not str or len(host) > 253
+                    or not re.fullmatch(r'[a-z0-9][a-z0-9.:-]*', host)):
+                raise ValueError('Invalid cooldown host')
+            number(wake)
+        now = number(self._clock() * 1000)
+        # Backwards jumps must not consume the remaining wait. Retain the original
+        # absolute deadline too, so repeated restoration cannot shorten it.
+        def deadline(value):
+            return number(max(value, now + max(0, value - saved)) if now < saved else value)
+        merged = dict(self.domain_cooldowns)
+        for host, wake in domains.items():
+            merged[host] = max(merged.get(host, 0), deadline(wake) / 1000)
+        existing_until = (self.circuit_trip_timestamp + self.cooldown_seconds) * 1000 if self.circuit_trip_timestamp is not None else 0
+        restored_until = max(existing_until, deadline(until) if until is not None else 0)
+        restored_next = max(self.next_permission_at, deadline(next_at) / 1000)
+        self.tokens = min(self.tokens, tokens)
+        self.last_token_refill = min(now, refill) / 1000 if now >= saved else now / 1000
+        self.next_permission_at = restored_next
+        self.domain_cooldowns = merged
+        rank = {'NOMINAL': 0, 'HALF_OPEN': 1, 'THROTTLED': 2, 'TRIPPED': 3}
+        self.circuit_state = max((self.circuit_state, circuit), key=rank.get)
+        self.circuit_trip_timestamp = (restored_until / 1000 - self.cooldown_seconds) if restored_until else None
+        self.consecutive_errors = max(self.consecutive_errors, errors)
+        self.current_backoff_delay_ms = max(self.current_backoff_delay_ms, backoff)
+        self.ewma_latency_ms, self.baseline_latency_ms = latency
+        self.warmup_samples = list(samples)
+        return True
+
     @staticmethod
     def is_countable_failure(status):
         try:

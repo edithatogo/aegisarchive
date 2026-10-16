@@ -61,6 +61,24 @@ class MirroringAcceptanceTests(unittest.TestCase):
         self.assertEqual(len(result['fixture_hashes']), 1)
         self.assertFalse(acceptance.check(self.output))
 
+    def test_git_batch_input_is_file_backed_to_avoid_bidirectional_pipe_deadlock(self):
+        import os
+        import stat
+        original = subprocess.run
+        seen = []
+        def run(command, **kwargs):
+            if 'cat-file' in command:
+                self.assertNotIn('input', kwargs)
+                self.assertTrue(stat.S_ISREG(os.fstat(kwargs['stdin'].fileno()).st_mode))
+                seen.append(True)
+            return original(command, **kwargs)
+        revision = self.git('rev-parse','HEAD').decode().strip()
+        with patch.object(acceptance.subprocess,'run',side_effect=run):
+            source, blobs = acceptance.committed_source(revision)
+        self.assertEqual(seen,[True])
+        self.assertTrue(source['worktree_clean'])
+        self.assertEqual(blobs['scripts/implementation.py'],b'implementation = 1\n')
+
     def test_complete_bound_observations_validate(self):
         path, _ = self.observations()
         self.assertEqual(acceptance.receipt(self.output, path)['qualification_status'], 'passed')

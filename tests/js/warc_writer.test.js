@@ -32,6 +32,33 @@ test('WarcWriter CDX 11-field record length field S and offset (W2, AC2)', async
   assert.equal(parts[9], String(writer.records[0].length));
 });
 
+test('durable writer restore retains offsets, CDX and deduplication without another warcinfo', async () => {
+  const first = new WarcWriter({filename: 'archive.warc'});
+  const saved = [];
+  const stream = {writeChunk: async bytes => saved.push(Buffer.from(bytes))};
+  await first.attachStreamer(stream);
+  const payload = new TextEncoder().encode('retained '.repeat(100));
+  const response = () => ({status:200, headers:new Headers({'content-type':'text/plain'})});
+  await first.addResponseRecord('http://h.test/first', response(), payload);
+  const state = first.exportState();
+  const prefix = Buffer.concat(saved);
+  const resumed = new WarcWriter();
+  const suffix = [];
+  resumed.restoreState(JSON.parse(JSON.stringify(state)), {
+    offsets:{warc:prefix.length,cdx:0}, writeChunk:async bytes => suffix.push(Buffer.from(bytes))
+  });
+  assert.equal(resumed.currentOffset, prefix.length);
+  assert.equal(resumed.getCdxContent(), first.getCdxContent());
+  assert.equal(resumed.records.length, 0);
+  const record = await resumed.addResponseRecord('http://h.test/second', response(), payload);
+  assert.equal(record.isRevisit, true);
+  assert.equal(record.offset, prefix.length);
+  assert.equal((Buffer.concat([prefix,...suffix]).toString().match(/WARC-Type: warcinfo/g)||[]).length,1);
+  assert.throws(() => new WarcWriter().restoreState(state,{offsets:{warc:prefix.length+1,cdx:0}}));
+  assert.throws(() => new WarcWriter().restoreState({...state,filename:'../escape.warc'},stream));
+  assert.throws(() => new WarcWriter().restoreState({...state,currentOffset:-1},stream));
+});
+
 test('WarcWriter sha256Hex known digest and fail-closed when crypto.subtle missing (W3, AC3)', async () => {
   const digest = await WarcWriter.sha256Hex(new TextEncoder().encode('hello'));
   assert.equal(digest, '2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824');

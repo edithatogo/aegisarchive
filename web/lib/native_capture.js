@@ -6,14 +6,29 @@ class NativeCapture {
     const {token} = await response.json();
     return new UsbArchiveStreamer(new NativeCapture(token));
   }
-  static async start(profile) {
+  static async start(profile, archive = null) {
     const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
     if (!response.ok) throw Error('Start the local launcher to use native capture.');
     const {token} = await response.json();
     const session = new NativeCapture(token);
-    const result = await session.call('start', {profile});
+    const result = await session.call('start', {profile,
+      ...(archive ? {archive_id:archive.id,lease:archive.lease} : {})});
     session.id = result.id; session.logFile = result.log_file;
     return session;
+  }
+  static async discoverArchives() {
+    const archive = await NativeCapture.archive();
+    return (await archive.session.call('archive-discover', {})).archives;
+  }
+  static async profileHash(profile, route = 'native') {
+    const publicProfile={acquisition_route:route,target:profile.target || {},politeness:profile.politeness || {},
+      archival:profile.archival || {},taxonomy:profile.taxonomy || [],
+      profile_id:profile.profile_id || null,authentication:{mode:profile.authentication?.mode || 'none',
+        allowed_domains:profile.authentication?.allowed_domains || []}};
+    const ordered=value=>Array.isArray(value)?value.map(ordered):value && typeof value==='object'
+      ?Object.fromEntries(Object.keys(value).sort().map(key=>[key,ordered(value[key])])):value;
+    const bytes=new TextEncoder().encode(JSON.stringify(ordered(publicProfile)));
+    return [...new Uint8Array(await crypto.subtle.digest('SHA-256',bytes))].map(x=>x.toString(16).padStart(2,'0')).join('');
   }
   static async saveReport(report) {
     const response = await fetch('/__station/capture/session', {headers: {'X-Aegis-UI': '1'}});
@@ -68,10 +83,27 @@ class UsbArchiveStreamer {
     this.failed = false;
   }
   async init() {
+    if (this.id) return true;
     const result = await this.session.call('archive-start', {});
     this.id = result.archive_id;
     this.directory = result.directory;
+    this.lease = result.lease;
+    this.generation = result.generation;
     return true;
+  }
+  async reopen(archive, profileHash) {
+    const result=await this.session.call('archive-reopen', {archive_id:archive.archive_id,
+      generation:archive.generation,profile_hash:profileHash});
+    this.id=result.archive_id;this.directory=result.directory;
+    this.lease=result.lease;this.generation=result.generation;this.offsets=result.offsets;
+    return result.state;
+  }
+  async checkpoint(state, profileHash) {
+    if (!state) return; // Finalization, not a null callback, closes the on-disk checkpoint.
+    if (this.failed) throw Error('USB archive storage has failed');
+    const result=await this.session.call('archive-checkpoint',{archive_id:this.id,
+      generation:this.generation,state,profile_hash:profileHash,lease:this.lease});
+    this.generation=result.generation;
   }
   async writeChunk(bytes, kind = 'warc') {
     if (this.failed) throw Error('USB archive storage has failed');
@@ -80,9 +112,14 @@ class UsbArchiveStreamer {
         const part = bytes.subarray(start, start + 262144);
         let binary = '';
         for (let i = 0; i < part.length; i += 8192) binary += String.fromCharCode(...part.subarray(i, i + 8192));
-        const result = await this.session.call('archive-chunk', {
-          archive_id: this.id, kind, offset: this.offsets[kind], data: btoa(binary)
-        });
+        const payload={archive_id:this.id,kind,offset:this.offsets[kind],data:btoa(binary),lease:this.lease};
+        // A lost acknowledgement can be retried once with the exact same bytes/offset.
+        let result;
+        try {result=await this.session.call('archive-chunk',payload);}
+        catch(error) {
+          if (error.diagnostic || !(error instanceof TypeError)) throw error;
+          result=await this.session.call('archive-chunk',payload);
+        }
         if (result.offset !== this.offsets[kind] + part.length) throw Error('USB archive write offset mismatch');
         this.offsets[kind] = result.offset;
       }
@@ -95,7 +132,7 @@ class UsbArchiveStreamer {
   async finalize(cdxText, complete) {
     if (this.failed) throw Error('USB archive storage has failed');
     await this.writeChunk(new TextEncoder().encode(cdxText), 'cdx');
-    return this.session.call('archive-finalize', {archive_id: this.id, summary: {complete}});
+    return this.session.call('archive-finalize', {archive_id: this.id, lease:this.lease, summary: {complete}});
   }
   getTotalBytes() { return this.offsets.warc; }
 }

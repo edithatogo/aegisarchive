@@ -66,6 +66,80 @@
     }
 
     /** Interruptible sleep; resolves true when the delay elapsed, false when aborted (D4). */
+    stateConfig() {
+      return {min_delay_ms:this.minDelayMs,max_delay_ms:this.maxDelayMs,
+        jitter_distribution:this.jitterDistribution,max_rpm:this.maxRpm,burst_limit:this.burstLimit,
+        respect_retry_after:this.respectRetryAfter,adaptive_ewma:this.adaptiveEwma,
+        tripwire:this.consecutiveErrorTripwire,cooldown_seconds:this.cooldownSeconds};
+    }
+
+    exportState() {
+      // Only pacing metadata; all epoch timestamps are milliseconds.
+      return {version:1,config:this.stateConfig(),saved_at_ms:Date.now(),tokens:this.tokens,
+        last_refill_ms:this.lastTokenRefill,next_permission_ms:this.nextPermissionAt,
+        circuit_state:this.circuitState,circuit_until_ms:this.circuitTripTimestamp === null ? null :
+          this.circuitTripTimestamp + this.cooldownSeconds*1000,
+        domain_cooldowns:Object.fromEntries(this.domainCooldowns),consecutive_errors:this.consecutiveErrors,
+        backoff_ms:this.currentBackoffDelayMs,ewma_ms:this.ewmaLatencyMs,
+        baseline_ms:this.baselineLatencyMs,warmup_samples:[...this.warmupSamples]};
+    }
+
+    restoreState(state) {
+      const object = value => value !== null && typeof value === 'object' &&
+        !Array.isArray(value) && Object.getPrototypeOf(value) === Object.prototype;
+      const keysEqual = (a,b) => Object.keys(a).sort().join('|') === Object.keys(b).sort().join('|');
+      const number = (value,low=0,high=Number.MAX_SAFE_INTEGER,integer=false) => {
+        if (typeof value !== 'number' || !Number.isFinite(value) || value<low || value>high ||
+            (integer && !Number.isSafeInteger(value))) throw Error('Invalid pacing number');
+        return value;
+      };
+      if (!object(state) || !keysEqual(state,this.exportState()) || state.version !== 1)
+        throw Error('Invalid pacing state version or fields');
+      const config=this.stateConfig();
+      if (!object(state.config) || !keysEqual(state.config,config) ||
+          Object.keys(config).some(key=>state.config[key] !== config[key])) throw Error('Incompatible pacing config');
+      const saved=number(state.saved_at_ms);
+      const refill=number(state.last_refill_ms,0,saved);
+      const next=number(state.next_permission_ms);
+      const tokens=number(state.tokens,0,this.burstLimit);
+      const errors=number(state.consecutive_errors,0,Number.MAX_SAFE_INTEGER,true);
+      const backoff=number(state.backoff_ms,this.minDelayMs,Math.max(30000,this.maxDelayMs*10));
+      const circuit=state.circuit_state, until=state.circuit_until_ms;
+      if (!Object.values(CircuitState).includes(circuit)) throw Error('Invalid circuit state');
+      if (until !== null) number(until);
+      if (circuit === CircuitState.TRIPPED && until === null) throw Error('Missing circuit deadline');
+      const samples=state.warmup_samples;
+      if (!Array.isArray(samples) || samples.length>this.warmupSize) throw Error('Invalid warmup samples');
+      for (const value of [...samples,...[state.ewma_ms,state.baseline_ms].filter(v=>v!==null)]) number(value,0,86400000);
+      if ((samples.length === this.warmupSize) !== (state.baseline_ms !== null)) throw Error('Invalid warmup baseline');
+      const domains=state.domain_cooldowns;
+      if (!object(domains) || Object.keys(domains).length>4096) throw Error('Invalid domain cooldowns');
+      for (const [host,wake] of Object.entries(domains)) {
+        if (host.length>253 || !/^[a-z0-9][a-z0-9.:-]*$/.test(host)) throw Error('Invalid cooldown host');
+        number(wake);
+      }
+      const now=number(Date.now());
+      const deadline=value=>number(now<saved ? Math.max(value,now+Math.max(0,value-saved)) : value);
+      const merged=new Map(this.domainCooldowns);
+      for (const [host,wake] of Object.entries(domains)) merged.set(host,Math.max(merged.get(host)||0,deadline(wake)));
+      const existingUntil=this.circuitTripTimestamp === null ? 0 : this.circuitTripTimestamp+this.cooldownSeconds*1000;
+      const restoredUntil=Math.max(existingUntil,until === null ? 0 : deadline(until));
+      const restoredNext=Math.max(this.nextPermissionAt,deadline(next));
+      // No assignments above this point: rejected states leave the engine intact.
+      this.tokens=Math.min(this.tokens,tokens);
+      this.lastTokenRefill=now>=saved ? Math.min(now,refill) : now;
+      this.nextPermissionAt=restoredNext;
+      this.domainCooldowns=merged;
+      const rank={NOMINAL:0,HALF_OPEN:1,THROTTLED:2,TRIPPED:3};
+      this.circuitState=rank[this.circuitState]>rank[circuit] ? this.circuitState : circuit;
+      this.circuitTripTimestamp=restoredUntil ? restoredUntil-this.cooldownSeconds*1000 : null;
+      this.consecutiveErrors=Math.max(this.consecutiveErrors,errors);
+      this.currentBackoffDelayMs=Math.max(this.currentBackoffDelayMs,backoff);
+      this.ewmaLatencyMs=state.ewma_ms;this.baselineLatencyMs=state.baseline_ms;
+      this.warmupSamples=[...samples];
+      return true;
+    }
+
     sleep(ms) {
       const signal = this.abortController ? this.abortController.signal : null;
       return new Promise(resolve => {

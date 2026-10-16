@@ -15,6 +15,95 @@ from cli.launch import AegisArchiveHandler
 
 
 class CaptureBridgeTests(unittest.TestCase):
+    def test_retry_after_survives_failed_body_read(self):
+        from cli.capture_bridge import CaptureFailure
+        archive = self.bridge.archives.start()
+        sid = self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])['id']
+        response = mock.MagicMock()
+        response.__enter__.return_value = response
+        response.code, response.headers = 429, {'Retry-After':'120'}
+        response.read.side_effect = OSError('Synthetic truncated response')
+        with mock.patch('cli.capture_bridge.urllib.request.build_opener') as build:
+            build.return_value.open.return_value = response
+            with self.assertRaises(CaptureFailure):
+                self.bridge.fetch(sid, self.url)
+        saved = json.loads((self.bridge.archives.folder(archive['archive_id']) / 'native-pacing.json').read_text())
+        self.assertGreaterEqual(saved['domain_cooldowns']['127.0.0.1']-saved['saved_at_ms'],119000)
+        self.assertEqual(saved['consecutive_errors'],1)
+
+    def test_reopen_serializes_ownership_and_stale_fetch_cannot_run(self):
+        import base64
+        archive = self.bridge.archives.start()
+        sid = self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])['id']
+        self.bridge.persist_pacing(self.bridge.session)
+        self.bridge.archives.chunk(archive['archive_id'],'warc',0,base64.b64encode(b'prefix').decode(),archive['lease'])
+        checkpoint = self.bridge.archives.checkpoint(archive['archive_id'],0,{},'a'*64,archive['lease'])
+        entered, release = threading.Event(), threading.Event()
+        original = self.bridge.archives.reopen
+        result = []
+        def held_reopen(*args):
+            entered.set()
+            if not release.wait(5): raise AssertionError('Reopen barrier timed out')
+            return original(*args)
+        with mock.patch.object(self.bridge.archives,'reopen',side_effect=held_reopen):
+            worker = threading.Thread(target=lambda:result.append(self.bridge.reopen_archive(
+                archive['archive_id'],checkpoint['generation'],'a'*64)))
+            worker.start()
+            try:
+                self.assertTrue(entered.wait(5))
+                acquired = self.bridge.lock.acquire(blocking=False)
+                if acquired: self.bridge.lock.release()
+                self.assertFalse(acquired,'Ownership transition must retain bridge lock')
+            finally:
+                release.set(); worker.join(5)
+        self.assertEqual(len(result),1)
+        with self.assertRaises(ValueError):
+            self.bridge.configure(self.profile,archive['archive_id'],archive['lease'])
+        with self.assertRaises(ValueError):
+            self.bridge.fetch(sid,self.url)
+        current = self.bridge.configure(self.profile,archive['archive_id'],result[0]['lease'])
+        old_session = self.bridge.session
+        self.bridge.archives.reopen(archive['archive_id'],result[0]['generation'],'a'*64)
+        with self.assertRaises(ValueError):
+            self.bridge.fetch(current['id'],self.url)
+        with self.assertRaises(ValueError):
+            self.bridge.persist_pacing(old_session)
+        self.assertEqual(self.seen,[])
+
+    def test_received_retry_after_is_journaled_before_response_is_returned(self):
+        archive = self.bridge.archives.start()
+        sid = self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])['id']
+        response = self.bridge.fetch(sid, self.url + '/slow')
+        self.assertEqual(response['status'], 429)
+        path = self.bridge.archives.folder(archive['archive_id']) / 'native-pacing.json'
+        saved = json.loads(path.read_text())
+        self.assertGreater(saved['domain_cooldowns']['127.0.0.1'], saved['saved_at_ms'])
+        self.bridge.recover()
+        self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])
+        restored = self.bridge.session['engine'].export_state()
+        self.assertGreaterEqual(restored['domain_cooldowns']['127.0.0.1'],
+                                saved['domain_cooldowns']['127.0.0.1'])
+
+    def test_archive_bound_pacing_survives_browser_session_replacement(self):
+        archive = self.bridge.archives.start()
+        self.addCleanup(self.bridge.archives.close)
+        sid = self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])['id']
+        engine = self.bridge.session['engine']
+        engine.record_failure(self.url, 429, '20')
+        self.bridge.persist_pacing(self.bridge.session)
+        expected = engine.export_state()
+        self.bridge.recover()
+        self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])
+        restored = self.bridge.session['engine'].export_state()
+        self.assertEqual(restored['domain_cooldowns'], expected['domain_cooldowns'])
+        self.assertNotEqual(self.bridge.session['id'], sid)
+        journal = self.bridge.archives.folder(archive['archive_id']) / 'native-pacing.json'
+        self.assertNotIn('authentication', journal.read_text())
+        self.bridge.recover()
+        journal.write_text('{}')
+        with self.assertRaises(ValueError):
+            self.bridge.configure(self.profile, archive['archive_id'], archive['lease'])
+
     def rule_options(self, match, *, kind='asset', url=None):
         return {'rule_context': {'config': {'version': 1, 'rules': [
             {'id': 'deny', 'match': match, 'decision': {'download': False}}]},
@@ -195,6 +284,8 @@ class CaptureBridgeTests(unittest.TestCase):
                 seen.append((self.path, self.headers.get('Cookie')))
                 if self.path == '/redirect':
                     self.send_response(302); self.send_header('Location', 'http://outside.test/never')
+                elif self.path == '/slow':
+                    self.send_response(429); self.send_header('Retry-After', '20')
                 else:
                     self.send_response(200)
                 self.send_header('Set-Cookie', 'private-session=secret')
@@ -215,6 +306,7 @@ class CaptureBridgeTests(unittest.TestCase):
     def tearDown(self):
         self.station.shutdown(); self.station.server_close()
         self.source.shutdown(); self.source.server_close()
+        self.bridge.archives.close()
         self.temp.cleanup()
 
     def test_token_and_same_origin_are_required(self):

@@ -44,6 +44,7 @@
         onStatusChange: callbacks.onStatusChange || (() => {}),
         onDocumentFound: callbacks.onDocumentFound || (() => {}),
         onCheckpoint: callbacks.onCheckpoint || (() => {}),
+        onRecoveryCheckpoint: callbacks.onRecoveryCheckpoint || null,
         onComplete: callbacks.onComplete || (() => {})
       };
 
@@ -51,6 +52,7 @@
       this.isRunning = false;
       this.isPaused = false;
       this.shouldStop = false;
+      this.processingTask = false;
       this.startTime = null;
       this.endTime = null;
 
@@ -248,17 +250,22 @@
         if (this.visited.has(task.url)) continue;
         this.visited.add(task.url);
 
-        await this.processUrl(task);
+        this.processingTask = true;
+        try { await this.processUrl(task); }
+        finally { this.processingTask = false; }
         this.callbacks.onProgress(this.getProgressStats());
-        if (this.visited.size % 10 === 0) this.callbacks.onCheckpoint(this.exportCheckpoint());
+        if (this.callbacks.onRecoveryCheckpoint) await this.callbacks.onRecoveryCheckpoint(this.exportRecoveryState());
+        if (this.visited.size % 10 === 0) await this.callbacks.onCheckpoint(this.exportCheckpoint());
       }
 
       this.isRunning = false;
       this.endTime = Date.now();
       this.callbacks.onStatusChange('STOPPED');
-      this.callbacks.onCheckpoint(this.queue.length > 0 ? this.exportCheckpoint() : null);
       this.callbacks.onLog(`[AegisArchive] Run complete. Attempted ${this.visited.size} URLs; archived ${this.documents.length} assets.`);
-      await this.callbacks.onComplete(await this.getFinalResults());
+      const results = await this.getFinalResults();
+      await this.callbacks.onCheckpoint(this.queue.length > 0 ? this.exportCheckpoint() : null);
+      if (this.callbacks.onRecoveryCheckpoint) await this.callbacks.onRecoveryCheckpoint(null);
+      await this.callbacks.onComplete(results);
     }
 
     async processUrl(task) {
@@ -589,7 +596,7 @@
       this.isPaused = true;
       this.callbacks.onLog('[AegisArchive] Pause requested. Completing active request before sleeping.');
       this.callbacks.onStatusChange('PAUSED');
-      this.callbacks.onCheckpoint(this.exportCheckpoint());
+      if (!this.processingTask) this.callbacks.onCheckpoint(this.exportCheckpoint());
     }
 
     resume() {
@@ -606,7 +613,49 @@
       this.politeness.abort();
       this.callbacks.onLog('[AegisArchive] Graceful shutdown requested. Preserving all captured records.');
       this.callbacks.onStatusChange('STOPPING');
-      this.callbacks.onCheckpoint(this.exportCheckpoint());
+      if (!this.processingTask) this.callbacks.onCheckpoint(this.exportCheckpoint());
+    }
+
+    /** Full recovery state, unlike the legacy frontier-only export. No profile credentials. */
+    exportRecoveryState() {
+      if (this.processingTask) throw Error('Cannot checkpoint an active request');
+      return JSON.parse(JSON.stringify({version:2,frontier:this.exportCheckpoint(),
+        writer:this.warc.exportState(),pacing:this.politeness.exportState(),
+        documents:this.documents,resourceOutcomes:[...this.resourceOutcomes],
+        linkEdges:[...this.linkEdges],auditLedger:this.auditLedger,
+        discoveryLimitations:this.discoveryLimitations,robotsRules:[...this.robotsRules],
+        startTime:this.startTime}));
+    }
+
+    importRecoveryState(state) {
+      if (this.isRunning || !this.streamer || !state || state.version !== 2)
+        throw Error('Invalid durable recovery state');
+      const arrays=['documents','resourceOutcomes','linkEdges','auditLedger','discoveryLimitations','robotsRules'];
+      if (arrays.some(name=>!Array.isArray(state[name])) ||
+          !Number.isFinite(state.startTime) || state.startTime < 0)
+        throw Error('Malformed durable recovery state');
+      const maps={};
+      for (const name of ['resourceOutcomes','linkEdges','robotsRules']) {
+        if (!state[name].every(entry=>Array.isArray(entry) && entry.length===2 && typeof entry[0]==='string'))
+          throw Error('Malformed recovery relationships');
+        maps[name]=new Map(state[name]);
+        if (maps[name].size!==state[name].length) throw Error('Duplicate recovery relationship');
+      }
+      // Validate on temporary objects before changing this crawler or its writer.
+      const validated=new CoreCrawler(this.profile,{streamer:this.streamer});
+      if (!validated.importCheckpoint(state.frontier)) throw Error('Recovery frontier differs from capture scope');
+      validated.politeness.restoreState(state.pacing);
+      validated.warc.restoreState(state.writer,this.streamer);
+      this.queue=validated.queue;
+      this.visited=validated.visited;
+      this.politeness=validated.politeness;
+      this.warc=validated.warc;
+      this.streamerAttached=true;
+      for (const name of ['documents','auditLedger','discoveryLimitations'])
+        this[name]=JSON.parse(JSON.stringify(state[name]));
+      for (const name of Object.keys(maps)) this[name]=maps[name];
+      this.startTime=state.startTime;
+      return true;
     }
 
     /** Serialisable frontier for crash-safe resume (V6). Records already written are not included. */

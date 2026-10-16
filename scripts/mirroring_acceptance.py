@@ -15,6 +15,7 @@ import platform
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path, PurePosixPath, PureWindowsPath
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -141,9 +142,14 @@ def committed_source(revision):
         if kind != b'blob' or mode not in (b'100644', b'100755'):
             raise ValueError('source tree contains symlink or non-file')
         entries.append((name.decode('utf-8'), oid.decode('ascii')))
-    proc = subprocess.run(['git', '-C', str(ROOT), 'cat-file', '--batch'],
-                          input=''.join(oid + '\n' for _, oid in entries).encode('ascii'),
-                          stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, check=True)
+    # File-backed input avoids two pipe writers blocking each other when Git's
+    # output fills before the runtime finishes sending a large batch of IDs.
+    with tempfile.TemporaryFile() as batch:
+        batch.write(''.join(oid + '\n' for _, oid in entries).encode('ascii'))
+        batch.seek(0)
+        proc = subprocess.run(['git', '-C', str(ROOT), 'cat-file', '--batch'],
+                              stdin=batch, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, check=True)
     blobs, offset = {}, 0
     for name, oid in entries:
         end = proc.stdout.index(b'\n', offset)

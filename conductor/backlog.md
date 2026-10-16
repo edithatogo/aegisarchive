@@ -24,7 +24,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P0 | offline_navigation_20260906 | T8 | done | - | mirror_capture_20260906/T7 |
 | P1 | authenticated_acquisition_20260906 | T1 | done | - | mirror_capture_20260906/T7, crawl_controls_reports_20260906/T7 |
 | P1 | mirror_resume_20260906 | T1 | done | - | mirror_capture_20260906/T7, authenticated_acquisition_20260906/T7 |
-| P0 | mirroring_platform_acceptance_20260906 | T1 | in_progress | - | offline_navigation_20260906/T8, authenticated_acquisition_20260906/T7, mirror_resume_20260906/T8 |
+| P0 | mirroring_platform_acceptance_20260906 | T2 | in_progress | - | offline_navigation_20260906/T8, authenticated_acquisition_20260906/T7, mirror_resume_20260906/T8 |
 | P1 | crawl_controls_reports_20260906 | T7 | done | - | mirror_capture_20260906/T7 |
 | P1 | document_lifecycle_20260906 | T9 | done | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
 | P1 | rendered_capture_20260906 | T1 | done | - | authenticated_acquisition_20260906/T7, crawl_controls_reports_20260906/T7, offline_navigation_20260906/T8 |
@@ -66,5 +66,7 @@ Rows below are not selectable until moved into **Approved**.
 | --- | --- | --- | --- | --- | --- |
 
 ### Proposal notes
+
+The HTML declaration compatibility regression identified during platform T2 verification was adopted as a narrowly scoped T2 prerequisite under the user's standing issue-repair instructions, verified in the coordinating chat. Its files and controls are recorded in the existing platform plan; it is no longer an unapproved proposal or a separate document-lifecycle track. Focused cross-version and lifecycle/station checks pass; platform T2 still requires its full baseline and acceptance gates. No test expectation was weakened.
 
 User-authorised capture follow-ups: #40 resume/jobs; #41 failure diagnostics; #42 asset scope; #43 consolidation/catalogue; #44 URL parity; #45 progress/coverage; #46 capture modes; #47 robots provenance; #48 sidecar discovery; #49 safe replay. Existing track dependencies remain authoritative. Replay and sidecar follow-ups require bounded task plans before implementation.

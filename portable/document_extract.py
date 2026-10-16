@@ -44,6 +44,18 @@ class _VisibleHTML(HTMLParser):
             raise _LimitError('output_limit')
         self.parts.append(text)
 
+    def parse_html_declaration(self, index):
+        # Newer HTMLParser versions turn unknown marked sections into bogus
+        # comments. Keep the original validated marked-section contract, only
+        # at declaration boundaries (never inside comment or script contents).
+        if self.rawdata.startswith('<![', index):
+            try:
+                return self.parse_marked_section(index)
+            except NotImplementedError:
+                # Python 3.9 reports an unknown marked section through error().
+                raise ValueError('malformed_input') from None
+        return super().parse_html_declaration(index)
+
     def handle_starttag(self, tag, attrs):
         # HTML permits omitted end tags. Close their scope before counting depth.
         names = [name for name, hidden in self.stack]

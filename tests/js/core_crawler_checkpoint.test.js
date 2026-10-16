@@ -5,6 +5,44 @@ global.WarcWriter = require('../../web/lib/warc_writer.js');
 global.SelfReflectionEngine = require('../../web/lib/self_reflection.js');
 const CoreCrawler = require('../../web/lib/core_crawler.js');
 
+test('durable checkpoints wait for settled tasks and retain writer/frontier state', {timeout:5000}, async () => {
+  const profile={profile_id:'durable',target:{allowed_domains:['h.test'],seed_urls:{tier_1_core:['http://h.test/a']}}};
+  const stream={isUsb:true,offsets:{warc:0,cdx:0},init:async()=>true,
+    writeChunk:async bytes=>{stream.offsets.warc+=bytes.length;}};
+  let release, saved;
+  const barrier=new Promise(resolve=>{release=resolve;});
+  const checkpoints=[];
+  const crawler=new CoreCrawler(profile,{streamer:stream,onRecoveryCheckpoint:async state=>{
+    checkpoints.push(state);saved=state;await barrier;
+  }});
+  crawler.processUrl=async task=>{
+    assert.throws(()=>crawler.exportRecoveryState(),/active request/);
+    await crawler.warc.addResponseRecord(task.url,{status:200,headers:new Headers()},new TextEncoder().encode('retained'));
+    crawler.resourceOutcomes.set(task.url,{url:task.url,state:'captured'});
+    crawler.documents.push({url:task.url,title:'Retained'});
+  };
+  crawler.getFinalResults=async()=>({});
+  let finished=false;
+  let failure;
+  const running=crawler.start().then(()=>{finished=true;},error=>{failure=error;finished=true;});
+  while(!saved && !finished) await new Promise(resolve=>setImmediate(resolve));
+  if(failure) throw failure;
+  assert.equal(finished,false);
+  assert.equal(saved.version,2);
+  assert.equal(saved.writer.currentOffset,stream.offsets.warc);
+  assert.deepEqual(saved.frontier.visited,['http://h.test/a']);
+  assert.equal(saved.documents[0].title,'Retained');
+  const restored=new CoreCrawler(profile,{streamer:stream});
+  restored.importRecoveryState(saved);
+  assert.deepEqual([...restored.visited],['http://h.test/a']);
+  assert.equal(restored.documents[0].title,'Retained');
+  assert.equal(restored.resourceOutcomes.get('http://h.test/a').state,'captured');
+  assert.equal(restored.streamerAttached,true);
+  assert.equal(restored.warc.records.length,0);
+  release();await running;
+  assert.equal(checkpoints.at(-1),null);
+});
+
 test('CoreCrawler exportCheckpoint and importCheckpoint round-trip (S6, AC6)', () => {
   let checkpointEmitted = null;
   const c = new CoreCrawler(
