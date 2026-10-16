@@ -54,7 +54,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T3 Verify relocated ordinary launchers. (AC1, AC3)
+- [x] T3 Verify relocated ordinary launchers. (AC1, AC3) — launcher harness implemented and verified on actual Darwin arm64/Python 3.15.0/Chromium 155.0.8059.82. Final full gate: 353 Python tests (12 skipped), 18 station tests, 85 JavaScript tests; final three browser cases passed, measured case 44.7s. Windows branch is statically reviewed but awaits T6 execution. POSIX test-package executable-mode preparation is explicit; existing ZIP readiness is not inferred.
   - **Files**: `tests/browser/mirroring_acceptance.spec.js`; focused tests: `tests/browser/mirroring_acceptance.spec.js`.
   - **Change**: Run from paths with spaces with supported Python/browser prerequisites; test missing-runtime diagnostics without changing launchers.
   - **Verify**: `python3 scripts/mirroring_acceptance.py --help; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.

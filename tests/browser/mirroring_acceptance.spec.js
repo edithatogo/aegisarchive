@@ -2,11 +2,88 @@ const {test,expect}=require('playwright/test');
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
-const {spawnSync}=require('node:child_process');
+const {spawnSync,spawn}=require('node:child_process');
 const crypto=require('node:crypto');
 const http=require('node:http');
 const python=process.env.AEGIS_TEST_PYTHON || (process.platform==='win32'?'python':'python3');
 const root=path.resolve(__dirname,'../..');
+
+async function ordinaryLauncher(directory) {
+  const temporary=await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(),'aegis relocated ')));
+  const bundle=path.join(temporary,'Aegis Archive');
+  let child,exited,output='';
+  const close=async()=>{
+    if(child?.pid && child.exitCode===null && child.signalCode===null){
+      if(process.platform==='win32') {
+        const killed=spawnSync('taskkill',['/PID',String(child.pid),'/T','/F'],{encoding:'utf8'});
+        if(killed.status!==0 && child.exitCode===null) throw Error('Could not stop owned launcher process');
+      } else child.kill('SIGTERM');
+      await exited;
+    }
+    await fs.rm(temporary,{recursive:true,force:true});
+  };
+  try {
+    const listed=spawnSync('git',['ls-files','-z'],{cwd:root,encoding:'utf8'});
+    expect(listed.status,listed.stderr).toBe(0);
+    const files={};
+    for(const name of listed.stdout.split('\0').filter(Boolean)){
+      expect(path.isAbsolute(name) || name.split('/').includes('..')).toBe(false);
+      const source=path.join(root,name),target=path.join(bundle,name);
+      expect((await fs.lstat(source)).isFile()).toBe(true);
+      await fs.mkdir(path.dirname(target),{recursive:true});
+      await fs.copyFile(source,target);
+      const original=await fs.readFile(source),copied=await fs.readFile(target);
+      expect(copied.equals(original),name).toBe(true);
+      files[name]=crypto.createHash('sha256').update(copied).digest('hex');
+    }
+    const windows=process.platform==='win32';
+    const name=windows?'START_WINDOWS.cmd':process.platform==='darwin'?'START_MAC.command':'START_LINUX.sh';
+    const launcher=path.join(bundle,name);
+    // Generated POSIX packages need an executable entrypoint. No source bytes
+    // or checkout permissions are changed; record this packaging prerequisite.
+    if(!windows) await fs.chmod(launcher,0o755);
+    const launch=(environment,diagnostic=false)=>{
+      const options={cwd:bundle,env:environment,encoding:'utf8'};
+      const executable=windows?(process.env.ComSpec || 'C:\\Windows\\System32\\cmd.exe'):launcher;
+      const args=windows?['/d','/s','/c',`""${launcher}" --no-browser"`]:[];
+      if(windows) options.windowsVerbatimArguments=true;
+      return diagnostic?spawnSync(executable,args,{...options,input:'\n',timeout:5000}):spawn(executable,args,options);
+    };
+    const emptyPath=path.join(temporary,'no runtime');
+    await fs.mkdir(emptyPath);
+    if(!windows) await fs.symlink('/usr/bin/dirname',path.join(emptyPath,'dirname'));
+    const missing=launch({...process.env,PATH:emptyPath},true);
+    expect(missing.error?.message).toBeUndefined();
+    const diagnostic=(missing.stdout || '')+(missing.stderr || '');
+    expect(diagnostic).toContain(windows?'bundled Python is missing':'Python 3 was not found');
+    await fs.writeFile(path.join(directory,'launcher-missing-runtime.txt'),diagnostic);
+    const occupied=await new Promise(resolve=>{
+      const request=http.get('http://127.0.0.1:8000/__station/status',response=>{
+        let text='';response.on('data',data=>{text+=data;});
+        response.on('end',()=>{try{resolve(JSON.parse(text).station==='aegisarchive');}catch(_){resolve(false);}});
+      });
+      request.on('error',()=>resolve(false));
+      request.setTimeout(1000,()=>{request.destroy();resolve(false);});
+    });
+    expect(occupied,'An existing default-port station must not substitute for the relocated launcher').toBe(false);
+    child=launch({...process.env,PYTHONUNBUFFERED:'1',BROWSER:windows?'': '/usr/bin/true'});
+    exited=new Promise(resolve=>child.once('close',resolve));
+    child.stdout.on('data',data=>{output+=data.toString();});
+    child.stderr.on('data',data=>{output+=data.toString();});
+    let startupError;
+    child.on('error',error=>{startupError=error;});
+    await expect.poll(()=>{
+      if(startupError) throw startupError;
+      if(child.exitCode!==null) throw Error('Ordinary launcher exited before readiness: '+output);
+      return /Local Web Console:\s+(http:\/\/127\.0\.0\.1:\d+)\/index\.html/.exec(output)?.[1] || null;
+    }).not.toBeNull();
+    const origin=/Local Web Console:\s+(http:\/\/127\.0\.0\.1:\d+)\/index\.html/.exec(output)[1];
+    await fs.writeFile(path.join(directory,'launcher-manifest.json'),JSON.stringify({
+      bundle,launcher:name,source_files:files,posix_executable_prepared:!windows,pid:child.pid,origin},null,2)+'\n');
+    await fs.writeFile(path.join(directory,'launcher-startup.txt'),output);
+    return {origin,bundle,close};
+  } catch(error) {await close();throw error;}
+}
 test('an unexecuted receipt cannot qualify a mirroring platform',async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'aegis receipt contract '));
   try {
@@ -57,7 +134,7 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
   expect(observations.runtime.browser.playwright_version).toBe('1.63.0');
   const requests=[];
   const secret='synthetic-t2-cookie-value';
-  let expired=false,holdSecond=false,heldResponse=null,closed=false,replayContext;
+  let expired=false,holdSecond=false,heldResponse=null,closed=false,replayContext,station;
   let phase='source-start';
   const source=http.createServer((request,response)=>{
     const pathname=new URL(request.url,'http://127.0.0.1').pathname;
@@ -99,12 +176,21 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
     await page.locator('#captureRoute').selectOption('native');
   };
   const boot=async()=>{
-    await page.goto('/index.html');
+    await page.goto(station.origin+'/index.html');
     expect(await page.evaluate(()=>window.aegisReady)).toBe(true);
   };
   const authConfig=expires=>({mode:'browser_session',allowed_domains:['127.0.0.1'],
     source:JSON.stringify({cookies:[{name:'session',value:secret,domain:'127.0.0.1',path:'/',expires}]})});
   try {
+    phase='relocated-ordinary-launcher';
+    station=await ordinaryLauncher(directory);
+    expect(station.bundle).toContain(' ');
+    const status=await page.request.get(station.origin+'/__station/status');
+    const runtime=await status.json();
+    expect(runtime.station).toBe('aegisarchive');
+    expect(runtime.python).toBe(observations.runtime.python);
+    expect(runtime.platform).toBe(observations.runtime.system);
+    observations.launcher={ordinary:true,relocated:true,missing_runtime_diagnostic:true};
     await new Promise(resolve=>source.listen(0,'127.0.0.1',resolve));
     origin=`http://127.0.0.1:${source.address().port}`;
     phase='denied-without-session';await boot();
@@ -163,6 +249,7 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
     await expect(page.locator('#captureState')).toContainText('INCOMPLETE');
     await expect.poll(()=>page.evaluate(()=>!!finalResults?.storageReceipt)).toBe(true);
     const result=await page.evaluate(()=>({receipt:finalResults.storageReceipt,report:currentReportJSON,log:nativeCapture.logFile}));
+    expect(result.receipt.warc_path.startsWith(station.bundle+path.sep)).toBe(true);
     const warc=await fs.readFile(result.receipt.warc_path);
     const cdx=await fs.readFile(result.receipt.cdx_path);
     expect(warc.subarray(0,prefix.length).equals(prefix)).toBe(true);
@@ -185,7 +272,7 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
     await fs.writeFile(path.join(directory,'verifier.txt'),verified);
 
     phase='browser-readback';
-    replayContext=await browser.newContext({baseURL:testInfo.project.use.baseURL});
+    replayContext=await browser.newContext({baseURL:station.origin});
     const viewer=await replayContext.newPage();
     viewer.on('pageerror',error=>errors.push(error.message));
     await viewer.goto('/viewer.html');
@@ -249,15 +336,19 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
     heldResponse?.();holdSecond=false;
     await replayContext?.close();
     if(source.listening) await stopSource();
+    await page.close();
+    await station?.close();
     observations.source_after=snapshot();
     await fs.writeFile(path.join(directory,'source-requests.json'),JSON.stringify(requests,null,2)+'\n');
     await fs.writeFile(path.join(directory,'run-state.json'),JSON.stringify({phase,page_errors:errors},null,2)+'\n');
     await fs.writeFile(path.join(directory,'observations.json'),JSON.stringify(observations,null,2)+'\n');
     await testInfo.attach('mirroring-run-state',{path:path.join(directory,'run-state.json'),contentType:'application/json'});
   }
-  // T3 launcher observations remain null; dirty development evidence cannot qualify a platform.
+  // Dirty development evidence cannot qualify a platform. A clean committed run
+  // must pass every real assertion before its receipt may qualify this machine.
   command(['scripts/mirroring_acceptance.py','--output',path.join(directory,'receipt.json'),
     '--observations',path.join(directory,'observations.json')]);
   const receipt=JSON.parse(await fs.readFile(path.join(directory,'receipt.json'),'utf8'));
-  expect(receipt.qualification_status).not.toBe('passed');
+  expect(observations.launcher).toEqual({ordinary:true,relocated:true,missing_runtime_diagnostic:true});
+  expect(receipt.qualification_status).toBe(observations.source_before.worktree_clean?'passed':'failed');
 });
