@@ -108,6 +108,47 @@ test('existing fractional timestamp receipts bind exact source JSON bytes',async
   expect(actual).toEqual(expected);expect(actual.capture_receipt_sha256).toBe(digest);
   expect(actual.receipt_identity_format).toBe('source_json_utf8');
 });
+test('link graphs filter internal/external edges and export inert receipt-bound SVG and JSON',async({page})=>{
+  const receipt=receiptFixture();
+  const malicious='https://example.test/<svg/onload=alert(1)>';
+  receipt.resources[2].url=malicious;receipt.link_edges[0].target=malicious;
+  await page.goto('/reports.html');
+  await page.locator('#receiptFile').setInputFiles({name:'graph.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(receipt))});
+  await expect(page.locator('#summary')).toContainText('2 captured');
+  await page.locator('#graphFilter').selectOption('external');
+  expect(await page.locator('#graph').textContent()).toContain('outside.test');
+  expect(await page.locator('#graph').textContent()).not.toContain('onload');
+  await page.locator('#graphFilter').selectOption('internal');
+  expect(await page.locator('#graph').textContent()).not.toContain('outside.test');
+  const svgDownload=page.waitForEvent('download');await page.locator('#exportGraphSvg').click();
+  const fs=require('node:fs/promises');const svg=await fs.readFile(await (await svgDownload).path(),'utf8');
+  const parsed=await page.evaluate(svg=>{
+    const doc=new DOMParser().parseFromString(svg,'image/svg+xml');
+    return {bad:doc.querySelectorAll('parsererror,script,foreignObject,image,a').length,
+      events:[...doc.querySelectorAll('*')].flatMap(x=>[...x.attributes]).filter(x=>/^on/i.test(x.name)).length,
+      label:doc.documentElement.textContent};
+  },svg);
+  expect(parsed.bad).toBe(0);expect(parsed.events).toBe(0);expect(parsed.label).toContain(malicious);
+  const jsonDownload=page.waitForEvent('download');await page.locator('#exportGraphJson').click();
+  const graph=JSON.parse(await fs.readFile(await (await jsonDownload).path(),'utf8'));
+  expect(graph.capture_receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(graph.filter).toBe('internal');expect(graph.edges).toHaveLength(1);
+});
+test('graph rendering bounds are explicit and unknown scope cannot be classified',async({page})=>{
+  await page.goto('/reports.html');
+  const result=await page.evaluate(async receipt=>{
+    const edges=Array.from({length:501},(_,i)=>({source:receipt.resources[0].url,target:'https://example.test/item-'+i}));
+    receipt.link_edges=edges;
+    receipt.resources.push(...edges.map(x=>({url:x.target,state:'pending'})));
+    receipt.counts.pending+=edges.length;receipt.discovered=receipt.resources.length;
+    const report=await AegisReport.buildReport(receipt);
+    const graph=AegisReport.graphData(report,'internal'),svg=AegisReport.graphSvg(graph);
+    const unknown={...report,receipt:{...report.receipt,scope_hosts:undefined}};
+    let denied=false;try{AegisReport.graphData(unknown,'internal');}catch(_){denied=true;}
+    return {svg,edgeCount:graph.edges.length,denied};
+  },receiptFixture());
+  expect(result.edgeCount).toBe(501);expect(result.svg).toContain('500 of 501');expect(result.denied).toBe(true);
+});
 test('a delayed receipt URL cannot replace a newer local file selection',async({page})=>{
   let release;const pending=new Promise(resolve=>release=resolve);
   const older=receiptFixture();older.notes='older URL receipt';

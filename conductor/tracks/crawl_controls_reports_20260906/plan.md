@@ -61,7 +61,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T6 Render and export safe link graphs. (AC2, AC3) — bounded text graph exists; internal/external filtering and export acceptance remain open.
+- [x] T6 Render and export safe link graphs. (AC2, AC3) — deterministic recorded-scope filters, receipt-bound JSON and inert SVG exports verified in browser; 10,000-edge input bound and explicit 500-edge diagram clipping; unknown scope denied classification. Independent security/readability review approved.
   - **Files**: `web/reports.html`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`.
   - **Change**: Filter internal/external edges and export diagrams with escaped labels and bounded graph size.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.

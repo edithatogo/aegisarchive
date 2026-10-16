@@ -9,7 +9,10 @@
 <p id="summary">No report loaded.</p><p id="reportIdentity"></p><pre id="details"></pre>
 <button id="exportReport" disabled>Export reconciled JSON report</button>
 <table><thead><tr><th>URL</th><th>State</th><th>Reason / rule</th><th>Status</th><th>Bytes</th></tr></thead><tbody id="resources"></tbody></table>
-<h2>Link graph</h2><pre id="graph">No graph loaded.</pre>
+<h2>Link graph</h2>
+<label>Edges <select id="graphFilter" disabled><option value="all">All</option><option value="internal">Internal targets</option><option value="external">External targets</option></select></label>
+<button id="exportGraphSvg" disabled>Export graph SVG</button><button id="exportGraphJson" disabled>Export graph JSON</button>
+<pre id="graph">No graph loaded.</pre>
 <h2>Rule preview — no source requests</h2>
 <p>Preview supplied metadata only. “Needs metadata” holds the download without fetching it.</p>
 <label>Allowed hosts (comma separated)<input id="hostsInput" value="example.test"></label>
@@ -91,7 +94,7 @@
    for(const key of ['warc','cdx']){const a=receipt.archives[key];if(!object(a) || !hash(a.sha256) || (a.bytes!=null && !integer(a.bytes)))throw Error('Invalid archive identity');}
    if(receipt.scope_hosts!=null)CrawlRules.scopeHosts(receipt.scope_hosts);
    if(receipt.link_edges!=null && (!Array.isArray(receipt.link_edges) || receipt.link_edges.length>10000))throw Error('Graph limit');
-   for(const e of receipt.link_edges || []){if(!object(e))throw Error('Invalid edge');validUrl(e.source);validUrl(e.target);}
+   for(const e of receipt.link_edges || []){if(!object(e))throw Error('Invalid edge');validUrl(e.source);validUrl(e.target);if(!seen.has(e.source) || !seen.has(e.target))throw Error('Unknown edge endpoint');}
    const identity=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoded)),x=>x.toString(16).padStart(2,'0')).join('');
    if(expectedIdentity!==null && (!hash(expectedIdentity) || expectedIdentity!==identity))throw Error('Capture receipt identity mismatch');
    const ordered=[...resources].sort((a,b)=>a.url<b.url?-1:a.url>b.url?1:0);
@@ -111,16 +114,72 @@
    hosts=CrawlRules.scopeHosts(hosts);config=CrawlRules.validateRules(config);
    return resources.map(resource=>{const u=validUrl(resource.url);return {resource,decision:CrawlRules.evaluateRules(config,resource,hosts.some(h=>u.hostname===h || u.hostname.endsWith('.'+h)))};});
  }
- let current=null,generation=0;
+ function graphData(report,filter='all') {
+   if(!object(report) || !hash(report.capture_receipt_sha256) ||
+      !['canonical_json_utf8','source_json_utf8'].includes(report.receipt_identity_format) ||
+      !object(report.receipt) || !Array.isArray(report.receipt.resources) || report.receipt.resources.length>10000 ||
+      !['all','internal','external'].includes(filter))throw Error('Invalid graph report or filter');
+   const receipt=report.receipt,known=new Set();
+   for(const resource of receipt.resources){if(!object(resource))throw Error('Invalid graph resource');validUrl(resource.url);known.add(resource.url);}
+   const hosts=receipt.scope_hosts==null?null:CrawlRules.scopeHosts(receipt.scope_hosts);
+   if(filter!=='all' && (!hosts || !hosts.length))throw Error('Recorded scope hosts required for classification');
+   const input=Object.hasOwn(receipt,'link_edges')?receipt.link_edges:
+     receipt.resources.filter(r=>r.parentUrl!=null).map(r=>({source:r.parentUrl,target:r.url}));
+   if(!Array.isArray(input) || input.length>10000)throw Error('Graph edge limit');
+   const unique=new Map();
+   for(const edge of input) {
+     if(!object(edge))throw Error('Invalid graph edge');
+     validUrl(edge.source);const target=validUrl(edge.target);
+     if(!known.has(edge.source) || !known.has(edge.target))throw Error('Unknown edge endpoint');
+     const internal=hosts && hosts.some(h=>target.hostname===h || target.hostname.endsWith('.'+h));
+     if(filter==='internal' && !internal || filter==='external' && internal)continue;
+     unique.set(JSON.stringify([edge.source,edge.target]),{source:edge.source,target:edge.target});
+   }
+   const cmp=(a,b)=>a<b?-1:a>b?1:0;
+   const edges=[...unique.values()].sort((a,b)=>cmp(a.source,b.source)||cmp(a.target,b.target));
+   return {schema_version:1,capture_receipt_sha256:report.capture_receipt_sha256,
+     receipt_identity_format:report.receipt_identity_format,filter,scope_hosts:hosts,
+     evidence_state:'receipt_assertions_not_archive_verification',edges,
+     selected_edge_count:edges.length,displayed_edge_count:Math.min(500,edges.length),clipped_edge_count:Math.max(0,edges.length-500)};
+ }
+ const xml=value=>esc(Array.from(String(value)).map(c=>{
+   const n=c.codePointAt(0);return n===9 || n===10 || n===13 || n>=32 && n<=0xd7ff || n>=0xe000 && n<=0xfffd || n>=0x10000 && n<=0x10ffff?c:'\ufffd';
+ }).join(''));
+ function graphSvg(graph) {
+   if(!object(graph) || graph.schema_version!==1 || !hash(graph.capture_receipt_sha256) ||
+      !['canonical_json_utf8','source_json_utf8'].includes(graph.receipt_identity_format) ||
+      !['all','internal','external'].includes(graph.filter) || !Array.isArray(graph.edges) || graph.edges.length>10000)throw Error('Invalid graph');
+   for(const edge of graph.edges){if(!object(edge))throw Error('Invalid edge');validUrl(edge.source);validUrl(edge.target);}
+   const edges=graph.edges.slice(0,500),clipped=graph.edges.length-edges.length;
+   const caption=`${edges.length} of ${graph.edges.length} edges; ${clipped} clipped`;
+   const desc=`Capture receipt SHA-256 (${graph.receipt_identity_format}): ${graph.capture_receipt_sha256}; filter: ${graph.filter}; ${caption}. Labels shortened to 60 characters; full URLs remain in node titles and JSON. Receipt assertions, not archive verification.`;
+   const label=value=>{const chars=Array.from(value);return xml(chars.length>60?chars.slice(0,59).join('')+'…':value);};
+   const rows=edges.map((edge,i)=>{const y=80+i*90;return `<g><g><title>${xml(edge.source)}</title><rect x="10" y="${y}" width="540" height="60" fill="#f5f5f5" stroke="#667"/><text x="20" y="${y+35}" font-size="12">${label(edge.source)}</text></g><line x1="550" y1="${y+30}" x2="650" y2="${y+30}" stroke="#667"/><g><title>${xml(edge.target)}</title><rect x="650" y="${y}" width="540" height="60" fill="#f5f5f5" stroke="#667"/><text x="660" y="${y+35}" font-size="12">${label(edge.target)}</text></g></g>`;}).join('');
+   return `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="${Math.max(160,100+edges.length*90)}" viewBox="0 0 1200 ${Math.max(160,100+edges.length*90)}"><title>Capture link graph</title><desc>${xml(desc)}</desc><text x="10" y="30">${xml(caption)}</text><text x="10" y="55">${xml('Filter: '+graph.filter)}</text>${rows}</svg>`;
+ }
+ let current=null,currentGraph=null,generation=0;
+ function clearGraph() {
+   currentGraph=null;
+   for(const id of ['graphFilter','exportGraphSvg','exportGraphJson'])document.getElementById(id).disabled=true;
+   document.getElementById('graph').textContent='';
+ }
+ function renderGraph(report) {
+   clearGraph();
+   const graph=graphData(report,document.getElementById('graphFilter').value);
+   document.getElementById('graph').textContent=`${graph.displayed_edge_count} of ${graph.edges.length} edges; ${graph.clipped_edge_count} clipped.\n`+
+     (graph.edges.slice(0,500).map(e=>`${e.source} -> ${e.target}`).join('\n') || 'No link edges recorded.');
+   currentGraph=graph;
+   for(const id of ['graphFilter','exportGraphSvg','exportGraphJson'])document.getElementById(id).disabled=false;
+ }
  function fail(error) {
    generation++;
-   current=null;document.getElementById('exportReport').disabled=true;
+   current=null;document.getElementById('exportReport').disabled=true;clearGraph();
    document.getElementById('summary').className='error';document.getElementById('summary').textContent='Unable to load report: '+error.message;
    for(const id of ['reportIdentity','details','resources','graph'])document.getElementById(id).textContent='';
  }
  async function render(receipt,expectedIdentity=null,receiptText=null) {
    const request=++generation;
-   current=null;document.getElementById('exportReport').disabled=true;
+   current=null;document.getElementById('exportReport').disabled=true;clearGraph();
    try {
      const report=await buildReport(receipt,expectedIdentity,receiptText),counts=report.counts;
      if(request!==generation)return null;
@@ -130,7 +189,7 @@
      document.getElementById('reportIdentity').textContent=`Capture receipt SHA-256 (${report.receipt_identity_format}): ${report.capture_receipt_sha256}. Receipt assertions, not archive verification.`;
      document.getElementById('details').textContent=JSON.stringify({storage:report.storage,redirects:report.redirects,duplicates:report.duplicates,missing_resources:report.missing_resources,limitations:receipt.limitations},null,2);
      document.getElementById('resources').innerHTML=receipt.resources.slice(0,10000).map(x=>`<tr><td>${esc(x.url)}</td><td>${esc(x.state)}</td><td>${esc(x.reason)} / ${esc(x.rule_id)}</td><td>${esc(x.status)}</td><td>${esc(x.bytes)}</td></tr>`).join('');
-     document.getElementById('graph').textContent=receipt.resources.filter(x=>x.parentUrl).map(x=>`${x.parentUrl} -> ${x.url}`).join('\n') || 'No link edges recorded.';
+     document.getElementById('graphFilter').value='all';renderGraph(report);
      document.getElementById('exportReport').disabled=false;return report;
    } catch(error){if(request===generation)fail(error);throw error;}
  }
@@ -139,10 +198,13 @@
  }
  document.getElementById('receiptFile').addEventListener('change',async event=>{
    const file=event.target.files[0];if(!file)return;
-   const selection=++generation;current=null;document.getElementById('exportReport').disabled=true;
+   const selection=++generation;current=null;document.getElementById('exportReport').disabled=true;clearGraph();
    try{if(file.size>16*1024*1024)throw Error('Receipt byte limit');const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(await file.arrayBuffer());if(selection!==generation)return;await render(strictParse(text),null,text);}catch(error){if(selection===generation)fail(error);}
  });
  document.getElementById('exportReport').addEventListener('click',()=>{if(current)download(JSON.stringify(current,null,2),'capture-report-'+current.capture_receipt_sha256.slice(0,12)+'.json','application/json');});
+ document.getElementById('graphFilter').addEventListener('change',()=>{try{if(current)renderGraph(current);else clearGraph();}catch(error){fail(error);}});
+ document.getElementById('exportGraphSvg').addEventListener('click',()=>{try{if(currentGraph)download(graphSvg(currentGraph),'capture-graph-'+currentGraph.capture_receipt_sha256.slice(0,12)+'.svg','image/svg+xml');}catch(error){fail(error);}});
+ document.getElementById('exportGraphJson').addEventListener('click',()=>{if(currentGraph)download(JSON.stringify(currentGraph,null,2),'capture-graph-'+currentGraph.capture_receipt_sha256.slice(0,12)+'.json','application/json');});
  document.getElementById('previewButton').addEventListener('click',()=>{
    try {
      const rules=document.getElementById('rulesInput').value,candidates=document.getElementById('candidatesInput').value;
@@ -160,6 +222,6 @@
    chunks.push(decoder.decode());if(selection!==generation)return;
    const text=chunks.join('');await render(strictParse(text),params.get('sha256'),text);
  })().catch(error=>{if(selection===generation)fail(error);});}
- window.AegisReport={escape:esc,render,buildReport,preview,canonical,sourceLoad};
+ window.AegisReport={escape:esc,render,buildReport,preview,canonical,graphData,graphSvg,sourceLoad};
 })();
 </script></body></html>
