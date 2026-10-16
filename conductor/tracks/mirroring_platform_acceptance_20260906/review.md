@@ -40,3 +40,19 @@ case also passed with inherited Git `core.autocrlf=true` (7.452 seconds) and
 `false` (6.977 seconds). Python compilation, Node syntax and diff checks passed.
 Full baseline/browser results are recorded separately in the evidence ledger;
 this review is not itself a platform-qualification receipt.
+
+### Actual Windows evidence review and remaining hosted exception
+
+Carver (`01a144a5-cc9e-7472-95db-da90370ac9c1`) independently approved
+the named local-Mac/hosted-Windows pair at `bec9a8236c10e97dc51ca39cb28b60b5c1d61566`.
+Both receipts, their comparison and Windows WARC/CDX validation passed. All
+11 retained Windows files matched hosted artifact `12079092295` from successful
+job `117226519282` in run `38976319916`. Its logs show three browser tests and
+mandatory receipt validation passed. This is not an overall CI pass: the
+additional hosted Mac job failed and the hosted comparison was skipped.
+
+Cicero approved a further failure-only diagnostic: sample only the owned,
+still-live Darwin launcher before cleanup, with bounded process/stack commands
+and retained command results. The readiness deadline, production launcher,
+original exception and unconditional cleanup remain unchanged. That diagnostic
+is awaiting full validation and publication; approval alone is not execution.

@@ -88,6 +88,14 @@ async function ordinaryLauncher(directory) {
     error.message+='\nOrdinary launcher output:\n'+output;
     try {
       await fs.writeFile(path.join(directory,'launcher-startup.txt'),output);
+      if(process.platform==='darwin' && child?.pid && child.exitCode===null && child.signalCode===null){
+        // Sample only our still-live launcher before cleanup. This is failure
+        // evidence, not a readiness retry or an extension of its deadline.
+        const processState=spawnSync('/bin/ps',['-p',String(child.pid),'-o','pid,ppid,state,etime,command'],{encoding:'utf8',timeout:2000});
+        const sample=spawnSync('/usr/bin/sample',[String(child.pid),'1','1','-file',path.join(directory,'launcher-stack.txt')],{encoding:'utf8',timeout:5000});
+        const result=value=>({status:value.status,signal:value.signal,error:value.error?.message || null,stdout:value.stdout || '',stderr:value.stderr || ''});
+        await fs.writeFile(path.join(directory,'launcher-process.json'),JSON.stringify({pid:child.pid,process:result(processState),sample:result(sample)},null,2)+'\n');
+      }
     } catch(diagnosticError) {
       error.message+='\nCould not retain launcher output: '+diagnosticError.message;
     } finally {
