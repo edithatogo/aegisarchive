@@ -1,6 +1,6 @@
 # Track Plan: Portable Station Hardening & Diagnostics
 
-## Status: COMPLETED (implementation; post-review disposition in review.md)
+## Status: IN PROGRESS — scoped T9 repair; original completion/archive history retained
 
 ## Phase 1 — Specification & approval
 
@@ -34,3 +34,19 @@
 - [x] Rev-1 Security: `/__station/status` no longer exposes the per-session token (unauthenticated endpoint; token only needed by token-gated POST shutdown). Regression test added. *(commit `913c611`; 18/18 suite passes)*
 - [x] Rev-2 Documentation: corrected stale F2 note (previously claimed status was still in-progress pending G2).
 - [x] Archive this track under `conductor/archive/portable_station_hardening_20260905/` and redirect the registry link (archive-eligible: completed, validated, review fixes applied).
+
+## Phase 6 — Scoped owning-track repair, 17 October 2026
+
+The existing owning track is reopened in place for this repair; original tasks,
+archive location and historical evidence remain unchanged. No active station
+writer was identified. This chat owns T9 only, not unrelated station changes.
+Actual hosted stack evidence from mirroring run 38977432488 shows startup
+blocked in reverse DNS before readiness. The user's authorised programme repair
+scope covers correcting that defect; publication still follows recorded G1.
+
+- [~] T9 Bind the numerical loopback station without reverse DNS. *(R1, AC2, AC9)*
+  - **Files**: `cli/launch.py`, `cli/test_station_hardening.py`; this track's specification/index/review and completion records; registry/backlog/lessons for lifecycle reconciliation.
+  - **Change**: Replace `server = ThreadingHTTPServer(("127.0.0.1", port), AegisArchiveHandler)` with construction of a stdlib-only threaded subclass whose `server_bind()` calls `TCPServer.server_bind()` and derives `server_name` and `server_port` from the numerical bound address. Add a regression making reverse-DNS functions raise while real loopback bind, request handling and startup readiness still succeed. Keep the production constructor covered, not only a helper.
+  - **Verify**: `python3 cli/test_station_hardening.py`; `python3 -m py_compile cli/launch.py cli/test_station_hardening.py`; `python3 cli/launch.py --help`; `python3 scripts/gate.py test`; `python3 scripts/gate.py leak`; `python3 scripts/track_health.py --strict`. Expect all checks to pass; record RED regression before implementation. Run actual clean-source mirroring acceptance under the coordinated host guard after the reviewed commit.
+  - **Done when**: Startup and real serving need no reverse DNS; loopback-only bind, foreign Host rejection, dot-path denial, no-store and control-token protections still pass; review and regression receipts exist. Overall hosted acceptance is reconciled separately in the mirroring track.
+  - **Do not**: increase readiness deadlines, patch DNS globally in production, change Host/token/scope controls, edit `.github/workflows/ci.yml`, or rewrite historical completion evidence.

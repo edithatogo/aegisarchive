@@ -32,6 +32,13 @@ A full-system review of the portable USB station (this repository plus its compa
 
 ## Non-functional constraints
 
+### Scoped repair acceptance added 17 October 2026
+
+- **AC9**: Numerical-loopback station construction and readiness do not perform
+  reverse DNS. With `socket.getfqdn` and `socket.gethostbyaddr` configured to
+  fail in a regression test, the real production server still binds and serves
+  requests. Existing Host, token, hidden-path and no-store controls remain intact.
+
 - Python 3 standard library only for `cli/`; no new runtime dependencies; browser features must be vanilla ES6+.
 - Loopback-only binding for all local servers.
 - The politeness engine remains the only network egress path for crawling.

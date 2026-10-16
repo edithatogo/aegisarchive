@@ -7,5 +7,9 @@
 
 Type: feature. Status: completed. Created: 2026-09-05. **Archived** 2026-09-05 after conductor review (Rev-1 security fix, Rev-2 doc correction) — see `plan.md` Phase 5.
 
+Reopened in place on 17 October 2026 for owning-track T9 only: DNS-independent
+loopback startup. Original completion/archive history above is historical.
+Current status: in progress; see Phase 6 of the plan.
+
 G2 delegations were registered in the companion program as track `station_hardening_delegation_20260905` (companion commit `f2f51b7`).
 - [Historical evidence](./evidence.legacy.jsonl)
