@@ -44,7 +44,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T6 Implement revision-aware offline search. (AC1, AC2) — FTS search exists; revision linkage and handling-policy filtering are incomplete.
+- [x] T6 Implement revision-aware offline search. (AC1, AC2) — revision-bound idempotent FTS, source/revision/kind filters, original references, extraction provenance and fail-closed eligibility verified; 69 configured lifecycle tests passed with zero skips; two-agent panel approved after fixes.
   - **Files**: `portable/document_search.py`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Reuse generic search contracts after review; index only eligible derivatives with original/version links.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
@@ -73,3 +73,58 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`; `python3 scripts/gate.py test`; full Conductor validation.
   - **Done when**: All required criteria pass, receipt hashes resolve, and no supported claim relies on an unexecuted test. No mandatory human sign-off for machine-verifiable behaviour.
+
+## T6 contract review and acceptance — 16 October 2026
+
+Baseline `ac15294`, task claim `8c65226`. The owner explicitly selected T6;
+other incomplete tracks were not taken over. Ownership checks found this track
+alone owns the two implementation/test files. No runtime dependencies were added.
+
+The existing FTS5 component is retained rather than importing the optional hybrid
+memory store, whose document identity/schema lacks catalogue revisions and handling
+controls. `add(result, source_id, revision_id, handling=None, kind=None)` checks the
+source/revision association and hashes, keeps JSON locators and extraction metadata,
+and assigns an identity scoped to revision plus extraction provenance. Repeated
+adds replace only that derivative's cache entry, never another source's history.
+Omitted handling inherits the source; omitted kind honours OCR metadata. Existing
+positional source/limit search calls remain supported. New revision/kind filters
+are keyword-only. Query length is bounded and limit must be an integer from 1–100.
+
+Results include status, reason, coverage, locators, extractor/output hashes and
+OCR confidence/engine/model provenance. An upstream OCR identity is exposed as
+`extraction_derivative_id`, separately from the revision-bound search ID. The
+`original` reference carries revision, captured URL, content hash and availability;
+resolve it locally with `catalogue.original(hit['original']['revision_id'])`.
+No live URL is fetched. Partial results remain explicitly partial.
+
+Eligibility is intentionally conservative: only public, unflagged, nonblank
+complete/partial text is indexed and returned. Source, acquisition and any
+derivative restriction on the same revision deny retrieval, including legacy
+restrictions. New extraction identities do not clear them. Query-time checks hide
+stale cached hits without rebuilding the corpus. T8 retains explicit handling
+reclassification, cache/export propagation, retention and deletion ownership.
+Legacy rows remain unchanged and are not trusted for search until re-added from
+validated extraction results; reopening performs no corpus rebuild. Corrupt
+retrieved metadata fails with a content-free error rather than returning citations.
+
+Regression tests first reproduced duplicate FTS rows, colliding output identities,
+unlinked source/revision pairs, restricted and failed-output retrieval, lost OCR
+metadata and unbounded inputs. Follow-up RED/GREEN checks cover original OCR identity,
+legacy restriction bypass and malformed stored metadata. Persistent database tests
+verify reopen, legacy preservation and explicit revalidation; configured real OCR
+flows through search back to unchanged captured bytes.
+
+Panel Nietzsche (`01a142a1-cbea-79a0-b2cf-78949538b4f5`) approved revision identity,
+persistence and OCR integration after running 18 targeted/integration tests.
+Panel Chandrasekhar (`01a142a5-1928-72a2-b79e-fe0b8e20d608`) initially held for the
+legacy restriction bypass and malformed-metadata crash. Both received regression
+tests and fixes; the reviewer approved after 16 tests and independent probes of
+both legacy identity forms and query-time denial. Neither reviewer edited files.
+
+Final checks: 15 new revision-search tests passed; the mandated stdlib lifecycle
+command passed 58 tests with 9 expected optional-runtime skips; configured lifecycle
+acceptance passed 69 tests with zero skips. Repository gate passed 212 Python tests
+with 12 expected skips, 18 station tests and 72 JavaScript tests. Compilation,
+CLI help smoke, profile checks, whitespace and leak gates passed. These are local
+synthetic checks, not new hosted/platform qualification. No user documents were
+processed, no source publication occurred, and no push gate was granted.

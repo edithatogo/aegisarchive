@@ -9,6 +9,7 @@ from pathlib import Path
 from portable.document_catalogue import Catalogue
 from portable.document_extract import extract
 from portable import document_extract
+from portable.document_search import SearchIndex
 from optional.document_processing.test_adapters import ParentTests as OptionalParentTests
 from optional.document_processing.test_adapters import ParserTests as OptionalParserTests
 from optional.document_processing.test_ocr import Core as OptionalOCRCoreTests
@@ -245,6 +246,187 @@ class OptionalIntegrationTests(unittest.TestCase):
         self.assertEqual(result['status'], 'complete')
 
 
+class RevisionSearchTests(unittest.TestCase):
+    def setUp(self):
+        self.catalogue = Catalogue()
+        self.addCleanup(self.catalogue.close)
+        self.index = SearchIndex(self.catalogue)
+
+    def register(self, text=b'alpha evidence', url='https://fixture.test/a.txt', **options):
+        options.setdefault('handling', 'public')
+        return self.catalogue.register(url, text, **options)
+
+    def add(self, revision, result=None, **options):
+        if result is None:
+            result = extract(self.catalogue.original(revision['revision_id']))
+        return self.index.add(result, revision['source_id'], revision['revision_id'], **options)
+
+    def test_repeat_indexing_returns_one_result(self):
+        revision = self.register()
+        first = self.add(revision, handling='public')
+        self.assertEqual(self.add(revision, handling='public'), first)
+        self.assertEqual(len(self.index.search('alpha')), 1)
+
+    def test_equal_output_retains_distinct_sources_and_revisions(self):
+        first = self.register(b'<p>alpha</p>', 'https://fixture.test/a.html')
+        second = self.register(b'<div>alpha</div>', 'https://fixture.test/a.html')
+        third = self.register(b'<p>alpha</p>', 'https://fixture.test/b.html')
+        ids = [self.add(revision, extract(self.catalogue.original(revision['revision_id']), 'text/html'),
+                        handling='public') for revision in (first, second, third)]
+        self.assertEqual(len(set(ids)), 3)
+        hits = self.index.search('alpha', source_id=first['source_id'])
+        self.assertEqual({h['revision_id'] for h in hits}, {first['revision_id'], second['revision_id']})
+        hits = self.index.search('alpha', revision_id=second['revision_id'])
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0]['source_id'], first['source_id'])
+        self.assertEqual(self.catalogue.original(hits[0]['original']['revision_id']), b'<div>alpha</div>')
+        self.assertEqual(hits[0]['original']['url'], 'https://fixture.test/a.html')
+        self.assertEqual(hits[0]['original']['content_hash'], second['content_hash'])
+
+    def test_source_revision_mismatch_is_rejected_without_mutation(self):
+        first, second = self.register(), self.register(url='https://fixture.test/b.txt')
+        with self.assertRaisesRegex(ValueError, 'source_revision_mismatch'):
+            self.index.add(extract(b'alpha'), first['source_id'], second['revision_id'], handling='public')
+        self.assertEqual(self.index.search('alpha'), [])
+        self.assertEqual(self.catalogue.db.execute('SELECT COUNT(*) FROM derivatives').fetchone()[0], 0)
+
+    def test_ineligible_statuses_and_empty_outputs_are_not_searchable(self):
+        revision = self.register()
+        for status in ('pending', 'failed', 'encrypted', 'unsupported'):
+            value = dict(extract(b'alpha'), status=status)
+            self.add(revision, value, handling='public')
+        self.assertEqual(self.index.search('alpha'), [])
+        self.add(revision, extract(b''), handling='public')
+        self.assertEqual(self.index.search('alpha'), [])
+
+    def test_partial_result_retains_citations_and_coverage(self):
+        revision = self.register(b'alpha\xff')
+        result = extract(b'alpha\xff')
+        result['coverage'] = {'scope': 'fixture', 'omitted_pages': [2]}
+        self.add(revision, result)
+        hit = self.index.search('alpha')[0]
+        self.assertEqual(hit['status'], 'partial')
+        self.assertEqual(hit['reason'], 'invalid_encoding')
+        self.assertEqual(hit['locators'], [{'paragraph': 1, 'start': 0, 'end': 6}])
+        self.assertEqual(hit['coverage'], {'scope': 'fixture', 'omitted_pages': [2]})
+        self.assertTrue(hit['original']['available'])
+
+    def test_handling_cannot_be_elevated_by_the_caller(self):
+        for handling in ('unknown', 'restricted', 'quarantined', 'revoked'):
+            with self.subTest(handling=handling):
+                revision = self.register(url='https://fixture.test/' + handling, handling=handling)
+                self.add(revision, handling='public')
+                self.assertEqual(self.index.search('alpha'), [])
+
+    def test_policy_changes_hide_previously_indexed_results(self):
+        revision = self.register()
+        did = self.add(revision, handling='public')
+        self.assertEqual(len(self.index.search('alpha')), 1)
+        self.catalogue.db.execute("UPDATE documents SET handling='restricted'")
+        self.assertEqual(self.index.search('alpha'), [])
+        self.catalogue.db.execute("UPDATE documents SET handling='public'")
+        self.catalogue.db.execute("UPDATE source_metadata SET flags_json='[\"quarantine\"]'")
+        self.assertEqual(self.index.search('alpha'), [])
+        self.catalogue.db.execute("UPDATE source_metadata SET flags_json='[]'")
+        self.catalogue.db.execute("UPDATE derivatives SET handling='restricted' WHERE derivative_id=?", (did,))
+        self.assertEqual(self.index.search('alpha'), [])
+
+    def test_restricted_reacquisition_is_honoured_at_query_time(self):
+        revision = self.register()
+        self.add(revision, handling='public')
+        self.register(handling='restricted')
+        self.assertEqual(self.index.search('alpha'), [])
+
+    def test_output_hash_and_ocr_source_hash_are_verified(self):
+        revision = self.register()
+        for change in ({'output_hash': 'incorrect'}, {'source_hash': 'incorrect'}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                self.add(revision, dict(extract(b'alpha'), **change), handling='public')
+        self.assertEqual(self.index.search('alpha'), [])
+
+    def test_ocr_kind_confidence_and_engine_provenance_survive_storage(self):
+        revision = self.register()
+        result = dict(extract(b'alpha'), kind='ocr', derivative_id='ocr:fixture',
+                      source_hash=revision['content_hash'], confidence=92,
+                      engines={'tesseract': 'synthetic-1', 'traineddata_sha256': 'fixture-model'},
+                      locators=[{'page': 2, 'start': 0, 'end': 5, 'confidence': 92}],
+                      coverage={'scope': 'fixture', 'total_pages': 2})
+        self.add(revision, result)
+        hit = self.index.search('alpha', kind='ocr')[0]
+        self.assertEqual(hit['kind'], 'ocr')
+        self.assertEqual(hit['confidence'], 92)
+        self.assertEqual(hit['extraction_derivative_id'], 'ocr:fixture')
+        self.assertEqual(hit['engines'], result['engines'])
+        self.assertEqual(hit['locators'][0]['page'], 2)
+        self.assertEqual(self.index.search('alpha', kind='text'), [])
+
+    def test_legacy_fts_rows_are_not_trusted_or_duplicated(self):
+        revision = self.register()
+        self.catalogue.db.execute('INSERT INTO text_index VALUES (?,?,?,?)',
+                                  ('orphan', 'alpha', revision['source_id'], revision['revision_id']))
+        self.assertEqual(self.index.search('alpha'), [])
+        self.add(revision)
+        reopened = SearchIndex(self.catalogue)
+        self.assertEqual(len(reopened.search('alpha')), 1)
+
+    def test_filters_and_query_bounds(self):
+        self.add(self.register())
+        for query in ('', ' ', None, 'x' * 4097, '"'):
+            with self.subTest(query=str(query)[:20]), self.assertRaises(ValueError):
+                self.index.search(query)
+        for limit in (0, -1, True, 101, '20'):
+            with self.subTest(limit=limit), self.assertRaises(ValueError):
+                self.index.search('alpha', limit=limit)
+        self.assertEqual(self.index.search('alpha', source_id="' OR 1=1 --"), [])
+        self.assertEqual(self.index.search('alpha', revision_id='absent'), [])
+
+    def test_disk_reopen_keeps_history_and_requires_legacy_revalidation(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / 'catalogue.sqlite'
+            catalogue = Catalogue(path)
+            revision = catalogue.register('https://fixture.test/a.txt', b'alpha', handling='public')
+            catalogue.db.execute('INSERT INTO derivatives VALUES (?,?,?,?,?,?,?,?,?)',
+                                 ('legacy', revision['revision_id'], 'text', 'old-1',
+                                  hashlib.sha256(b'alpha').hexdigest(), 'complete',
+                                  'alpha', "[{'paragraph': 1}]", 'public'))
+            catalogue.db.execute('CREATE VIRTUAL TABLE text_index USING fts5('
+                                 'derivative_id UNINDEXED,text,source_id UNINDEXED,revision_id UNINDEXED)')
+            catalogue.db.execute('INSERT INTO text_index VALUES (?,?,?,?)',
+                                 ('legacy', 'alpha', revision['source_id'], revision['revision_id']))
+            catalogue.db.commit()
+            index = SearchIndex(catalogue)
+            self.assertEqual(index.search('alpha'), [])
+            did = index.add(extract(b'alpha'), revision['source_id'], revision['revision_id'])
+            catalogue.close()
+            reopened = Catalogue(path)
+            self.addCleanup(reopened.close)
+            hits = SearchIndex(reopened).search('alpha')
+            self.assertEqual([h['derivative_id'] for h in hits], [did])
+            self.assertEqual(reopened.original(hits[0]['revision_id']), b'alpha')
+            self.assertEqual(reopened.db.execute(
+                "SELECT extractor,locator_json FROM derivatives WHERE derivative_id='legacy'").fetchone(),
+                ('old-1', "[{'paragraph': 1}]"))
+
+    def test_legacy_derivative_restriction_survives_new_extraction_identity(self):
+        revision = self.register()
+        result = extract(b'alpha evidence')
+        self.catalogue.db.execute('INSERT INTO derivatives VALUES (?,?,?,?,?,?,?,?,?)',
+                                 (result['output_hash'], revision['revision_id'], 'text', 'old-1',
+                                  result['output_hash'], 'complete', result['text'], '[]', 'restricted'))
+        did = self.add(revision, handling='public')
+        self.assertEqual(self.index.search('alpha'), [])
+        self.assertEqual(self.catalogue.db.execute(
+            'SELECT handling FROM derivatives WHERE derivative_id=?', (did,)).fetchone()[0], 'restricted')
+
+    def test_corrupt_stored_metadata_fails_with_content_free_error(self):
+        revision = self.register()
+        self.add(revision)
+        for invalid in ('[]', '{broken', '{"kind":"text"}'):
+            self.catalogue.db.execute('UPDATE search_derivative_metadata SET extraction_json=?', (invalid,))
+            with self.subTest(invalid=invalid), self.assertRaisesRegex(ValueError, '^invalid_search_metadata$'):
+                self.index.search('alpha')
+
+
 class OCRIntegrationTests(unittest.TestCase):
     def test_missing_ocr_remains_a_separate_content_free_derivative(self):
         original = b'synthetic source'
@@ -296,6 +478,17 @@ class OCRIntegrationTests(unittest.TestCase):
         self.assertTrue(result['derivative_id'].startswith('ocr:'))
         self.assertEqual(result['source_hash'], hashlib.sha256(content).hexdigest())
         self.assertTrue(0 <= result['confidence'] <= 100)
+        catalogue = Catalogue()
+        self.addCleanup(catalogue.close)
+        revision = catalogue.register('https://fixture.test/scanned.png', content, handling='public')
+        index = SearchIndex(catalogue)
+        index.add(result, revision['source_id'], revision['revision_id'])
+        hit = index.search('ALPHA', kind='ocr')[0]
+        self.assertEqual(hit['locators'], result['locators'])
+        self.assertEqual(hit['confidence'], result['confidence'])
+        self.assertEqual(hit['engines'], result['engines'])
+        self.assertEqual(hit['extraction_derivative_id'], result['derivative_id'])
+        self.assertEqual(catalogue.original(hit['original']['revision_id']), content)
 
 
 if __name__ == '__main__':
