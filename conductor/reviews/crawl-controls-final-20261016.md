@@ -79,6 +79,7 @@ import hashlib, json, pathlib, subprocess
 p = pathlib.Path('conductor/tracks/crawl_controls_reports_20260906')
 m = json.loads((p / 'acceptance.json').read_text())['evidence_audit']
 events = [json.loads(x) for x in (p / 'evidence.jsonl').read_text().splitlines()]
+assert len(events) >= m['chain_event_count']
 previous = None
 for index, event in enumerate(events):
     value = dict(event)

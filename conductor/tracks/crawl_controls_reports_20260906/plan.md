@@ -1,6 +1,6 @@
 # Plan: Crawl controls, previews and site reports
 
-## Status: IN PROGRESS
+## Status: COMPLETED (2026-10-16 — local R1–R3/AC1–AC3 acceptance)
 
 ## T4 cold-console prerequisite correction — 16 October 2026
 
@@ -69,7 +69,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T7 Final acceptance and claim reconciliation. (AC1–AC3)
+- [x] T7 Final acceptance and claim reconciliation. (AC1–AC3) — current-source requirements and receipts reconciled; full gate 301 Python/18 station/80 JS and 25 browser tests passed; independent panel accepted. Historical exceptions preserved and excluded from current proof; local scope only.
   - **Files**: this track’s plan, metadata, review and evidence (including `acceptance.json`); specification status wording only (R/AC unchanged); documentation explicitly owned by the tasks above.
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`; `python3 scripts/gate.py test`; full Conductor validation.

@@ -134,8 +134,8 @@
   *Link: [./tracks/mirroring_platform_acceptance_20260906/index.md](./tracks/mirroring_platform_acceptance_20260906/index.md)*
 
 ---
-- [~] **Track: Crawl controls, previews and site reports**
-  *Status: In progress — T1–T3 verified; browser integration, receipt-bound reports/graphs and final acceptance remain open.*
+- [x] **Track: Crawl controls, previews and site reports**
+  *Status: Completed — T1–T7 locally verified and independently reviewed; CLI/browser/native controls, cold startup, receipt-bound reports and safe graph exports accepted with documented historical/platform limits.*
   *Link: [./tracks/crawl_controls_reports_20260906/index.md](./tracks/crawl_controls_reports_20260906/index.md)*
 
 ---

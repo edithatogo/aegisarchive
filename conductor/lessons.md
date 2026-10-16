@@ -1,5 +1,13 @@
 # Lessons Ledger
 
+## 2026-10-16 — crawl_controls_reports_20260906
+
+Apply response-dependent policy at the transport boundary before buffering bytes;
+duplicate/absent headers must not become permissive metadata. Bind reports to
+source receipt bytes rather than reserialising fractional timestamps. Test cold
+dependency loading and execution failures as well as crawler functions. Preserve
+historical integrity exceptions explicitly instead of rewriting evidence history.
+
 ## 2026-10-16 — document_lifecycle_20260906
 
 Reserve the SQLite writer before policy reads as well as derivative writes; test
