@@ -35,6 +35,91 @@ test.beforeAll(async()=>{
   origin=`http://127.0.0.1:${server.address().port}`;
 });
 test.afterAll(async()=>{await new Promise(resolve=>server.close(resolve));});
+function receiptFixture() {
+  return {schema_version:1,scope:'discovered_static_resource_graph',scope_hosts:['example.test'],complete:false,
+    counts:{captured:2,failed:1,excluded:1,pending:1,unsupported:0},discovered:5,limitations:[],
+    archives:{warc:{sha256:'a'.repeat(64),bytes:100},cdx:{sha256:'b'.repeat(64),bytes:20}},
+    resources:[
+      {url:'https://example.test/',state:'captured',status:200,bytes:3,sha256:'c'.repeat(64),declared_bytes:3},
+      {url:'https://example.test/redirect',parentUrl:'https://example.test/',state:'captured',status:302,redirect_to:'https://outside.test/',bytes:3,sha256:'c'.repeat(64)},
+      {url:'https://example.test/private',parentUrl:'https://example.test/',state:'failed',status:403,reason:'<img src=x onerror="window.pwned=1">'},
+      {url:'https://outside.test/',parentUrl:'https://example.test/redirect',state:'excluded',reason:'scope'},
+      {url:'https://example.test/pending',state:'pending',reason:'page_limit'}],
+    link_edges:[{source:'https://example.test/',target:'https://example.test/private'},
+      {source:'https://example.test/redirect',target:'https://outside.test/'}]};
+}
+test('report reconciles receipt assertions, escapes source labels and exports a bound report',async({page})=>{
+  await page.goto('/reports.html');
+  await page.locator('#receiptFile').setInputFiles({name:'capture.coverage.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(receiptFixture()))});
+  await expect(page.locator('#summary')).toContainText('2 captured');
+  await expect(page.locator('#reportIdentity')).toContainText('not archive verification');
+  expect(await page.locator('#resources img').count()).toBe(0);
+  expect(await page.evaluate(()=>window.pwned)).toBeUndefined();
+  const downloadPromise=page.waitForEvent('download');
+  await page.locator('#exportReport').click();
+  const download=await downloadPromise;
+  const fs=require('node:fs/promises');
+  const report=JSON.parse(await fs.readFile(await download.path(),'utf8'));
+  expect(report.capture_receipt_sha256).toMatch(/^[a-f0-9]{64}$/);
+  expect(report.storage.captured_payload_bytes).toBe(6);
+  expect(report.storage.archive_bytes).toBe(120);
+  expect(report.failures).toHaveLength(1);
+  expect(report.missing_resources).toHaveLength(2);
+  expect(report.duplicates).toHaveLength(1);
+});
+test('receipt tampering is rejected and previews are deterministic without network',async({page})=>{
+  await page.goto('/reports.html');
+  const validation=await page.evaluate(async receipt=>{
+    const valid=await AegisReport.buildReport(receipt);
+    let badCount=false,badIdentity=false;
+    try {await AegisReport.buildReport({...receipt,discovered:999});} catch(_){badCount=true;}
+    try {await AegisReport.buildReport(receipt,'0'.repeat(64));} catch(_){badIdentity=true;}
+    return {badCount,badIdentity,identity:valid.capture_receipt_sha256};
+  },receiptFixture());
+  expect(validation.badCount).toBe(true);expect(validation.badIdentity).toBe(true);
+  let requests=0;page.on('request',()=>requests++);
+  await page.locator('#rulesInput').fill(JSON.stringify({version:1,rules:[{id:'deny',match:{path_prefix:'/private'},decision:{download:false}}]}));
+  await page.locator('#hostsInput').fill('example.test');
+  await page.locator('#candidatesInput').fill(JSON.stringify([{url:'https://example.test/private',kind:'page',depth:0}]));
+  await page.locator('#previewButton').click();
+  const first=await page.locator('#previewOutput').textContent();
+  expect(JSON.parse(first)[0].decision.download).toBe(false);
+  await page.locator('#previewButton').click();
+  expect(await page.locator('#previewOutput').textContent()).toBe(first);
+  expect(requests).toBe(0);
+});
+test('Python and browser reports agree on receipt identity and reconciled data',async({page})=>{
+  const receipt=receiptFixture();receipt.notes={'😀':'café 😀','\ue000':'unicode key order'};
+  const {execFileSync}=require('node:child_process');
+  const expected=JSON.parse(execFileSync(process.env.AEGIS_TEST_PYTHON || 'python3',['-c',
+    'import json,sys; from cli.crawl_rules import build_report; print(json.dumps(build_report(json.load(sys.stdin)),ensure_ascii=False))'],{input:JSON.stringify(receipt),encoding:'utf8'}));
+  await page.goto('/reports.html');
+  expect(await page.evaluate(receipt=>AegisReport.buildReport(receipt),receipt)).toEqual(expected);
+});
+test('existing fractional timestamp receipts bind exact source JSON bytes',async({page})=>{
+  const receipt=receiptFixture();receipt.robots_provenance={fetched_at:1792134000.123456};
+  const text=JSON.stringify(receipt,null,2)+'\n';
+  const digest=require('node:crypto').createHash('sha256').update(text).digest('hex');
+  const {execFileSync}=require('node:child_process');
+  const expected=JSON.parse(execFileSync(process.env.AEGIS_TEST_PYTHON || 'python3',['-c',
+    'import json,sys; from cli.crawl_rules import build_report; t=sys.stdin.read(); print(json.dumps(build_report(json.loads(t),receipt_text=t)))'],{input:text,encoding:'utf8'}));
+  await page.goto('/reports.html');
+  const actual=await page.evaluate(({receipt,text})=>AegisReport.buildReport(receipt,null,text),{receipt,text});
+  expect(actual).toEqual(expected);expect(actual.capture_receipt_sha256).toBe(digest);
+  expect(actual.receipt_identity_format).toBe('source_json_utf8');
+});
+test('a delayed receipt URL cannot replace a newer local file selection',async({page})=>{
+  let release;const pending=new Promise(resolve=>release=resolve);
+  const older=receiptFixture();older.notes='older URL receipt';
+  await page.route(url=>url.pathname==='/slow-receipt.json',async route=>{await pending;await route.fulfill({json:older});});
+  await page.goto('/reports.html?receipt=/slow-receipt.json',{waitUntil:'domcontentloaded'});
+  await page.locator('#receiptFile').setInputFiles({name:'new.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(receiptFixture()))});
+  await expect(page.locator('#summary')).toContainText('2 captured');
+  const identity=await page.locator('#reportIdentity').textContent();
+  const response=page.waitForResponse(response=>new URL(response.url()).pathname==='/slow-receipt.json');release();await response;
+  await page.evaluate(()=>AegisReport.sourceLoad);
+  expect(await page.locator('#reportIdentity').textContent()).toBe(identity);
+});
 test('desktop native transport enforces metadata rules before returning source bytes',async({page})=>{
   await loadCrawler(page);
   const result=await page.evaluate(async(origin)=>{

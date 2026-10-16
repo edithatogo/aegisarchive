@@ -2,6 +2,7 @@ import copy
 import contextlib
 from email.message import Message
 import gzip
+import hashlib
 import http.client
 import io
 import json
@@ -15,6 +16,7 @@ import urllib.parse
 
 from cli.crawl_rules import validate_rules, evaluate_rules, discover_sitemap, scope_hosts
 from cli import aegis_cli
+from cli import crawl_rules as rules_api
 
 
 class RuleSchemaTests(unittest.TestCase):
@@ -196,7 +198,8 @@ class CliRuleIntegrationTests(unittest.TestCase):
                                  autospec=True, return_value={'aborted': False}) as permission:
                 opener.return_value.open.side_effect = open_request
                 aegis_cli.main()
-            receipt = json.loads(next(Path(folder).glob('*.coverage.json')).read_text())
+            receipt_text = next(Path(folder).glob('*.coverage.json')).read_text()
+            receipt = json.loads(receipt_text)
             warc = next(Path(folder).glob('*.warc')).read_bytes()
             cdx = next(Path(folder).glob('*.cdx')).read_text().splitlines()[1:]
             self.assertEqual(receipt['archives']['warc']['bytes'], next(Path(folder).glob('*.warc')).stat().st_size)
@@ -204,7 +207,7 @@ class CliRuleIntegrationTests(unittest.TestCase):
             # Every synthetic request, including robots and sitemap discovery,
             # still passes through the ordinary permission gate.
             self.assertEqual([call.args[1] for call in permission.call_args_list], requests)
-        return dict(requests=requests, reads=reads, closed=closed, receipt=receipt,
+        return dict(requests=requests, reads=reads, closed=closed, receipt=receipt, receipt_text=receipt_text,
                     warc=warc, captured=[line.split()[2] for line in cdx])
 
     @staticmethod
@@ -426,3 +429,310 @@ class CliRuleIntegrationTests(unittest.TestCase):
         resource = next(r for r in result['receipt']['resources'] if r['url']==root)
         self.assertEqual(resource['redirect_to'], root+'next?q=1')
         self.assertEqual(result['receipt']['link_edges'], [])
+
+
+class RulePreviewReportTests(unittest.TestCase):
+    def receipt(self):
+        digest = hashlib.sha256(b'alpha').hexdigest()
+        resources = [
+            dict(url='https://example.test/a', state='captured', bytes=5, declared_bytes=5, status=200, sha256=digest),
+            dict(url='https://example.test/b', state='captured', bytes=5, declared_bytes=5, status=200, sha256=digest),
+            dict(url='https://example.test/r', state='captured', bytes=0, declared_bytes=0, status=302,
+                 sha256=hashlib.sha256(b'').hexdigest(), redirect_to='https://example.test/a'),
+            dict(url='https://example.test/f', state='failed', status=403, declared_bytes=8, reason='http_error'),
+            dict(url='https://example.test/p', state='pending', declared_bytes=None),
+            dict(url='https://example.test/u', state='unsupported'),
+        ]
+        return dict(schema_version=1, discovered=6, resources=resources, complete=False, limitations=[],
+                    counts=dict(captured=3, excluded=0, failed=1, pending=1, unsupported=1),
+                    archives=dict(warc=dict(sha256='1'*64, bytes=1000), cdx=dict(sha256='2'*64, bytes=100)))
+
+    def test_preview_is_deterministic_scoped_and_never_fetches(self):
+        config = {'version':1, 'rules':[
+            {'id':'pdf', 'match':{'mime':'application/pdf'}, 'decision':{'download':False}}]}
+        resources = [dict(url='https://example.test/a', kind='page', depth=0),
+                     dict(url='https://sub.example.test/b', kind='asset', depth=1, mime='application/pdf'),
+                     dict(url='https://example.test.evil/c', kind='page', depth=0)]
+        original = copy.deepcopy((config, resources))
+        with patch('urllib.request.urlopen', side_effect=AssertionError('preview network access')), \
+                patch('urllib.request.build_opener', side_effect=AssertionError('preview network access')):
+            first = rules_api.preview_rules(config, resources, ['example.test'])
+            self.assertEqual(rules_api.preview_rules(config, resources, ['example.test']), first)
+        self.assertEqual((config, resources), original)
+        self.assertEqual(first[0]['resource'], resources[0])
+        self.assertEqual(first[0]['decision']['rule_id'], 'pdf')
+        self.assertEqual(first[0]['decision']['state'], 'needs_metadata')
+        self.assertFalse(first[1]['decision']['download'])
+        self.assertEqual(first[2]['decision']['state'], 'out_of_scope')
+        first[0]['resource']['url'] = 'changed'
+        self.assertEqual(resources, original[1])
+
+    def test_preview_bounds_and_invalid_resources_raise_without_truncation(self):
+        valid = dict(url='https://example.test/', kind='page', depth=0)
+        for resources in ([valid]*10001, (valid,), [dict(valid, url='https://user:secret@example.test/')],
+                          [dict(valid, depth=True)], [dict(valid, extra=float('nan'))]):
+            with self.subTest(shape=type(resources).__name__), self.assertRaises(ValueError):
+                rules_api.preview_rules({'version':1,'rules':[]}, resources, ['example.test'])
+
+    def test_report_reconciles_failures_redirects_duplicates_and_storage(self):
+        receipt = self.receipt()
+        report = rules_api.build_report(receipt)
+        self.assertEqual(report['evidence_state'], 'receipt_assertions_not_archive_verification')
+        self.assertEqual(report['counts'], receipt['counts'])
+        self.assertEqual(report['totals'], dict(discovered=6, **receipt['counts']))
+        self.assertEqual(report['storage'], dict(captured_payload_bytes=10, archive_bytes=1100,
+                         declared_payload_bytes=18, unknown_estimate_resources=2))
+        self.assertEqual([r['url'] for r in report['failures']], ['https://example.test/f'])
+        self.assertEqual([r['state'] for r in report['missing_resources']], ['failed','pending','unsupported'])
+        self.assertEqual(report['redirects'], [receipt['resources'][2]])
+        self.assertEqual(report['duplicates'], [dict(sha256=receipt['resources'][0]['sha256'],
+                         urls=['https://example.test/a', 'https://example.test/b'])])
+        self.assertEqual(report['receipt'], receipt)
+        report['receipt']['resources'][0]['url'] = 'changed'
+        self.assertEqual(receipt, self.receipt())
+
+    def test_canonical_unicode_identity_binds_whole_receipt_not_report_order(self):
+        receipt = self.receipt()
+        receipt['label'] = 'Résumé 💡'
+        receipt['extra'] = {'\ue000':'private use', '💡':'astral'}
+        def ordered(value):
+            if isinstance(value, dict):
+                return {key:ordered(value[key]) for key in sorted(value, key=lambda text:text.encode('utf-16-be'))}
+            if isinstance(value, list):
+                return [ordered(item) for item in value]
+            return value
+        canonical = json.dumps(ordered(receipt), ensure_ascii=False, separators=(',', ':'), allow_nan=False)
+        expected = hashlib.sha256(canonical.encode('utf-8')).hexdigest()
+        report = rules_api.build_report(receipt, expected_receipt_sha256=expected)
+        self.assertEqual(report['capture_receipt_sha256'], expected)
+        reordered = dict(reversed(list(receipt.items())))
+        self.assertEqual(rules_api.build_report(reordered)['capture_receipt_sha256'], expected)
+        reversed_resources = copy.deepcopy(receipt)
+        reversed_resources['resources'].reverse()
+        self.assertNotEqual(rules_api.build_report(reversed_resources)['capture_receipt_sha256'], expected)
+        self.assertEqual(rules_api.build_report(reversed_resources)['failures'], report['failures'])
+
+    def test_expected_fingerprint_rejects_tampered_content(self):
+        receipt = self.receipt()
+        digest = rules_api.build_report(receipt)['capture_receipt_sha256']
+        receipt['resources'][0]['sha256'] = '3'*64
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt, digest)
+        for invalid in ('bad', False, 0, 'A'*64):
+            with self.subTest(expected=invalid), self.assertRaises(ValueError):
+                rules_api.build_report(self.receipt(), invalid)
+
+    def test_counts_and_discovered_must_match_exactly(self):
+        for change in ({'discovered':5}, {'discovered':True},
+                       {'counts':dict(captured=2,excluded=0,failed=1,pending=1,unsupported=1)},
+                       {'counts':dict(captured=3,excluded=False,failed=1,pending=1,unsupported=1)},
+                       {'counts':dict(captured=3,excluded=0,failed=1,pending=1,unsupported=1,other=0)}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                rules_api.build_report(dict(self.receipt(), **change))
+
+    def test_malformed_resource_identity_and_capture_fields_are_rejected(self):
+        for change in ({'url':'file:///tmp/x'}, {'url':'https://@example.test/'},
+                       {'url':'https://example.test:bad/'}, {'url':'https://example.test/\n'},
+                       {'url':'https://example.test/b'}, {'state':'absent'}, {'bytes':True},
+                       {'bytes':-1}, {'status':True}, {'status':99}, {'status':600},
+                       {'sha256':'not-a-hash'}, {'redirect_to':'https://user:secret@example.test/'}):
+            receipt = self.receipt()
+            receipt['resources'][0].update(change)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+
+    def test_required_capture_fields_and_archive_hashes_cannot_be_missing(self):
+        for key in ('status','bytes','sha256'):
+            receipt = self.receipt()
+            del receipt['resources'][0][key]
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+        for key in ('warc','cdx'):
+            receipt = self.receipt()
+            del receipt['archives'][key]['sha256']
+            with self.subTest(archive=key), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+
+    def test_unknown_archive_estimate_is_null_and_never_zero_fabricated(self):
+        receipt = self.receipt()
+        del receipt['archives']['cdx']['bytes']
+        self.assertIsNone(rules_api.build_report(receipt)['storage']['archive_bytes'])
+        for value in (-1, True, 1.5, '100'):
+            receipt['archives']['cdx']['bytes'] = value
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+
+    def test_non_json_cycles_depth_and_oversized_inputs_raise(self):
+        cycle = []
+        cycle.append(cycle)
+        deep = 'leaf'
+        for unused in range(21):
+            deep = [deep]
+        for value in (float('nan'), float('inf'), 1.5, 1.0, 2**53, b'bytes', ('tuple',),
+                      {'set'}, {1:'non-string-key'}, cycle, deep, 'x'*(16*1024*1024+1)):
+            receipt = self.receipt()
+            receipt['extra'] = value
+            with self.subTest(value_type=type(value).__name__), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+        for schema in (True, 1.0, 2):
+            with self.subTest(schema=schema), self.assertRaises(ValueError):
+                rules_api.build_report(dict(self.receipt(), schema_version=schema))
+
+    def test_resource_ceiling_and_aggregate_safe_integer_bounds(self):
+        receipt = self.receipt()
+        receipt['resources'] = [receipt['resources'][0]]*10001
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt)
+        receipt = self.receipt()
+        receipt['archives']['warc']['bytes'] = 2**53-1
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt)
+
+    def test_receipt_report_roundtrip_is_network_free_and_input_immutable(self):
+        receipt = self.receipt()
+        original = copy.deepcopy(receipt)
+        with patch('urllib.request.urlopen', side_effect=AssertionError('report network access')), \
+                patch('urllib.request.build_opener', side_effect=AssertionError('report network access')):
+            first = rules_api.build_report(receipt)
+            self.assertEqual(rules_api.build_report(receipt), first)
+        self.assertEqual(receipt, original)
+        self.assertEqual(json.loads(json.dumps(first, ensure_ascii=False)), first)
+
+    def test_completeness_assertion_cannot_hide_failures_or_limits(self):
+        for change in ({'complete':True}, {'complete':1}, {'complete':None}, {'limitations':'bad'}):
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                rules_api.build_report(dict(self.receipt(), **change))
+        receipt = self.receipt()
+        receipt['resources'] = receipt['resources'][:3]
+        receipt.update(discovered=3, complete=True, counts=dict(captured=3,excluded=0,failed=0,pending=0,unsupported=0))
+        self.assertTrue(rules_api.build_report(receipt)['receipt']['complete'])
+        receipt['limitations'] = ['bounded discovery']
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt)
+
+    def test_optional_url_status_scope_and_graph_fields_are_validated(self):
+        for change in ({'parentUrl':'file:///tmp/x'}, {'bytes':-1}, {'bytes':True}, {'status':-1}, {'status':600}):
+            receipt = self.receipt()
+            receipt['resources'][3].update(change)
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+        for change in ({'scope_hosts':'example.test'}, {'scope_hosts':['bad/host']},
+                       {'link_edges':{}}, {'link_edges':[dict(source='https://example.test/', target='file:///tmp/x')]},
+                       {'link_edges':[dict(source='https://example.test/', target='https://example.test/a')]*10001}):
+            with self.subTest(field=next(iter(change))), self.assertRaises(ValueError):
+                rules_api.build_report(dict(self.receipt(), **change))
+        for status in (100, 199, 400, 599):
+            receipt = self.receipt()
+            receipt['resources'][0]['status'] = status
+            with self.subTest(captured_status=status), self.assertRaises(ValueError):
+                rules_api.build_report(receipt)
+
+    def test_redirect_without_location_is_not_dropped_from_report(self):
+        receipt = self.receipt()
+        del receipt['resources'][2]['redirect_to']
+        self.assertEqual(rules_api.build_report(receipt)['redirects'], [receipt['resources'][2]])
+
+    def test_unpaired_surrogates_are_rejected_in_keys_and_values(self):
+        for extra in ({'bad':'\ud800'}, {'\udfff':'bad'}):
+            with self.subTest(extra=repr(extra)), self.assertRaises(ValueError):
+                rules_api.build_report(dict(self.receipt(), extra=extra))
+
+    def test_derived_url_lists_follow_browser_utf16_order(self):
+        receipt = self.receipt()
+        receipt['resources'][0]['url'] = 'https://example.test/\ue000'
+        receipt['resources'][1]['url'] = 'https://example.test/💡'
+        self.assertEqual(rules_api.build_report(receipt)['duplicates'][0]['urls'],
+                         ['https://example.test/💡', 'https://example.test/\ue000'])
+
+    def test_source_json_identity_preserves_fractional_robots_metadata(self):
+        receipt = self.receipt()
+        receipt['robots_provenance'] = {'https://example.test':{'fetched_at':1792134550.125}}
+        text = json.dumps(receipt, ensure_ascii=False, indent=2) + '\n'
+        digest = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        report = rules_api.build_report(receipt, expected_receipt_sha256=digest, receipt_text=text)
+        self.assertEqual(report['capture_receipt_sha256'], digest)
+        self.assertEqual(report['receipt_identity_format'], 'source_json_utf8')
+        self.assertEqual(report['receipt'], receipt)
+        self.assertNotEqual(rules_api.build_report(receipt, receipt_text=text+' ')['capture_receipt_sha256'], digest)
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt)
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt, expected_receipt_sha256='0'*64, receipt_text=text)
+        self.assertEqual(rules_api.build_report(self.receipt())['receipt_identity_format'], 'canonical_json_utf8')
+
+    def test_source_json_must_match_the_supplied_receipt_without_type_coercion(self):
+        receipt = self.receipt()
+        text = json.dumps(receipt)
+        for other in (dict(receipt, discovered=7), dict(receipt, label='other')):
+            with self.subTest(change=set(other)), self.assertRaises(ValueError):
+                rules_api.build_report(other, receipt_text=text)
+        # Python equality treats False == 0; source matching must not do so.
+        altered = copy.deepcopy(receipt)
+        altered['counts']['excluded'] = False
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt, receipt_text=json.dumps(altered))
+        report = rules_api.build_report(receipt, receipt_text=text.replace('"discovered": 6', '"discovered": 6.0'))
+        self.assertEqual(report['counts'], receipt['counts'])
+
+    def test_source_mode_never_relaxes_safe_integer_quantities(self):
+        for target, key, value in (('resource','bytes',5.5), ('resource','declared_bytes',1.25),
+                                   ('resource','status',200.0), ('archive','bytes',100.5),
+                                   ('receipt','discovered',6.0), ('resource','bytes',2**53)):
+            receipt = self.receipt()
+            destination = receipt['resources'][0] if target=='resource' else receipt['archives']['warc'] if target=='archive' else receipt
+            destination[key] = value
+            with self.subTest(target=target,key=key,value=value), self.assertRaises(ValueError):
+                rules_api.build_report(receipt, receipt_text=json.dumps(receipt))
+
+    def test_source_json_rejects_nonfinite_invalid_unicode_depth_and_size(self):
+        for value in (float('nan'), float('inf'), float('-inf')):
+            receipt = dict(self.receipt(), metadata=value)
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                rules_api.build_report(receipt, receipt_text=json.dumps(receipt))
+        receipt = dict(self.receipt(), metadata=float('inf'))
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt, receipt_text=json.dumps(receipt).replace('Infinity','1e999'))
+        for text in ('{broken', '[]', '\ud800', ' '* (16*1024*1024+1), b'{}'):
+            with self.subTest(text_type=type(text).__name__), self.assertRaises(ValueError):
+                rules_api.build_report(self.receipt(), receipt_text=text)
+        deep = 'leaf'
+        for unused in range(21):
+            deep = [deep]
+        receipt = dict(self.receipt(), extra=deep)
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt, receipt_text=json.dumps(receipt))
+
+    def test_source_json_rejects_duplicate_keys_instead_of_discarding_evidence(self):
+        receipt = self.receipt()
+        text = json.dumps(receipt)
+        text = text.replace('"schema_version": 1', '"schema_version": 2, "schema_version": 1')
+        with self.assertRaises(ValueError):
+            rules_api.build_report(receipt, receipt_text=text)
+
+    def test_actual_cli_receipt_with_robots_timestamp_reports_without_rewriting(self):
+        root = 'https://example.test/'
+        capture = CliRuleIntegrationTests().crawl({root:CliRuleIntegrationTests.route(b'page')})
+        receipt, text = capture['receipt'], capture['receipt_text']
+        self.assertIsInstance(receipt['robots_provenance']['https://example.test']['fetched_at'], float)
+        before = copy.deepcopy(receipt)
+        report = rules_api.build_report(receipt, receipt_text=text)
+        self.assertEqual(report['capture_receipt_sha256'], hashlib.sha256(text.encode('utf-8')).hexdigest())
+        self.assertEqual(report['receipt_identity_format'], 'source_json_utf8')
+        self.assertEqual(report['counts']['captured'], 1)
+        self.assertEqual(receipt, before)
+
+    def test_source_metadata_numbers_remain_within_safe_magnitude(self):
+        for value in (2**53, -(2**53), float(2**53), -float(2**53), 1e100):
+            receipt = dict(self.receipt(), metadata=value)
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                rules_api.build_report(receipt, receipt_text=json.dumps(receipt))
+        for value in (2**53-1, -(2**53-1), 0.125, -0.125):
+            receipt = dict(self.receipt(), metadata=value)
+            self.assertEqual(rules_api.build_report(receipt, receipt_text=json.dumps(receipt))['receipt'], receipt)
+
+    def test_source_matching_treats_json_numbers_equally_but_not_booleans(self):
+        receipt = dict(self.receipt(), metadata=123)
+        text = json.dumps(dict(receipt, metadata=123.0))
+        self.assertEqual(rules_api.build_report(receipt, receipt_text=text)['receipt'], receipt)
+        with self.assertRaises(ValueError):
+            rules_api.build_report(dict(receipt, metadata=True), receipt_text=json.dumps(dict(receipt, metadata=1)))

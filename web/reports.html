@@ -1,13 +1,165 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AegisArchive capture report</title><style>body{font:16px system-ui;max-width:960px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd;padding:.4rem;text-align:left}.error{color:#a00}pre{white-space:pre-wrap;background:#f5f5f5;padding:1rem}</style></head>
-<body><h1>Capture report</h1><p id="summary">No report loaded.</p><table><thead><tr><th>URL</th><th>State</th><th>Reason</th><th>Status</th><th>Bytes</th></tr></thead><tbody id="resources"></tbody></table><h2>Link graph</h2><pre id="graph">No graph loaded.</pre>
+<title>AegisArchive capture report</title>
+<style>body{font:16px system-ui;max-width:1100px;margin:2rem auto;padding:0 1rem}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ccd;padding:.4rem;text-align:left;overflow-wrap:anywhere}.error{color:#a00}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#f5f5f5;padding:1rem}textarea{display:block;width:100%;min-height:5rem}label{display:block;margin:1rem 0}button{margin:.5rem .5rem .5rem 0}</style>
+<script src="lib/crawl_rules.js"></script></head>
+<body><h1>Capture report</h1>
+<p>Totals describe recorded capture, not everything on the source site. Failed and pending resources are evidence gaps, not evidence of absence.</p>
+<label>Coverage receipt (JSON, maximum 16 MiB) <input id="receiptFile" type="file" accept=".json,application/json"></label>
+<p id="summary">No report loaded.</p><p id="reportIdentity"></p><pre id="details"></pre>
+<button id="exportReport" disabled>Export reconciled JSON report</button>
+<table><thead><tr><th>URL</th><th>State</th><th>Reason / rule</th><th>Status</th><th>Bytes</th></tr></thead><tbody id="resources"></tbody></table>
+<h2>Link graph</h2><pre id="graph">No graph loaded.</pre>
+<h2>Rule preview — no source requests</h2>
+<p>Preview supplied metadata only. “Needs metadata” holds the download without fetching it.</p>
+<label>Allowed hosts (comma separated)<input id="hostsInput" value="example.test"></label>
+<label>Rule configuration<textarea id="rulesInput">{"version":1,"rules":[]}</textarea></label>
+<label>Candidate resources<textarea id="candidatesInput">[{"url":"https://example.test/","kind":"page","depth":0}]</textarea></label>
+<button id="previewButton">Preview decisions</button><pre id="previewOutput"></pre>
 <script>
-(function(){'use strict';
+(function(){
+ 'use strict';
+ const states=['captured','excluded','failed','pending','unsupported'];
  const esc=v=>String(v==null?'':v).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
- const render=r=>{const counts=r.counts||{};document.getElementById('summary').textContent=`${r.discovered||0} discovered; ${counts.captured||0} captured; ${counts.failed||0} failed; ${counts.excluded||0} excluded`;
-  document.getElementById('resources').innerHTML=(r.resources||[]).slice(0,10000).map(x=>`<tr><td>${esc(x.url)}</td><td>${esc(x.state)}</td><td>${esc(x.reason)}</td><td>${esc(x.status)}</td><td>${esc(x.bytes)}</td></tr>`).join('');
-  const edges=(r.resources||[]).filter(x=>x.parentUrl&&x.url).slice(0,10000).map(x=>`${x.parentUrl} -> ${x.url}`);document.getElementById('graph').textContent=edges.join('\n')||'No internal link edges recorded.';};
- const source=new URLSearchParams(location.search).get('receipt'); if(source) fetch(source).then(x=>{if(!x.ok)throw Error(`HTTP ${x.status}`);return x.json()}).then(render).catch(e=>{document.getElementById('summary').className='error';document.getElementById('summary').textContent='Unable to load report: '+e.message;});
- window.AegisReport={escape:esc,render};
-})();</script></body></html>
+ const object=x=>x!==null && typeof x==='object' && !Array.isArray(x);
+ const integer=x=>Number.isSafeInteger(x) && x>=0;
+ const hash=x=>typeof x==='string' && /^[a-f0-9]{64}$/.test(x);
+ function validUrl(value) {
+   if(typeof value!=='string' || Array.from(value).length>8192 || /[\x00-\x20\x7f]/.test(value))throw Error('Invalid URL');
+   const u=new URL(value);if(!['http:','https:'].includes(u.protocol) || u.username || u.password)throw Error('Invalid URL');return u;
+ }
+ function canonical(value,depth=0,state={nodes:0,minimumBytes:0}) {
+   if(depth>20 || ++state.nodes>1000000 || ++state.minimumBytes>16*1024*1024)throw Error('Receipt structural limit');
+   if(typeof value==='string') {
+     for(let i=0;i<value.length;i++){
+       const c=value.charCodeAt(i);
+       if(c>=0xd800 && c<=0xdbff){const next=value.charCodeAt(++i);if(!(next>=0xdc00 && next<=0xdfff))throw Error('Invalid Unicode string');}
+       else if(c>=0xdc00 && c<=0xdfff)throw Error('Invalid Unicode string');
+     }
+     state.minimumBytes+=new TextEncoder().encode(value).length;
+     if(state.minimumBytes>16*1024*1024)throw Error('Receipt byte limit');
+     return JSON.stringify(value);
+   }
+   if(value===null || typeof value==='boolean')return JSON.stringify(value);
+   if(typeof value==='number' && (Number.isSafeInteger(value) || (state.allowFractional && Number.isFinite(value) && Math.abs(value)<=Number.MAX_SAFE_INTEGER)))return JSON.stringify(value);
+   if(Array.isArray(value)){if(value.length>1000000)throw Error('Receipt structural limit');return '['+value.map(x=>canonical(x,depth+1,state)).join(',')+']';}
+   if(object(value)){const keys=Object.keys(value);if(keys.length>1000000)throw Error('Receipt structural limit');return '{'+keys.sort().map(k=>canonical(k,depth+1,state)+':'+canonical(value[k],depth+1,state)).join(',')+'}';}
+   throw Error('Receipt requires JSON values and safe integers');
+ }
+ const total=values=>{const n=values.reduce((a,b)=>a+b,0);if(!integer(n))throw Error('Unsafe total');return n;};
+ function strictParse(text) {
+   // Scan structure before parsing: reject excessive depth and duplicate keys,
+   // including escaped aliases, without treating braces inside strings as nodes.
+   const stack=[];
+   for(let i=0;i<text.length;i++) {
+     const c=text[i];
+     if(c==='{' || c==='['){stack.push(c==='{'?new Set():null);if(stack.length>21)throw Error('Receipt nesting limit');}
+     else if(c==='}' || c===']')stack.pop();
+     else if(c==='"') {
+       const start=i++;
+       while(i<text.length && text[i]!=='"'){if(text[i]==='\\')i++;i++;}
+       let next=i+1;while(/\s/.test(text[next] || '') && next<text.length)next++;
+       if(text[next]===':' && stack.at(-1) instanceof Set) {
+         const key=JSON.parse(text.slice(start,i+1)),keys=stack.at(-1);
+         if(keys.has(key))throw Error('Duplicate JSON key');keys.add(key);
+       }
+     }
+   }
+   return JSON.parse(text);
+ }
+ async function buildReport(receipt,expectedIdentity=null,receiptText=null) {
+   const state=()=>({nodes:0,minimumBytes:0,allowFractional:receiptText!==null});
+   const snapshot=canonical(receipt,0,state());
+   if(receiptText!==null && (typeof receiptText!=='string' || new TextEncoder().encode(receiptText).length>16*1024*1024))throw Error('Receipt byte limit');
+   if(receiptText!==null && (typeof receiptText!=='string' || canonical(strictParse(receiptText),0,state())!==snapshot))throw Error('Source JSON does not match receipt');
+   const encoded=new TextEncoder().encode(receiptText===null ? snapshot : receiptText);
+   receipt=JSON.parse(snapshot);
+   if(encoded.length>16*1024*1024)throw Error('Receipt byte limit');
+   if(!object(receipt) || receipt.schema_version!==1 || !Array.isArray(receipt.resources) || receipt.resources.length>10000 || !object(receipt.counts))throw Error('Invalid receipt');
+   const resources=receipt.resources,counts=Object.fromEntries(states.map(x=>[x,0])),seen=new Set();
+   for(const r of resources) {
+     if(!object(r))throw Error('Invalid resource');validUrl(r.url);
+     if(seen.has(r.url) || !states.includes(r.state))throw Error('Duplicate URL or unknown state');seen.add(r.url);counts[r.state]++;
+     if(r.parentUrl!=null)validUrl(r.parentUrl);if(r.redirect_to!=null)validUrl(r.redirect_to);
+     for(const field of ['bytes','declared_bytes'])if(r[field]!=null && !integer(r[field]))throw Error('Invalid bytes');
+     if(r.status!=null && (!integer(r.status) || r.status>599))throw Error('Invalid status');
+     if(r.state==='captured' && (!integer(r.bytes) || !hash(r.sha256) || !integer(r.status) || r.status<200 || r.status>=400))throw Error('Invalid captured resource');
+   }
+   if(!integer(receipt.discovered) || receipt.discovered!==resources.length || Object.keys(receipt.counts).length!==states.length || states.some(x=>receipt.counts[x]!==counts[x]))throw Error('Receipt totals do not reconcile');
+   if(typeof receipt.complete!=='boolean' || !Array.isArray(receipt.limitations) || (receipt.complete && (!resources.length || counts.captured!==resources.length || receipt.limitations.length)))throw Error('Invalid completeness assertion');
+   if(!object(receipt.archives))throw Error('Missing archive identities');
+   for(const key of ['warc','cdx']){const a=receipt.archives[key];if(!object(a) || !hash(a.sha256) || (a.bytes!=null && !integer(a.bytes)))throw Error('Invalid archive identity');}
+   if(receipt.scope_hosts!=null)CrawlRules.scopeHosts(receipt.scope_hosts);
+   if(receipt.link_edges!=null && (!Array.isArray(receipt.link_edges) || receipt.link_edges.length>10000))throw Error('Graph limit');
+   for(const e of receipt.link_edges || []){if(!object(e))throw Error('Invalid edge');validUrl(e.source);validUrl(e.target);}
+   const identity=Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',encoded)),x=>x.toString(16).padStart(2,'0')).join('');
+   if(expectedIdentity!==null && (!hash(expectedIdentity) || expectedIdentity!==identity))throw Error('Capture receipt identity mismatch');
+   const ordered=[...resources].sort((a,b)=>a.url<b.url?-1:a.url>b.url?1:0);
+   const captured=ordered.filter(x=>x.state==='captured'),groups=new Map();
+   for(const r of captured){if(!groups.has(r.sha256))groups.set(r.sha256,[]);groups.get(r.sha256).push(r.url);}
+   const duplicates=[...groups].filter(([,urls])=>urls.length>1).sort(([a],[b])=>a.localeCompare(b)).map(([sha256,urls])=>({sha256,urls:urls.sort()}));
+   const known=resources.filter(x=>integer(x.declared_bytes));
+   return {schema_version:1,capture_receipt_sha256:identity,receipt_identity_format:receiptText===null?'canonical_json_utf8':'source_json_utf8',evidence_state:'receipt_assertions_not_archive_verification',receipt,counts,
+     totals:{discovered:resources.length,...counts},failures:ordered.filter(x=>x.state==='failed'),missing_resources:ordered.filter(x=>['failed','pending','unsupported'].includes(x.state)),
+     redirects:captured.filter(x=>x.status>=300 && x.status<400),duplicates,
+     storage:{captured_payload_bytes:total(captured.map(x=>x.bytes)),archive_bytes:['warc','cdx'].every(x=>integer(receipt.archives[x].bytes))?total(['warc','cdx'].map(x=>receipt.archives[x].bytes)):null,
+       declared_payload_bytes:total(known.map(x=>x.declared_bytes)),unknown_estimate_resources:resources.length-known.length}};
+ }
+ function preview(config,resources,hosts) {
+   if(!Array.isArray(resources) || resources.length>10000)throw Error('Candidate limit');
+   if(new TextEncoder().encode(canonical(resources)).length>16*1024*1024)throw Error('Preview byte limit');
+   hosts=CrawlRules.scopeHosts(hosts);config=CrawlRules.validateRules(config);
+   return resources.map(resource=>{const u=validUrl(resource.url);return {resource,decision:CrawlRules.evaluateRules(config,resource,hosts.some(h=>u.hostname===h || u.hostname.endsWith('.'+h)))};});
+ }
+ let current=null,generation=0;
+ function fail(error) {
+   generation++;
+   current=null;document.getElementById('exportReport').disabled=true;
+   document.getElementById('summary').className='error';document.getElementById('summary').textContent='Unable to load report: '+error.message;
+   for(const id of ['reportIdentity','details','resources','graph'])document.getElementById(id).textContent='';
+ }
+ async function render(receipt,expectedIdentity=null,receiptText=null) {
+   const request=++generation;
+   current=null;document.getElementById('exportReport').disabled=true;
+   try {
+     const report=await buildReport(receipt,expectedIdentity,receiptText),counts=report.counts;
+     if(request!==generation)return null;
+     current=JSON.parse(JSON.stringify(report));receipt=report.receipt;
+     document.getElementById('summary').className='';
+     document.getElementById('summary').textContent=`${receipt.discovered} discovered; ${counts.captured} captured; ${counts.failed} failed; ${counts.excluded} excluded; ${counts.pending} pending; ${counts.unsupported} unsupported`;
+     document.getElementById('reportIdentity').textContent=`Capture receipt SHA-256 (${report.receipt_identity_format}): ${report.capture_receipt_sha256}. Receipt assertions, not archive verification.`;
+     document.getElementById('details').textContent=JSON.stringify({storage:report.storage,redirects:report.redirects,duplicates:report.duplicates,missing_resources:report.missing_resources,limitations:receipt.limitations},null,2);
+     document.getElementById('resources').innerHTML=receipt.resources.slice(0,10000).map(x=>`<tr><td>${esc(x.url)}</td><td>${esc(x.state)}</td><td>${esc(x.reason)} / ${esc(x.rule_id)}</td><td>${esc(x.status)}</td><td>${esc(x.bytes)}</td></tr>`).join('');
+     document.getElementById('graph').textContent=receipt.resources.filter(x=>x.parentUrl).map(x=>`${x.parentUrl} -> ${x.url}`).join('\n') || 'No link edges recorded.';
+     document.getElementById('exportReport').disabled=false;return report;
+   } catch(error){if(request===generation)fail(error);throw error;}
+ }
+ function download(text,name,type) {
+   const url=URL.createObjectURL(new Blob([text],{type})),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
+ }
+ document.getElementById('receiptFile').addEventListener('change',async event=>{
+   const file=event.target.files[0];if(!file)return;
+   const selection=++generation;current=null;document.getElementById('exportReport').disabled=true;
+   try{if(file.size>16*1024*1024)throw Error('Receipt byte limit');const text=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}).decode(await file.arrayBuffer());if(selection!==generation)return;await render(strictParse(text),null,text);}catch(error){if(selection===generation)fail(error);}
+ });
+ document.getElementById('exportReport').addEventListener('click',()=>{if(current)download(JSON.stringify(current,null,2),'capture-report-'+current.capture_receipt_sha256.slice(0,12)+'.json','application/json');});
+ document.getElementById('previewButton').addEventListener('click',()=>{
+   try {
+     const rules=document.getElementById('rulesInput').value,candidates=document.getElementById('candidatesInput').value;
+     if(rules.length>262144 || candidates.length>16*1024*1024)throw Error('Preview byte limit');
+     document.getElementById('previewOutput').textContent=JSON.stringify(preview(JSON.parse(rules),JSON.parse(candidates),document.getElementById('hostsInput').value.split(',').map(x=>x.trim()).filter(Boolean)),null,2);
+   }catch(error){document.getElementById('previewOutput').textContent='Preview rejected: '+error.message;}
+ });
+ const params=new URLSearchParams(location.search),source=params.get('receipt');
+ let sourceLoad=Promise.resolve();
+ if(source){const selection=++generation;sourceLoad=(async()=>{
+   const url=new URL(source,location.href);if(url.origin!==location.origin)throw Error('Receipt URL must be local to this station');
+   const response=await fetch(url);if(!response.ok)throw Error('HTTP '+response.status);
+   const reader=response.body.getReader(),decoder=new TextDecoder('utf-8',{fatal:true,ignoreBOM:true}),chunks=[];let size=0;
+   try{while(true){const item=await reader.read();if(item.done)break;size+=item.value.byteLength;if(size>16*1024*1024){await reader.cancel();throw Error('Receipt byte limit');}chunks.push(decoder.decode(item.value,{stream:true}));}}finally{reader.releaseLock();}
+   chunks.push(decoder.decode());if(selection!==generation)return;
+   const text=chunks.join('');await render(strictParse(text),params.get('sha256'),text);
+ })().catch(error=>{if(selection===generation)fail(error);});}
+ window.AegisReport={escape:esc,render,buildReport,preview,canonical,sourceLoad};
+})();
+</script></body></html>
