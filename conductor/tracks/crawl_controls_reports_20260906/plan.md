@@ -37,7 +37,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
 - [~] T5 Implement preview and reconciled reports. (AC2, AC3) — bounded report view exists; capture-receipt identity binding and end-to-end validation remain open.
-  - **Files**: `cli/crawl_rules.py`, `web/reports.html`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`.
+  - **Files**: `cli/crawl_rules.py`, `web/reports.html`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`.
   - **Change**: Expose decision previews, errors, missing resources and totals tied to capture receipt identities.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
   - **Done when**: Expose decision previews, errors, missing resources and totals tied to capture receipt identities. Relevant assertions demonstrate the stated outcome and no regression is introduced.
@@ -45,7 +45,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
 - [~] T6 Render and export safe link graphs. (AC2, AC3) — bounded text graph exists; internal/external filtering and export acceptance remain open.
-  - **Files**: `web/reports.html`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`.
+  - **Files**: `web/reports.html`; focused tests: `tests/test_crawl_rules.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`.
   - **Change**: Filter internal/external edges and export diagrams with escaped labels and bounded graph size.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
   - **Done when**: Filter internal/external edges and export diagrams with escaped labels and bounded graph size. Relevant assertions demonstrate the stated outcome and no regression is introduced.
