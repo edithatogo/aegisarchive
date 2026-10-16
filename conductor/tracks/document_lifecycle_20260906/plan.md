@@ -12,7 +12,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T2 Implement immutable registration and history. (AC2)
+- [x] T2 Implement immutable registration and history. (AC2) — canonical payload storage, append-only acquisitions and caller-declared URL moves verified; identical bytes alone do not merge source identities.
   - **Files**: `portable/document_catalogue.py`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Reconcile moved URLs, identical bytes and changed revisions; preserve acquisition history and originals.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
