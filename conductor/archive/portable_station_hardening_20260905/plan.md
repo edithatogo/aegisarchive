@@ -1,6 +1,6 @@
 # Track Plan: Portable Station Hardening & Diagnostics
 
-## Status: IN PROGRESS — scoped T9 repair; original completion/archive history retained
+## Status: COMPLETED — scoped T9 repair validated; original completion/archive history retained
 
 ## Phase 1 — Specification & approval
 
@@ -44,7 +44,7 @@ Actual hosted stack evidence from mirroring run 38977432488 shows startup
 blocked in reverse DNS before readiness. The user's authorised programme repair
 scope covers correcting that defect; publication still follows recorded G1.
 
-- [~] T9 Bind the numerical loopback station without reverse DNS. *(R1, AC2, AC9)*
+- [x] T9 Bind the numerical loopback station without reverse DNS. *(R1, AC2, AC9)* — implementation `4255021`; full baseline and clean local Mac acceptance pass; hosted run 38979330621 passes Mac, Windows and comparison at that same revision. Original security controls and readiness deadline unchanged.
   - **Files**: `cli/launch.py`, `cli/test_station_hardening.py`; this track's specification/index/review and completion records; registry/backlog/lessons for lifecycle reconciliation.
   - **Change**: Keep the existing production `server = ThreadingHTTPServer(("127.0.0.1", port), AegisArchiveHandler)` call, importing the stdlib base under a private alias and exposing a threaded subclass whose `server_bind()` calls `TCPServer.server_bind()` and derives `server_name` and `server_port` from the numerical bound address. Add a regression making reverse-DNS functions raise while real loopback bind, request handling and startup readiness still succeed. Keep the production constructor covered, not only a helper.
   - **Verify**: `python3 cli/test_station_hardening.py`; `python3 -m py_compile cli/launch.py cli/test_station_hardening.py`; `python3 cli/launch.py --help`; `python3 scripts/gate.py test`; `python3 scripts/gate.py leak`; `python3 scripts/track_health.py --strict`. Expect all checks to pass; record RED regression before implementation. Run actual clean-source mirroring acceptance under the coordinated host guard after the reviewed commit.

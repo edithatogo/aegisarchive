@@ -199,3 +199,11 @@ A pre-response timeout cannot identify the failing network stage. Default urllib
 ## 2026-09-11 — progressive_debug_20260911
 
 End-of-run reports miss interrupted sessions. Save structured browser and native events progressively with acknowledged sequence numbers, and expose pending counts and permanent write failures. Serialize activation to prevent client/sequence races, retain usable pause/resume controls, and persist gap counts when bounded queues overflow. Validate real files before capture completion and after reload; do not promise to retain unacknowledged events on browser termination.
+
+## 2026-10-17 — portable_station_hardening_20260905 / T9
+
+Numerical loopback startup must not depend on reverse DNS for display metadata.
+Retain bounded owned-process diagnostics before cleanup; a shell banner alone
+does not locate a Python startup stall. Fix the owning server bind path, preserve
+Host/token controls, and prove both DNS-independent serving and unchanged real
+platform acceptance instead of extending readiness deadlines.

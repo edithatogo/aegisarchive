@@ -9,7 +9,8 @@ Type: feature. Status: completed. Created: 2026-09-05. **Archived** 2026-09-05 a
 
 Reopened in place on 17 October 2026 for owning-track T9 only: DNS-independent
 loopback startup. Original completion/archive history above is historical.
-Current status: in progress; see Phase 6 of the plan.
+Current status: completed after T9 repair `4255021`, full regression, clean local
+Mac qualification and successful hosted Mac/Windows/comparison run 38979330621.
 
 G2 delegations were registered in the companion program as track `station_hardening_delegation_20260905` (companion commit `f2f51b7`).
 - [Historical evidence](./evidence.legacy.jsonl)

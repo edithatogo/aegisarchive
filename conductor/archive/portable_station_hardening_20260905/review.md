@@ -42,3 +42,13 @@ The reserved full gate subsequently passed: 353 Python tests (12 skipped,
 measured case 54.8 seconds). Leak and strict Conductor health checks passed.
 The uncommitted behaviour run is not a clean-source platform qualification;
 that is recorded separately after the implementation commit.
+
+Clean committed revision `42550216efa5069870f011d9a9173c6a697ce1fb` then passed
+local Mac acceptance (three tests, 1.0 minute; measured case 38.3 seconds) and
+both retained receipt checks. Hosted run 38979330621 passed Mac job 117236222685
+(51 seconds), Windows job 117236222409 (1 minute 44 seconds), and automated
+comparison job 117236763137 (6 seconds). Downloaded hosted receipts and the
+required local-Mac/hosted-Windows comparison validate. All eight triggered
+workflows at the implementation revision were read back as successful.
+T9 is complete; this closes the owning repair, not the remaining mirroring
+documentation/final-reconciliation tasks.
