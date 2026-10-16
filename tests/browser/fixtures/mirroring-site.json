@@ -1,0 +1,10 @@
+{
+  "/index.html": {"mime":"text/html","body":"<!doctype html><html><head><title>Offline index</title><link rel=stylesheet href=/site.css></head><body><h1>Index fixture</h1><a href=/second.html>Second page</a><a href=/protected.html>Protected page</a><img id=fixture-image src=/asset.svg alt=Fixture><script>window.sourceScriptExecuted=true</script></body></html>"},
+  "/second.html": {"mime":"text/html","body":"<!doctype html><html><head><title>Offline second</title><link rel=stylesheet href=/site.css></head><body><h1>Second fixture</h1><a href=/third.html>Third page</a><a href=/index.html>Index page</a><img id=fixture-image src=/asset.svg alt=Fixture></body></html>"},
+  "/third.html": {"mime":"text/html","body":"<!doctype html><html><head><title>Offline third</title><link rel=stylesheet href=/site.css></head><body><h1>Third fixture</h1><a href=/index.html>Index page</a><a href=/missing.html>Missing page</a><img id=fixture-image src=/asset.svg alt=Fixture></body></html>"},
+  "/site.css": {"mime":"text/css","body":"body { color: rgb(1, 2, 3); background-color: rgb(240, 241, 242); } h1 { border-left: 4px solid rgb(4, 5, 6); }"},
+  "/asset.svg": {"mime":"image/svg+xml","body":"<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"12\" height=\"8\"><rect width=\"12\" height=\"8\" fill=\"green\"/></svg>"},
+  "/protected.html": {"mime":"text/html","body":"<!doctype html><h1>Authenticated fixture</h1><a href=/expires.html>Next protected page</a><a href=/index.html>Index page</a>"},
+  "/expires.html": {"mime":"text/html","body":"<!doctype html><h1>Later protected fixture</h1>"},
+  "/robots.txt": {"mime":"text/plain","body":"User-agent: *\nDisallow: /excluded/\n"}
+}
