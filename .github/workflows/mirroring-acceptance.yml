@@ -1,7 +1,31 @@
-name: Synthetic mirroring acceptance
-on:
+name: Measured mirroring acceptance
+'on':
   pull_request:
-    paths: ['scripts/mirroring_acceptance.py', 'tests/test_mirroring_acceptance.py', '.github/workflows/mirroring-acceptance.yml']
+    paths:
+      - '.github/workflows/mirroring-acceptance.yml'
+      - 'scripts/mirroring_acceptance.py'
+      - 'tests/test_mirroring_acceptance.py'
+      - 'tests/browser/**'
+      - 'web/**'
+      - 'cli/**'
+      - 'portable/document_extract.py'
+      - 'profiles/**'
+      - 'package*.json'
+      - 'START_*'
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/mirroring-acceptance.yml'
+      - 'scripts/mirroring_acceptance.py'
+      - 'tests/test_mirroring_acceptance.py'
+      - 'tests/browser/**'
+      - 'web/**'
+      - 'cli/**'
+      - 'portable/document_extract.py'
+      - 'profiles/**'
+      - 'package*.json'
+      - 'START_*'
+  workflow_dispatch:
 permissions:
   contents: read
 concurrency:
@@ -9,15 +33,95 @@ concurrency:
   cancel-in-progress: true
 jobs:
   acceptance:
-    strategy: {matrix: {os: [macos-latest, windows-latest]}}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            platform: darwin-arm64
+            system: Darwin
+            machine: arm64
+          - runner: windows-2022
+            platform: win32-x64
+            system: Windows
+            machine: AMD64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    env:
+      AEGIS_BROWSER_CHANNEL: chrome
+      AEGIS_TEST_PYTHON: python
+      # START_WINDOWS.cmd uses the standard Python launcher before PATH Python.
+      PY_PYTHON3: '3.11'
+      EXPECTED_PLATFORM: ${{ matrix.platform }}
+      EXPECTED_SYSTEM: ${{ matrix.system }}
+      EXPECTED_MACHINE: ${{ matrix.machine }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with: {persist-credentials: false}
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with: {python-version: '3.11'}
+        with:
+          python-version: '3.11'
+          architecture: ${{ runner.arch == 'ARM64' && 'arm64' || 'x64' }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '24'
+          cache: npm
+      - name: Confirm actual platform identity
+        run: |
+          node -e "if (process.platform+'-'+process.arch !== process.env.EXPECTED_PLATFORM) throw Error('Unexpected runner architecture')"
+          python -c "import os,platform; assert platform.system()==os.environ['EXPECTED_SYSTEM']; assert platform.machine()==os.environ['EXPECTED_MACHINE']; print(platform.platform(),platform.python_version())"
+      - name: Install locked development tooling only
+        run: npm ci --ignore-scripts
+      - name: Verify receipt contract
+        run: python -m unittest tests.test_mirroring_acceptance
       - run: python scripts/mirroring_acceptance.py --help
-      - run: python scripts/mirroring_acceptance.py --output artifacts/receipt.json
-      - run: python scripts/mirroring_acceptance.py --check --output artifacts/receipt.json
-      - run: python -m unittest tests.test_mirroring_acceptance
+      - name: Execute ordinary-launcher capture, reload and offline replay
+        run: npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js
+      - name: Require a complete hash-bound platform receipt
+        run: python scripts/mirroring_acceptance.py --check --output artifacts/mirroring-${{ matrix.platform }}/receipt.json
+      - name: Retain actual evidence, including failed observations
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mirroring-${{ matrix.platform }}-${{ github.sha }}
+          path: artifacts/mirroring-${{ matrix.platform }}/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Retain browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mirroring-browser-failure-${{ matrix.platform }}-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: warn
+          retention-days: 7
+  compare-platforms:
+    needs: acceptance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.11'
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          pattern: mirroring-*-*-${{ github.sha }}
+          path: artifacts/platforms
+      - name: Require matching committed implementation and fixtures on both platforms
+        shell: bash
+        run: |
+          python scripts/mirroring_acceptance.py --compare \
+            "artifacts/platforms/mirroring-darwin-arm64-${GITHUB_SHA}/receipt.json" \
+            "artifacts/platforms/mirroring-win32-x64-${GITHUB_SHA}/receipt.json" > artifacts/platform-comparison.txt
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: mirroring-platform-comparison-${{ github.sha }}
+          path: artifacts/platform-comparison.txt
+          if-no-files-found: error
+          retention-days: 30

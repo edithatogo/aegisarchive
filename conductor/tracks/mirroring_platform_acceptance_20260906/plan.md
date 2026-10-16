@@ -62,7 +62,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T4 Add isolated platform acceptance CI. (AC1, AC2) — current matrix executes synthetic receipt checks only; no capture/replay harness or retained receipts.
+- [x] T4 Add isolated platform acceptance CI. (AC1, AC2) — actual launcher/capture/recovery/replay matrix, retained evidence and mandatory same-revision receipt comparison implemented and reviewed. Actionlint, semantic checks and final full gate pass (353 Python tests/12 skipped, 18 station, 85 JavaScript); final three browser cases pass, measured case 52.7s. This completes local workflow implementation, not hosted execution or Windows qualification; those remain T6.
   - **Files**: `.github/workflows/mirroring-acceptance.yml`; focused tests: `tests/browser/mirroring_acceptance.spec.js`.
   - **Change**: Reuse pinned tooling from the navigation track; run macOS and Windows against the same commit and retain receipts.
   - **Verify**: `python3 scripts/mirroring_acceptance.py --help; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
