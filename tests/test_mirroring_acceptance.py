@@ -17,7 +17,8 @@ class MirroringAcceptanceTests(unittest.TestCase):
         self.hooks = self.root / 'empty-fixture-hooks'
         self.hooks.mkdir()
         (self.root / 'scripts').mkdir()
-        (self.root / 'scripts/implementation.py').write_text('implementation = 1\n')
+        # Explicit bytes keep fixture identity independent of host newlines.
+        (self.root / 'scripts/implementation.py').write_bytes(b'implementation = 1\nsecond = 2\n')
         fixture = self.root / 'tests/browser/fixtures/mirroring-site.json'
         fixture.parent.mkdir(parents=True)
         fixture.write_text(json.dumps({'/index.html': {'mime': 'text/html', 'body': 'fixture'}}))
@@ -77,7 +78,7 @@ class MirroringAcceptanceTests(unittest.TestCase):
             source, blobs = acceptance.committed_source(revision)
         self.assertEqual(seen,[True])
         self.assertTrue(source['worktree_clean'])
-        self.assertEqual(blobs['scripts/implementation.py'],b'implementation = 1\n')
+        self.assertEqual(blobs['scripts/implementation.py'],b'implementation = 1\nsecond = 2\n')
 
     def test_complete_bound_observations_validate(self):
         path, _ = self.observations()
@@ -217,10 +218,15 @@ class MirroringAcceptanceTests(unittest.TestCase):
 
     def test_source_crlf_conversion_is_the_only_allowed_byte_difference(self):
         file = self.root / 'scripts/implementation.py'
-        original = file.read_bytes()
+        original = self.git('show', 'HEAD:scripts/implementation.py')
+        self.assertNotIn(b'\r', original)
         self.git('update-index', '--assume-unchanged', 'scripts/implementation.py')
         file.write_bytes(original.replace(b'\n', b'\r\n'))
         self.assertTrue(acceptance.snapshot()['worktree_clean'])
+        file.write_bytes(original.replace(b'\n', b'\r\r\n'))
+        self.assertFalse(acceptance.snapshot()['worktree_clean'])
+        file.write_bytes(original.replace(b'\n', b'\r\n', 1))
+        self.assertFalse(acceptance.snapshot()['worktree_clean'])
         file.write_bytes(original.replace(b'\n', b'\r\n') + b'changed')
         self.assertFalse(acceptance.snapshot()['worktree_clean'])
 

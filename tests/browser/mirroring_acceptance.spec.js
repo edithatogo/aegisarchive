@@ -82,7 +82,21 @@ async function ordinaryLauncher(directory) {
       bundle,launcher:name,source_files:files,posix_executable_prepared:!windows,pid:child.pid,origin},null,2)+'\n');
     await fs.writeFile(path.join(directory,'launcher-startup.txt'),output);
     return {origin,bundle,close};
-  } catch(error) {await close();throw error;}
+  } catch(error) {
+    // Failed readiness must retain the child's output too, not just the poll
+    // timeout. Do not guess which launcher/startup stage blocked on a runner.
+    error.message+='\nOrdinary launcher output:\n'+output;
+    try {
+      await fs.writeFile(path.join(directory,'launcher-startup.txt'),output);
+    } catch(diagnosticError) {
+      error.message+='\nCould not retain launcher output: '+diagnosticError.message;
+    } finally {
+      try {await close();} catch(cleanupError) {
+        error.message+='\nLauncher cleanup failed: '+cleanupError.message;
+      }
+    }
+    throw error;
+  }
 }
 test('an unexecuted receipt cannot qualify a mirroring platform',async()=>{
   const dir=await fs.mkdtemp(path.join(os.tmpdir(),'aegis receipt contract '));
