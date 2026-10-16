@@ -1,0 +1,10 @@
+{
+  "tesseract": "5.5.3",
+  "language": "eng",
+  "traineddata_sha256": "7d4322bd2a7749724879683fc3912cb542f19906c83bcc1a52132556427170b2",
+  "packages": {"Pillow": "12.3.0", "pypdfium2": "5.14.0", "pypdf": "6.20.1"},
+  "max_pages": 16,
+  "max_page_pixels": 16000000,
+  "max_total_pixels": 64000000,
+  "pdf_scale": 2
+}

@@ -1,5 +1,6 @@
 """Bounded native text derivatives; offsets address output text."""
 import hashlib
+import json
 import re
 from html.parser import HTMLParser
 
@@ -152,3 +153,23 @@ def extract(content, mime='text/plain', limit=MAX_BYTES, *, optional=False,
     except (ValueError, RecursionError, AssertionError):
         return outcome('failed', 'malformed_input')
     return outcome(status, reason, text, locators)
+
+
+def extract_ocr(content, mime, limit=MAX_BYTES, *, optional_python=None,
+                tesseract_path=None, tessdata_dir=None):
+    """Create a separately identified OCR derivative using explicit local tools.
+
+    OCR never replaces native extraction. Confidence describes the engine output,
+    not source truth; downstream storage must retain kind='ocr' and provenance.
+    """
+    from optional.document_processing.ocr import extract_ocr as run_ocr
+    if isinstance(mime, str):
+        mime = mime.split(';', 1)[0].strip().lower()
+    result = run_ocr(content, mime, limit, optional_python=optional_python,
+                     tesseract_path=tesseract_path, tessdata_dir=tessdata_dir)
+    result = dict(result, locator_space='derivative_text', offset_unit='unicode_codepoint')
+    identity = [result['kind'], result['source_hash'], result['output_hash'],
+                result['extractor'], result['engines']]
+    result['derivative_id'] = 'ocr:' + hashlib.sha256(
+        json.dumps(identity, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    return result

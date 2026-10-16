@@ -8,8 +8,11 @@ from pathlib import Path
 
 from portable.document_catalogue import Catalogue
 from portable.document_extract import extract
+from portable import document_extract
 from optional.document_processing.test_adapters import ParentTests as OptionalParentTests
 from optional.document_processing.test_adapters import ParserTests as OptionalParserTests
+from optional.document_processing.test_ocr import Core as OptionalOCRCoreTests
+from optional.document_processing.test_ocr import RealOCR as OptionalOCRAcceptanceTests
 
 
 class CatalogueSchemaTests(unittest.TestCase):
@@ -240,6 +243,59 @@ class OptionalIntegrationTests(unittest.TestCase):
                          optional_python='/absent/python')
         self.assertEqual(result['text'], 'Native')
         self.assertEqual(result['status'], 'complete')
+
+
+class OCRIntegrationTests(unittest.TestCase):
+    def test_missing_ocr_remains_a_separate_content_free_derivative(self):
+        original = b'synthetic source'
+        baseline = extract(original)
+        result = document_extract.extract_ocr(
+            original, 'image/png', optional_python='/absent/python',
+            tesseract_path='/absent/tesseract', tessdata_dir='/absent/tessdata')
+        self.assertEqual(result['kind'], 'ocr')
+        self.assertEqual(result['status'], 'unsupported')
+        self.assertIsNone(result['confidence'])
+        self.assertEqual(result['text'], '')
+        self.assertEqual(result['locators'], [])
+        self.assertNotIn('synthetic source', json.dumps(result))
+        self.assertTrue(result['derivative_id'].startswith('ocr:'))
+        self.assertEqual(extract(original), baseline)
+        self.assertEqual(original, b'synthetic source')
+
+    def test_ocr_identity_includes_source_and_extractor_provenance(self):
+        from unittest.mock import patch
+        worker_result = dict(kind='ocr', status='complete', reason='', text='Alpha',
+                             output_hash=hashlib.sha256(b'Alpha').hexdigest(),
+                             source_hash='source-a', extractor='tesseract/5.5.3',
+                             engines={'model_hash': 'model-a'}, confidence=90, locators=[])
+        with patch('optional.document_processing.ocr.extract_ocr', return_value=worker_result):
+            first = document_extract.extract_ocr(b'a', 'image/png')
+        other = dict(worker_result, source_hash='source-b')
+        with patch('optional.document_processing.ocr.extract_ocr', return_value=other):
+            second = document_extract.extract_ocr(b'b', 'image/png')
+        self.assertNotEqual(first['derivative_id'], second['derivative_id'])
+        other_model = dict(worker_result, engines={'model_hash': 'model-b'})
+        with patch('optional.document_processing.ocr.extract_ocr', return_value=other_model):
+            third = document_extract.extract_ocr(b'a', 'image/png')
+        self.assertNotEqual(first['derivative_id'], third['derivative_id'])
+        self.assertEqual(first['text'], 'Alpha')
+        self.assertEqual(first['locator_space'], 'derivative_text')
+
+    def test_public_api_with_real_engine(self):
+        from optional.document_processing.test_ocr import RealOCR, PYTHON, ENGINE, MODELS
+        if not all((PYTHON, ENGINE, MODELS)):
+            self.skipTest('explicit OCR test configuration required')
+        fixture = RealOCR()
+        content = fixture.encoded(fixture.fixture('ALPHA'))
+        result = document_extract.extract_ocr(
+            content, 'IMAGE/PNG; charset=binary', optional_python=PYTHON,
+            tesseract_path=ENGINE, tessdata_dir=MODELS)
+        self.assertEqual(result['status'], 'complete')
+        self.assertEqual(result['kind'], 'ocr')
+        self.assertIn('ALPHA', result['text'])
+        self.assertTrue(result['derivative_id'].startswith('ocr:'))
+        self.assertEqual(result['source_hash'], hashlib.sha256(content).hexdigest())
+        self.assertTrue(0 <= result['confidence'] <= 100)
 
 
 if __name__ == '__main__':

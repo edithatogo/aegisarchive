@@ -97,7 +97,9 @@ executed. Legacy/encrypted OLE Office envelopes fail explicitly as
 `encrypted_or_legacy_office` because this adapter does not distinguish them.
 Malformed data returns `failed`; missing parsers return `unsupported`.
 
-No OCR, external services, models, or runtime downloads. Subprocess isolation and
+These adapters do not invoke OCR. Separately configured OCR derivatives are
+described in [README-OCR.md](README-OCR.md). No external services or runtime
+downloads are used during extraction. Subprocess isolation and
 `-I` reduce accidental coupling; they are not an OS security sandbox. Run under
 an appropriately restricted OS account for hostile inputs. The parent bounds
 stdout while draining it; stderr is discarded. Native parser allocations are

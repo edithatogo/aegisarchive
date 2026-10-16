@@ -36,7 +36,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [~] T5 Add optional OCR derivative processing. (AC1, AC3)
+- [x] T5 Add optional OCR derivative processing. (AC1, AC3) — separate local OCR API and provenance-based derivative identity; pinned English engine/model, page confidence, strict locator coverage, unavailable states and resource bounds verified; configured lifecycle 54 tests passed with zero skips; panel findings resolved.
   - **Files**: `portable/document_extract.py`, `optional/document_processing/`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Keep OCR output distinct from original text; retain page locators/confidence and unsupported-engine outcomes.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.

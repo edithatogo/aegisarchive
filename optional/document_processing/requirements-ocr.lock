@@ -1,0 +1,4 @@
+# Optional isolated OCR environment; official PyPI metadata checked 2026-10-16.
+Pillow==12.3.0
+pypdfium2==5.14.0
+pypdf==6.20.1
