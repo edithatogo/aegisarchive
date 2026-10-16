@@ -89,6 +89,10 @@ class _VisibleHTML(HTMLParser):
             self.append('\n')
 
     def handle_data(self, data):
+        # Non-whitespace body text also implicitly ends head. Title/script/style
+        # data stays suppressed until its own closing tag.
+        if data.strip() and self.stack and self.stack[-1][0] == 'head':
+            self.handle_endtag('head')
         if not self.hidden:
             self.append(data)
 

@@ -62,6 +62,10 @@ class Catalogue:
                     f'BEFORE {operation} ON {table} '
                     "BEGIN SELECT RAISE(ABORT, 'immutable_record'); END")
         self.db.execute('INSERT OR IGNORE INTO source_metadata (source_id) SELECT source_id FROM documents')
+        self.db.execute(
+            'CREATE TRIGGER IF NOT EXISTS immutable_revision_content BEFORE INSERT ON revisions '
+            'WHEN EXISTS (SELECT 1 FROM revisions WHERE source_id=NEW.source_id AND content_hash=NEW.content_hash) '
+            "BEGIN SELECT RAISE(ABORT, 'immutable_record'); END")
         self.db.commit()
     def register(self, url, content, mime=None, handling='unknown', acquired=None,
                  *, moved_from=None):

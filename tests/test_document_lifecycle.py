@@ -133,6 +133,11 @@ class RegistrationHistoryTests(unittest.TestCase):
             db.close()
             current = Catalogue(path)
             self.addCleanup(current.close)
+            old_row = list(current.revisions(url)[0])
+            old_row[0] = 'replacement-id'
+            with self.assertRaises(sqlite3.IntegrityError):
+                current.db.execute('INSERT OR REPLACE INTO revisions VALUES (?,?,?,?,?,?,?,?)', old_row)
+            self.assertEqual(current.revisions(url)[0][0], rid)
             self.assertEqual(current.acquisitions(url), [])
             with self.assertRaisesRegex(LookupError, '^original_bytes_unavailable$'):
                 current.original(rid)
@@ -165,6 +170,7 @@ class NativeExtractionTests(unittest.TestCase):
         self.assertEqual(len(result['locators']), 600)
         result = extract(b'<div hidden><p>PRIVATE</p></div><p>Visible', 'text/html')
         self.assertEqual(result['text'], 'Visible')
+        self.assertEqual(extract(b'<head><title>Title</title>Visible', 'text/html')['text'], 'Visible')
 
     def test_malformed_declaration_has_no_source_in_diagnostic(self):
         result = extract(b'<![PRIVATE]>Visible', 'text/html')
