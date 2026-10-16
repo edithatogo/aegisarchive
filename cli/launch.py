@@ -19,7 +19,8 @@ import urllib.request
 import webbrowser
 import argparse
 from datetime import datetime, timezone
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer as _ThreadingHTTPServer
+from socketserver import TCPServer
 from urllib.parse import unquote
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -32,6 +33,14 @@ else:
     import capture_bridge
 REPO_ROOT = os.path.dirname(SCRIPT_DIR)
 WEB_DIR = os.path.join(REPO_ROOT, "web")
+
+
+class ThreadingHTTPServer(_ThreadingHTTPServer):
+    """Keep numerical-loopback startup independent of reverse DNS."""
+
+    def server_bind(self):
+        TCPServer.server_bind(self)
+        self.server_name, self.server_port = self.server_address[:2]
 
 class AegisArchiveHandler(SimpleHTTPRequestHandler):
     """Hardened local handler for the zero-install web console.

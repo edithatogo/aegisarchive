@@ -8,10 +8,12 @@ Run from the repository root:
 """
 
 import json
+import http.client
 import os
 import socket
 import threading
 import unittest
+from unittest.mock import patch
 import urllib.error
 import urllib.request
 
@@ -22,6 +24,39 @@ def _free_port():
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
+
+
+class NumericLoopbackBindTests(unittest.TestCase):
+    def test_production_server_binds_and_serves_without_reverse_dns(self):
+        # main() constructs this exported server class. DNS metadata must not
+        # gate a numerical-loopback listener or its readiness/status surface.
+        with patch('socket.getfqdn', side_effect=AssertionError('reverse DNS consulted')), \
+                patch('socket.gethostbyaddr', side_effect=AssertionError('reverse DNS consulted')):
+            with launch.ThreadingHTTPServer(('127.0.0.1', 0), launch.AegisArchiveHandler) as server:
+                port = server.server_address[1]
+                self.assertEqual(server.server_name, '127.0.0.1')
+                self.assertEqual(server.server_port, port)
+                with patch.object(launch.AegisArchiveHandler, 'allowed_hosts', {f'127.0.0.1:{port}'}), \
+                        patch.object(launch.AegisArchiveHandler, 'station_info', {'station': 'aegisarchive', 'port': port}):
+                    thread = threading.Thread(target=server.serve_forever, daemon=True)
+                    thread.start()
+                    try:
+                        connection = http.client.HTTPConnection('127.0.0.1', port, timeout=5)
+                        try:
+                            connection.request('GET', '/__station/status')
+                            response = connection.getresponse()
+                            self.assertEqual(response.status, 200)
+                            self.assertEqual(json.loads(response.read())['port'], port)
+                            connection.request('GET', '/index.html', headers={'Host': 'attacker.example'})
+                            response = connection.getresponse()
+                            self.assertEqual(response.status, 400)
+                            response.read()
+                        finally:
+                            connection.close()
+                    finally:
+                        server.shutdown()
+                        thread.join(timeout=5)
+                        self.assertFalse(thread.is_alive())
 
 
 class StationHardeningTests(unittest.TestCase):
