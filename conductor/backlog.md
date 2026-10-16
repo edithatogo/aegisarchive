@@ -4,7 +4,7 @@ Select work using `conductor/implementation_contract.md`. Columns: `priority` (P
 
 `grep -E '^\| *P[0-3] ' conductor/backlog.md` lists candidate rows in file order. Pick the first row with `status` `open` or `in_progress` whose `blocked_by` is `-` or already ticked.
 
-`cli/launch.py` is owned by `portable_station_hardening_20260905` (token auth, Host check, no CORS, `--verify`, `--idle-timeout`). It remains read-only to other tracks; its narrowly reopened T9 owns the DNS-independent loopback startup repair. Never edit another track's directory. Never edit `.github/workflows/ci.yml`.
+`cli/launch.py` is owned by `portable_station_hardening_20260905` (token auth, Host check, no CORS, `--verify`, `--idle-timeout`). It remains read-only to other tracks; its narrowly reopened T9 completed the DNS-independent loopback startup repair. Never edit another track's directory. Never edit `.github/workflows/ci.yml`.
 
 Task ids are the first implementable checkbox in each `plan.md` (`T1`, `W1`, `S1`, `C1`, or `T0`). Remaining tasks stay in that plan; do not skip ahead.
 
@@ -25,7 +25,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P0 | offline_navigation_20260906 | T8 | done | - | mirror_capture_20260906/T7 |
 | P1 | authenticated_acquisition_20260906 | T1 | done | - | mirror_capture_20260906/T7, crawl_controls_reports_20260906/T7 |
 | P1 | mirror_resume_20260906 | T1 | done | - | mirror_capture_20260906/T7, authenticated_acquisition_20260906/T7 |
-| P0 | mirroring_platform_acceptance_20260906 | T8 | in_progress | codex | - |
+| P0 | mirroring_platform_acceptance_20260906 | T8 | done | codex | - |
 | P1 | crawl_controls_reports_20260906 | T7 | done | - | mirror_capture_20260906/T7 |
 | P1 | document_lifecycle_20260906 | T9 | done | - | mirror_capture_20260906/T7, mirror_resume_20260906/T8 |
 | P1 | rendered_capture_20260906 | T1 | done | - | authenticated_acquisition_20260906/T7, crawl_controls_reports_20260906/T7, offline_navigation_20260906/T8 |

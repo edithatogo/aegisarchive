@@ -1,6 +1,6 @@
 # Plan: Cross-platform mirroring and capability acceptance
 
-## Status: IN PROGRESS
+## Status: COMPLETED — qualified implementation 4255021; historical H1 disclosed
 
 ## T2 prerequisite reconciliation — 16 October 2026
 
@@ -94,7 +94,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Independent documentation review; verify no runtime bytes changed since 4255021 and retain that revision's full baseline and actual platform receipts.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T8 Final acceptance and claim reconciliation. (AC1–AC3)
+- [x] T8 Final acceptance and claim reconciliation. (AC1–AC3) — R1–R4/AC1–AC3 map to reviewed actual 4255021 proof; all current references resolve, runtime/workflow/test bytes unchanged, claims/leak/health pass. Cicero/Carver approve final assessment and disclosed historical H1; no missing current acceptance evidence. No separate release publication claimed.
   - **Files**: this track’s plan, metadata, review and evidence; documentation explicitly owned by the tasks above.
   - **Change**: Review every requirement against completed slices and each acceptance criterion against retained receipts. Mark unavailable platform runs pending and report scoped limitations.
   - **Verify**: Revalidate the exact qualified 4255021 receipts and comparisons, all current acceptance hashes and canonical chains, requirement/AC mappings, documentation links, `python3 scripts/claims_audit.py`, `python3 scripts/gate.py leak`, and `python3 scripts/track_health.py --strict`. Confirm runtime/workflow/test bytes unchanged since the passing 4255021 baseline/browser/hosted run; preserve historical exceptions explicitly. This final documentation/evidence audit is not a new runtime qualification; changed runtime bytes require full functional gates again.

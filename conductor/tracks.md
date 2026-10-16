@@ -129,8 +129,8 @@
   *Link: [./tracks/mirror_resume_20260906/index.md](./tracks/mirror_resume_20260906/index.md)*
 
 ---
-- [~] **Track: Cross-platform mirroring and capability acceptance**
-  *Status: In progress — synthetic receipt/CI exists; real capture, offline replay and platform acceptance remain open.*
+- [x] **Track: Cross-platform mirroring and capability acceptance**
+  *Status: Completed — actual current Mac/hosted Mac/Windows capture, reload recovery and disconnected replay qualify 4255021; hosted comparison passes. Static/native scope, packaging limits and historical H1 are documented.*
   *Link: [./tracks/mirroring_platform_acceptance_20260906/index.md](./tracks/mirroring_platform_acceptance_20260906/index.md)*
 
 ---

@@ -106,3 +106,53 @@ documentation HEAD as newly qualified. All local links resolve; all three
 receipt checks and both comparisons pass. Claims audit has zero mismatches;
 leak and strict track-health checks pass. Runtime, workflow and test bytes are
 unchanged from qualified 4255021, whose full functional gates remain applicable.
+
+## T8 requirement and acceptance reconciliation
+
+| Requirement | Reviewed acceptance evidence |
+| --- | --- |
+| R1 / AC2: capture, disconnect and replay | Three 4255021 observation/receipt bundles: six payloads, source stopped/unreachable, eleven navigation visits, CSS/image checks, zero source/unexpected requests or page errors. |
+| R2 / AC1: current Mac and hosted Windows, relocated ordinary launchers | Current Darwin arm64 and hosted Windows AMD64 receipts at identical clean revision; actual relocated launcher manifests and missing-runtime diagnostics; both comparisons pass. Hosted Mac also passes. |
+| R3: hash-bound receipts and capability matrix | v2 receipts revalidated against observations, source provenance and WARC/CDX; matrix links the exact measured environments and states limits. Optional tiers stay separate. |
+| R4 / AC3: honest documentation, no release claim | README and compatibility matrix reviewed independently by Cicero/Pasteur; static/native scope, dynamic limitations, authentication/storage bounds and packaging prerequisites are explicit. No release/package publication claimed. |
+
+Qualified implementation: `42550216efa5069870f011d9a9173c6a697ce1fb`.
+Documentation: `6b1fda0`. Later Conductor/documentation revisions are not fresh
+runtime qualifications. A byte comparison confirms no runtime, workflow or test
+changes since the qualified implementation. Full baseline and actual platform
+results are retained; unchanged broad tests are not looped for metadata edits.
+
+### Historical exception H1 — not current acceptance evidence
+
+The append-only ledger remains hash-chain valid. Audit at `0c65c62` checked
+44 events and 95 artifact references: 94 resolve through current bytes or
+historical Git versions. The split changes as review documents are updated;
+one inherited reference cannot be recovered from current
+bytes or available Git history: event `523a1e13-d761-42e4-a971-089f81312a17`
+references `conductor/status-reconciliation-20261015.md` at SHA-256
+`4453f1ae04ba0dec429753924b4438c89ada1fdf10597c2b7e9d621e19200789`.
+Its status was in progress and explicitly said real platform proof was missing;
+it is not an acceptance receipt. Preserve the event unchanged and disclose the
+unrecoverable historical version. Do not substitute the report's current bytes
+or describe that old hash as verified.
+
+Disposition proposed for independent challenge: retain H1 as an informational
+historical evidence exception. All current T1–T8 acceptance claims are supported
+by the new reviewed source, tests, platform artifacts and capability matrix,
+not that missing report version. This is not a waiver for a missing current
+acceptance artifact. The report's old incomplete-status conclusion is superseded
+by T6/T7 and this final assessment, without rewriting the historical document.
+
+### Final independent disposition
+
+Cicero and Carver approve T8 and H1's informational disposition. Neither found
+missing current R1–R4 / AC1–AC3 evidence; both distinguish chain integrity from
+verification of the missing historical file. H1 stays unresolved and disclosed,
+not silently waived or relabelled verified. All current acceptance references
+resolve, and no current finding depends on H1. Carver's later snapshot counted
+78 current and 16 historical verified references (plus H1); this reflects the
+updated review file, not a change in the 94 verified / one unresolved total.
+
+Product, technology and guideline alignment was reviewed: the completed scope
+fits the existing static archival vision and stdlib/native-browser stack. No
+new runtime dependency, product rebrand or guideline change is required.

@@ -207,3 +207,13 @@ Retain bounded owned-process diagnostics before cleanup; a shell banner alone
 does not locate a Python startup stall. Fix the owning server bind path, preserve
 Host/token controls, and prove both DNS-independent serving and unchanged real
 platform acceptance instead of extending readiness deadlines.
+
+## 2026-10-17 — mirroring_platform_acceptance_20260906
+
+Generated receipt schemas and manually changed pass flags do not establish
+platform acceptance. Bind observations, archive bytes, clean source and runtime
+identity; exercise real relocated launchers, same-archive reload and disconnected
+navigation. Freeze successful proof by revision before later metadata changes.
+For documentation-only closure, verify unchanged runtime bytes and existing
+proof rather than looping identical browser runs. Disclose unrecoverable
+historical references separately; chain integrity does not verify missing bytes.
