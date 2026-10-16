@@ -44,9 +44,29 @@ class _VisibleHTML(HTMLParser):
         self.parts.append(text)
 
     def handle_starttag(self, tag, attrs):
+        # HTML permits omitted end tags. Close their scope before counting depth.
+        names = [name for name, hidden in self.stack]
+        if 'head' in names and tag not in self.SKIP | {'meta', 'link', 'base', 'title'}:
+            self.handle_endtag('head')
+        scopes = {'li': ({'li'}, {'ul', 'ol'}), 'p': ({'p'}, set()),
+                  'dt': ({'dt', 'dd'}, {'dl'}), 'dd': ({'dt', 'dd'}, {'dl'}),
+                  'tr': ({'tr'}, {'table', 'tbody', 'thead', 'tfoot'}),
+                  'td': ({'td', 'th'}, {'tr', 'table'}), 'th': ({'td', 'th'}, {'tr', 'table'}),
+                  'option': ({'option'}, {'select', 'datalist'})}
+        if tag in scopes:
+            targets, barriers = scopes[tag]
+            for name, hidden in reversed(self.stack):
+                if name in barriers:
+                    break
+                if name in targets:
+                    self.handle_endtag(name)
+                    break
+        if tag in self.BLOCKS - {'br', 'td', 'th', 'tr'} and any(name == 'p' for name, _ in self.stack):
+            self.handle_endtag('p')
         if tag not in self.VOID:
-            self.stack.append(tag)
-            if tag in self.SKIP:
+            suppressed = tag in self.SKIP or any(name == 'hidden' for name, value in attrs)
+            self.stack.append((tag, suppressed))
+            if suppressed:
                 self.hidden += 1
             if len(self.stack) > 512:
                 raise _LimitError('structure_limit')
@@ -59,11 +79,11 @@ class _VisibleHTML(HTMLParser):
             self.handle_endtag(tag)
 
     def handle_endtag(self, tag):
-        if tag in self.stack:
-            index = len(self.stack) - 1 - self.stack[::-1].index(tag)
-            for removed in self.stack[index:]:
-                if removed in self.SKIP:
-                    self.hidden -= 1
+        names = [name for name, hidden in self.stack]
+        if tag in names:
+            index = len(names) - 1 - names[::-1].index(tag)
+            for removed, suppressed in self.stack[index:]:
+                self.hidden -= int(suppressed)
             del self.stack[index:]
         if not self.hidden and tag in self.BLOCKS:
             self.append('\n')
@@ -118,6 +138,6 @@ def extract(content, mime='text/plain', limit=MAX_BYTES):
         locators = _locators(text)
     except _LimitError as error:
         return outcome('failed', str(error))
-    except (ValueError, RecursionError):
+    except (ValueError, RecursionError, AssertionError):
         return outcome('failed', 'malformed_input')
     return outcome(status, reason, text, locators)

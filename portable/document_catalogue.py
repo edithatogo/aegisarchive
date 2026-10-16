@@ -37,6 +37,9 @@ BEGIN SELECT RAISE(ABORT, 'invalid_processing_state'); END;
 CREATE TRIGGER IF NOT EXISTS derivative_revision BEFORE INSERT ON derivatives
 WHEN NOT EXISTS (SELECT 1 FROM revisions WHERE revision_id=NEW.revision_id)
 BEGIN SELECT RAISE(ABORT, 'unknown_revision'); END;
+CREATE TRIGGER IF NOT EXISTS derivative_update_revision BEFORE UPDATE OF revision_id ON derivatives
+WHEN NOT EXISTS (SELECT 1 FROM revisions WHERE revision_id=NEW.revision_id)
+BEGIN SELECT RAISE(ABORT, 'unknown_revision'); END;
 """
 
 def source_identity(url: str) -> str:
@@ -47,7 +50,12 @@ class Catalogue:
         self.db = sqlite3.connect(str(path))
         self.db.execute('PRAGMA foreign_keys=ON')
         self.db.executescript(SCHEMA)
-        for table in ('revisions', 'content_objects', 'acquisitions'):
+        for table, key in (('revisions', 'revision_id'), ('content_objects', 'content_hash'),
+                           ('acquisitions', 'acquisition_id')):
+            self.db.execute(
+                f'CREATE TRIGGER IF NOT EXISTS immutable_{table}_insert BEFORE INSERT ON {table} '
+                f'WHEN EXISTS (SELECT 1 FROM {table} WHERE {key}=NEW.{key}) '
+                "BEGIN SELECT RAISE(ABORT, 'immutable_record'); END")
             for operation in ('UPDATE', 'DELETE'):
                 self.db.execute(
                     f'CREATE TRIGGER IF NOT EXISTS immutable_{table}_{operation} '
@@ -87,7 +95,8 @@ class Catalogue:
             stored = self.db.execute('SELECT content FROM content_objects WHERE content_hash=?', (digest,)).fetchone()
             if stored and stored[0] != content:
                 raise ValueError('original_integrity')
-            self.db.execute('INSERT OR IGNORE INTO content_objects VALUES (?,?)', (digest, content))
+            if stored is None:
+                self.db.execute('INSERT INTO content_objects VALUES (?,?)', (digest, content))
             self.db.execute('INSERT OR IGNORE INTO documents VALUES (?,?,?)', (sid, now, handling))
             self.db.execute('INSERT OR IGNORE INTO source_metadata (source_id) VALUES (?)', (sid,))
             row = self.db.execute('SELECT revision_id FROM revisions WHERE source_id=? AND content_hash=?', (sid, digest)).fetchone()

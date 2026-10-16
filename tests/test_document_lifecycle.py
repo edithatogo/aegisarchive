@@ -39,6 +39,8 @@ class CatalogueSchemaTests(unittest.TestCase):
             self.catalogue.db.execute(
                 'INSERT INTO derivatives VALUES (?,?,?,?,?,?,?,?,?)',
                 ('orphan', 'absent', 'text', 'test-1', '', 'complete', '', '[]', 'unknown'))
+        with self.assertRaises(sqlite3.IntegrityError):
+            self.catalogue.db.execute("UPDATE derivatives SET revision_id='absent' WHERE derivative_id='complete'")
 
     def test_legacy_database_is_upgraded_without_losing_revisions(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -103,6 +105,42 @@ class RegistrationHistoryTests(unittest.TestCase):
             with self.subTest(table=table), self.assertRaises(sqlite3.IntegrityError):
                 self.catalogue.db.execute('DELETE FROM ' + table)
 
+    def test_replacement_inserts_cannot_destroy_originals_or_observations(self):
+        result = self.catalogue.register('https://fixture.test/a', b'original')
+        for table in ('revisions', 'content_objects', 'acquisitions'):
+            with self.subTest(table=table), self.assertRaises(sqlite3.IntegrityError):
+                self.catalogue.db.execute(f'INSERT OR REPLACE INTO {table} SELECT * FROM {table}')
+        self.assertEqual(self.catalogue.original(result['revision_id']), b'original')
+
+    def test_legacy_records_are_not_fabricated_but_can_be_recaptured(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'legacy.sqlite'
+            db = sqlite3.connect(path)
+            db.executescript('''
+                CREATE TABLE documents (source_id TEXT PRIMARY KEY,first_seen REAL NOT NULL,handling TEXT NOT NULL);
+                CREATE TABLE revisions (revision_id TEXT PRIMARY KEY,source_id TEXT NOT NULL,url TEXT NOT NULL,content_hash TEXT NOT NULL,mime TEXT NOT NULL,size INTEGER NOT NULL,acquired REAL NOT NULL,status TEXT NOT NULL,UNIQUE(source_id,content_hash));
+                CREATE TABLE urls (url TEXT PRIMARY KEY,source_id TEXT NOT NULL,revision_id TEXT NOT NULL,first_seen REAL NOT NULL,last_seen REAL NOT NULL);
+                CREATE TABLE derivatives (derivative_id TEXT PRIMARY KEY,revision_id TEXT NOT NULL,kind TEXT NOT NULL,extractor TEXT NOT NULL,output_hash TEXT NOT NULL,status TEXT NOT NULL,text TEXT,locator_json TEXT,handling TEXT NOT NULL);
+            ''')
+            url = 'https://fixture.test/legacy'
+            sid = hashlib.sha256(url.encode()).hexdigest()
+            digest = hashlib.sha256(b'legacy').hexdigest()
+            rid = hashlib.sha256((sid + digest).encode()).hexdigest()
+            db.execute('INSERT INTO documents VALUES (?,?,?)', (sid, 1, 'unknown'))
+            db.execute('INSERT INTO revisions VALUES (?,?,?,?,?,?,?,?)', (rid, sid, url, digest, 'text/plain', 6, 1, 'captured'))
+            db.execute('INSERT INTO urls VALUES (?,?,?,?,?)', (url, sid, rid, 1, 1))
+            db.commit()
+            db.close()
+            current = Catalogue(path)
+            self.addCleanup(current.close)
+            self.assertEqual(current.acquisitions(url), [])
+            with self.assertRaisesRegex(LookupError, '^original_bytes_unavailable$'):
+                current.original(rid)
+            recaptured = current.register(url, b'legacy', acquired=2)
+            self.assertEqual(recaptured['revision_id'], rid)
+            self.assertEqual(len(current.acquisitions(url)), 1)
+            self.assertEqual(current.original(rid), b'legacy')
+
     def test_move_cannot_merge_existing_unrelated_sources(self):
         self.catalogue.register('https://fixture.test/a', b'a')
         self.catalogue.register('https://fixture.test/b', b'b')
@@ -119,6 +157,21 @@ class RegistrationHistoryTests(unittest.TestCase):
 
 
 class NativeExtractionTests(unittest.TestCase):
+    def test_hidden_and_implied_html_closures(self):
+        result = extract(b'<head><meta><body><p hidden>PRIVATE</p><p>Visible', 'text/html')
+        self.assertEqual(result['text'], 'Visible')
+        result = extract(b'<ul>' + b'<li>Item' * 600 + b'</ul>', 'text/html')
+        self.assertEqual(result['status'], 'complete')
+        self.assertEqual(len(result['locators']), 600)
+        result = extract(b'<div hidden><p>PRIVATE</p></div><p>Visible', 'text/html')
+        self.assertEqual(result['text'], 'Visible')
+
+    def test_malformed_declaration_has_no_source_in_diagnostic(self):
+        result = extract(b'<![PRIVATE]>Visible', 'text/html')
+        self.assertEqual(result['status'], 'failed')
+        self.assertEqual(result['reason'], 'malformed_input')
+        self.assertEqual(result['text'], '')
+        self.assertNotIn('PRIVATE', json.dumps(result))
     def test_html_extracts_visible_blocks_and_skips_active_content(self):
         content = b'<head><title>hidden</title></head><h1>A &amp; B</h1><script>secret()</script><style>.x{}</style><p>Second <b>paragraph</b></p>'
         result = extract(content, 'TEXT/HTML; charset=utf-8')
