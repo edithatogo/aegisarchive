@@ -77,3 +77,20 @@ repair: avoid reverse DNS when binding the numerical loopback server while
 preserving loopback-only listening, Host checks and control-token validation.
 No protected launcher edit was made from this track. Overall CI remains failed;
 the passing required local-Mac/hosted-Windows comparison is kept separate.
+
+### Final T6 qualification — 17 October 2026
+
+Owning station T9 repaired numerical-loopback startup at
+`42550216efa5069870f011d9a9173c6a697ce1fb`, without changing the readiness deadline
+or Host/token controls. Local Mac acceptance and retained receipt checks passed.
+Hosted run 38979330621 passed Mac 117236222685, Windows 117236222409 and
+comparison 117236763137. All eight triggered workflows at that revision passed.
+
+Carver independently approved T6: all three receipt checks, local-Mac/Windows
+and hosted-Mac/Windows comparisons, and all three WARC/CDX verifiers passed.
+Both downloaded hosted bundles exactly match GitHub artifacts (11 files each).
+The observations share the same clean revision and implementation digest and
+retain actual recovery, launcher, authentication and disconnected-replay proof.
+Artifacts are retained under `artifacts/qualification/42550216efa5069870f011d9a9173c6a697ce1fb/`.
+This supersedes the earlier red-CI blocker; it does not complete T7/T8 or claim
+compatibility with every site or machine.
