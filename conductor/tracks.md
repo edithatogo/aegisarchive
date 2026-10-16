@@ -140,7 +140,7 @@
 
 ---
 - [~] **Track: Generic document lifecycle, extraction and search**
-  *Status: In progress — basic catalogue/extraction/FTS code exists; revision reconciliation, optional adapters, handling enforcement and acceptance remain open.*
+  *Status: In progress — T1–T4 catalogue schemas, immutable registration/history, native extraction and optional PDF/Office adapters verified; OCR, search integration, change receipts, handling enforcement and final acceptance remain open.*
   *Link: [./tracks/document_lifecycle_20260906/index.md](./tracks/document_lifecycle_20260906/index.md)*
 
 ---

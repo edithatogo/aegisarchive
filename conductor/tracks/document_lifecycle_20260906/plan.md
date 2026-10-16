@@ -28,7 +28,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T4 Add optional PDF and Office adapters. (AC1, AC3)
+- [x] T4 Add optional PDF and Office adapters. (AC1, AC3) — opt-in pinned PDF/DOCX/XLSX workers verified using real synthetic fixtures, explicit coverage, resource bounds and failure states; 37 pinned-environment lifecycle tests passed with zero skips; panel approved.
   - **Files**: `portable/document_extract.py`, `optional/document_processing/`; focused tests: `tests/test_document_lifecycle.py`.
   - **Change**: Pin isolated parsers; record versions and text-layer coverage, reject encrypted or malformed inputs explicitly.
   - **Verify**: `python3 -m unittest tests.test_document_lifecycle`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.

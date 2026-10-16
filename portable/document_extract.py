@@ -113,7 +113,9 @@ def _locators(text):
     return locators
 
 
-def extract(content, mime='text/plain', limit=MAX_BYTES):
+def extract(content, mime='text/plain', limit=MAX_BYTES, *, optional=False,
+            optional_python=None):
+    """Derive text locally; binary parsers require explicit optional opt-in."""
     if not isinstance(content, bytes):
         return outcome('failed', 'invalid_content')
     if isinstance(limit, bool) or not isinstance(limit, int) or limit < 0:
@@ -124,6 +126,11 @@ def extract(content, mime='text/plain', limit=MAX_BYTES):
         return outcome('unsupported', 'no_builtin_extractor')
     mime = mime.split(';', 1)[0].strip().lower()
     if not (mime.startswith('text/') or mime == 'application/json'):
+        if optional:
+            from optional.document_processing import extract as extract_optional
+            result = extract_optional(content, mime, limit, optional_python=optional_python)
+            result.update(locator_space='derivative_text', offset_unit='unicode_codepoint')
+            return result
         return outcome('unsupported', 'no_builtin_extractor')
     status, reason = 'complete', None
     try:

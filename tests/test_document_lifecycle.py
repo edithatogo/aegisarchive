@@ -8,6 +8,8 @@ from pathlib import Path
 
 from portable.document_catalogue import Catalogue
 from portable.document_extract import extract
+from optional.document_processing.test_adapters import ParentTests as OptionalParentTests
+from optional.document_processing.test_adapters import ParserTests as OptionalParserTests
 
 
 class CatalogueSchemaTests(unittest.TestCase):
@@ -221,6 +223,23 @@ class NativeExtractionTests(unittest.TestCase):
         self.assertEqual(result['status'], 'failed')
         self.assertEqual(result['reason'], 'structure_limit')
         self.assertNotIn('PRIVATE', json.dumps(result))
+
+
+class OptionalIntegrationTests(unittest.TestCase):
+    def test_binary_parsers_require_explicit_opt_in(self):
+        default = extract(b'%PDF-synthetic', 'application/pdf', optional_python='/absent/python')
+        self.assertEqual(default['reason'], 'no_builtin_extractor')
+        enabled = extract(b'%PDF-synthetic', 'application/pdf', optional=True,
+                          optional_python='/absent/python')
+        self.assertEqual(enabled['reason'], 'worker_unavailable')
+        self.assertEqual(enabled['locator_space'], 'derivative_text')
+        self.assertEqual(enabled['text'], '')
+
+    def test_native_extraction_remains_available_when_optional_runtime_missing(self):
+        result = extract(b'<p>Native</p>', 'text/html', optional=True,
+                         optional_python='/absent/python')
+        self.assertEqual(result['text'], 'Native')
+        self.assertEqual(result['status'], 'complete')
 
 
 if __name__ == '__main__':
