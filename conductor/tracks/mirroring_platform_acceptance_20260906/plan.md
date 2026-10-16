@@ -78,7 +78,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T6 Record Windows acceptance. (AC1, AC2)
+- [~] T6 Record Windows acceptance. (AC1, AC2) — pending explicit G1 authorization to publish the accumulated reviewed local build and trigger hosted CI. No Windows execution or matching paired-platform acceptance is claimed. Preserve the qualified ff29f71 Mac proof; any published qualification revision must receive matching Mac/Windows evidence before this task completes.
   - **Files**: `scripts/mirroring_acceptance.py`; focused tests: `tests/browser/mirroring_acceptance.spec.js`.
   - **Change**: Obtain a passing hosted Windows receipt on the same revision; failed or unavailable execution leaves this task pending.
   - **Verify**: `python3 scripts/mirroring_acceptance.py --help; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
