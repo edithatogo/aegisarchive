@@ -119,6 +119,7 @@ def extract(content, mime):
             names = archive_guard(content)
             if "wordprocessingml" in mime:
                 from docx import Document
+                from docx.opc.constants import RELATIONSHIP_TYPE
                 extractor = "python-docx/" + PINS["python-docx"]
                 document = Document(io.BytesIO(content))
                 paragraphs = document.paragraphs
@@ -128,8 +129,10 @@ def extract(content, mime):
                         "tracked_changes": ".//w:ins | .//w:del", "notes": ".//w:footnoteReference | .//w:endnoteReference",
                         "alt_chunks": ".//w:altChunk", "content_controls": ".//w:sdt"}.items():
                     omissions[key] = len(document.part.element.xpath(expression))
-                for key, prefix in (("headers", "word/header"), ("footers", "word/footer")):
-                    omissions[key] = sum(name.startswith(prefix) and name.endswith(".xml") for name in names)
+                for key, relationship_type in (("headers", RELATIONSHIP_TYPE.HEADER),
+                                               ("footers", RELATIONSHIP_TYPE.FOOTER)):
+                    omissions[key] = sum(relation.reltype == relationship_type
+                                         for relation in document.part.rels.values())
                 coverage = dict(scope="body_paragraphs", total_paragraphs=len(paragraphs),
                                 visited_paragraphs=0, nonempty_paragraphs=0, omissions=omissions)
                 for number, paragraph in enumerate(paragraphs, 1):

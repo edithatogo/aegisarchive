@@ -58,7 +58,8 @@ be truncated by output limits, so coverage counts do not supersede partial statu
 DOCX scope `body_paragraphs` records `total_paragraphs`, `visited_paragraphs`,
 `nonempty_paragraphs` and omission counts for tables, drawings, embedded objects,
 tracked changes, notes, alternate content, content controls (`w:sdt`), headers
-and footers. Body paragraphs inside content controls are omitted and their
+and footers. Header/footer omissions follow document relationship types and are
+independent of package part filenames. Body paragraphs inside content controls are omitted and their
 presence produces partial status. Counts describe
 body elements/part references, not an exhaustive semantic inventory.
 XLSX scope `stored_cells` records `total_sheets`, `visited_sheets`, `visited_cells`

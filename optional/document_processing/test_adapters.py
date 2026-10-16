@@ -261,6 +261,30 @@ class ParserTests(unittest.TestCase):
         self.assertEqual(value["status"], "partial")
         self.assertEqual(value["coverage"]["omissions"]["tables"], 1)
 
+    def test_renamed_docx_header_and_footer_remain_reported(self):
+        from docx import Document
+        for kind in ('header', 'footer'):
+            with self.subTest(kind=kind):
+                document = Document()
+                document.add_paragraph('Body')
+                getattr(document.sections[0], kind).paragraphs[0].text = 'Omitted part'
+                original = io.BytesIO()
+                document.save(original)
+                renamed = io.BytesIO()
+                old = kind + '1.xml'
+                new = 'branding.part'
+                with zipfile.ZipFile(io.BytesIO(original.getvalue())) as source, zipfile.ZipFile(renamed, 'w') as target:
+                    for entry in source.infolist():
+                        data = source.read(entry)
+                        if entry.filename in ('[Content_Types].xml', 'word/_rels/document.xml.rels'):
+                            data = data.replace(old.encode(), new.encode())
+                        target.writestr('word/' + new if entry.filename == 'word/' + old else entry.filename, data)
+                parsed = Document(io.BytesIO(renamed.getvalue()))
+                self.assertEqual(getattr(parsed.sections[0], kind).paragraphs[0].text, 'Omitted part')
+                value = self.run_extract(renamed.getvalue(), DOCX)
+                self.assertEqual(value['status'], 'partial')
+                self.assertEqual(value['coverage']['omissions'][kind + 's'], 1)
+
     def test_xlsx_sheet_cells_formulas(self):
         from openpyxl import Workbook
         workbook = Workbook()
