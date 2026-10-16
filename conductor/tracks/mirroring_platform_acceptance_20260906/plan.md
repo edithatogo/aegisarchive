@@ -30,7 +30,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Checkpoint**: Automated review of this slice, then `python3 scripts/gate.py test`; record exact test counts, revision and any platform results.
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
-- [ ] T2 Build capture-disconnect-replay harness. (AC1, AC2)
+- [~] T2 Build capture-disconnect-replay harness. (AC1, AC2)
   - **Files**: `scripts/mirroring_acceptance.py`, `tests/browser/mirroring_acceptance.spec.js`; necessary durable-recovery prerequisites: `cli/usb_archive.py`, `cli/capture_bridge.py`, `cli/politeness.py`, `web/lib/native_capture.js`, `web/lib/warc_writer.js`, `web/lib/core_crawler.js`, `web/lib/politeness_engine.js`, `web/index.html`, and replay fixes only if reproduced in `web/viewer.html` / `web/lib/warc_reader.js`; focused tests: `tests/browser/mirroring_acceptance.spec.js`, `tests/test_usb_archive.py`, `tests/test_capture_bridge.py`, `tests/test_politeness.py`, `tests/js/warc_writer.test.js`, `tests/js/core_crawler_checkpoint.test.js`, `tests/js/politeness_engine.test.js`.
   - **Change**: Start and stop a synthetic source, capture it and verify offline links/assets, auth expiry and resume behaviours.
   - **Verify**: `python3 scripts/mirroring_acceptance.py --help; npx --no-install playwright test --config tests/browser/playwright.config.js tests/browser/mirroring_acceptance.spec.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
