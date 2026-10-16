@@ -2,6 +2,23 @@
 
 ## Status: IN PROGRESS
 
+## T4 cold-console prerequisite correction — 16 October 2026
+
+Three fresh Chromium contexts reproduced resets during parallel console component
+loads. T4 now loads trusted local components sequentially, retaining the single
+static generated profile bundle. Controls remain inert until required exports,
+module methods and bootstrap completion are verified. Missing files, HTTP-200
+empty components and execution failures keep controls inactive with an explicit
+startup message. Protected launcher files were not edited.
+
+Chandrasekhar independently approved after real-browser normal/HTTP-200 failure
+probes. Coordinator final combined browser run passed 25 tests: 12 maintained
+native-capture cases, 9 crawler/report/graph cases and 4 startup cases (including
+three cold contexts). This supersedes the earlier cold-console limitation for
+this tested macOS/Chromium runtime, not for unexecuted platforms. The full local
+gate passed 301 Python (12 optional skips), 18 station and 80 JS tests; final-head
+checks are repeated during T7. No runtime dependency or launcher change was added.
+
 Execute tasks in order after metadata dependencies complete. Each functional task first adds its focused failing assertions, then implements and refactors that slice; commit only after its new assertions and existing regression gate pass. Each task may update its own plan, metadata and append-only evidence. No prior implementation tasks were completed when this plan was refined.
 
 - [x] T1 Define ordered rule schema and vectors. (AC1, AC3) — commit 580cdb2 (reconciled from 6bb387c)
@@ -29,7 +46,7 @@ Execute tasks in order after metadata dependencies complete. Each functional tas
   - **Do not**: edit files owned by unfinished dependencies, weaken source isolation, use production credentials in fixtures, or substitute mocked acceptance for named platform/browser execution.
 
 - [x] T4 Integrate rule decisions into both crawlers. (AC1, AC2) — CLI, browser and native bridge enforce URL/header decisions before body reads; aliases, bounded sitemaps, traversal, safe legacy matching and query policy verified. Two independent reviewers approved after fixes; 2 isolated browser fixtures passed.
-  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`, `web/index.html`, `web/lib/native_capture.js`, `cli/capture_bridge.py`; focused tests: `tests/test_crawl_rules.py`; `tests/test_capture_bridge.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`.
+  - **Files**: `cli/aegis_cli.py`, `web/lib/core_crawler.js`, `web/index.html`, `web/lib/native_capture.js`, `cli/capture_bridge.py`; focused tests: `tests/test_crawl_rules.py`; `tests/test_capture_bridge.py`; `tests/js/crawl_rules.test.js`; `tests/browser/crawl_controls.spec.js`; `tests/browser/crawl_startup.spec.js` (cold-start prerequisite regression).
   - **Change**: Apply download-without-traversal and exclude rules before body retrieval; preserve politeness for discovery.
   - **Verify**: `python3 -m unittest tests.test_crawl_rules; node --test tests/js/crawl_rules.test.js`. Run the test subset added for this slice first; then the full focused module once provisioned. A fixture/schema-only task records its expected RED results separately and must not claim feature completion.
   - **Done when**: Apply download-without-traversal and exclude rules before body retrieval; preserve politeness for discovery. Relevant assertions demonstrate the stated outcome and no regression is introduced.

@@ -5,20 +5,60 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AegisArchive — Server-Preserving Archival Engine</title>
   <link rel="stylesheet" href="css/style.css">
-  <script src="lib/minisearch.min.js"></script>
   <script src="profiles.bundle.js"></script>
-  <script src="lib/warc_writer.js"></script>
-  <script src="lib/politeness_engine.js"></script>
-  <script src="lib/opfs_streamer.js"></script>
-  <script src="lib/self_reflection.js"></script>
-  <script src="lib/mirror_resources.js"></script>
-  <script src="lib/crawl_rules.js"></script>
-  <script src="lib/core_crawler.js"></script>
-  <script src="lib/native_capture.js"></script>
-  <script src="lib/debug_recorder.js"></script>
+  <script>
+    // Keep the portable station's cold request queue bounded. These are trusted
+    // local application components, never captured source scripts.
+    window.aegisReady = new Promise(resolve => {
+      document.addEventListener('DOMContentLoaded', async () => {
+        const status = document.getElementById('startupStatus');
+        try {
+          for (const path of ['lib/minisearch.min.js',
+            'lib/warc_writer.js', 'lib/politeness_engine.js', 'lib/opfs_streamer.js',
+            'lib/self_reflection.js', 'lib/mirror_resources.js', 'lib/crawl_rules.js',
+            'lib/core_crawler.js', 'lib/native_capture.js', 'lib/debug_recorder.js']) {
+            await new Promise((loaded, failed) => {
+              const script = document.createElement('script');
+              const executionError = event => {
+                if (event.filename === new URL(path, location.href).href) finish(false);
+              };
+              const finish = success => {
+                window.removeEventListener('error', executionError);
+                if (success) loaded(); else failed(new Error('Unable to load or execute local component: ' + path));
+              };
+              window.addEventListener('error', executionError);
+              script.src = path; script.onload = () => finish(true);
+              script.onerror = () => finish(false);
+              document.head.appendChild(script);
+            });
+          }
+          for (const [name, actual, expected] of [
+            ['profiles', typeof AEGIS_BUNDLED_PROFILES, 'object'],
+            ['MiniSearch', typeof MiniSearch, 'function'], ['WarcWriter', typeof WarcWriter, 'function'],
+            ['PolitenessEngine', typeof PolitenessEngine, 'function'], ['OpfsStreamer', typeof OpfsStreamer, 'function'],
+            ['SelfReflectionEngine', typeof SelfReflectionEngine, 'object'], ['MirrorResources', typeof MirrorResources, 'object'],
+            ['CrawlRules', typeof CrawlRules, 'object'], ['CoreCrawler', typeof CoreCrawler, 'function'],
+            ['NativeCapture', typeof NativeCapture, 'function'], ['DebugRecorder', typeof DebugRecorder, 'function']]) {
+            if (actual !== expected) throw new Error('Unable to initialize local component: ' + name);
+          }
+          for (const method of [SelfReflectionEngine.analyze, MirrorResources.discover,
+            CrawlRules.validateRules, CrawlRules.evaluateRules, CrawlRules.scopeHosts, CrawlRules.discoverSitemap]) {
+            if (typeof method !== 'function') throw new Error('Unable to initialize local component API');
+          }
+          const bootstrap = document.createElement('script');
+          bootstrap.textContent = document.getElementById('consoleBootstrap').textContent;
+          document.body.appendChild(bootstrap);
+          if (window.aegisConsoleInitialized !== true || typeof activeProfile === 'undefined' || !activeProfile) throw new Error('Unable to initialize local console');
+          document.querySelector('.container').inert = false;
+          status.textContent = ''; status.hidden = true; resolve(true);
+        } catch (error) { status.textContent = error.message; resolve(false); }
+      }, {once: true});
+    });
+  </script>
 </head>
 <body>
-  <div class="container">
+  <p id="startupStatus" role="status">Loading local components…</p>
+  <div class="container" inert>
     <!-- Header -->
     <header>
       <div class="brand-wrapper">
@@ -258,7 +298,7 @@
     </div>
   </div>
 
-  <script>
+  <script type="text/plain" id="consoleBootstrap">
     let activeProfile = null;
     let crawler = null;
     let finalResults = null;
@@ -744,7 +784,8 @@
       document.getElementById('themeBtn').textContent = next === 'dark' ? '☀️ Light' : '🌙 Dark';
     }
 
-    window.onload = init;
+    init();
+    window.aegisConsoleInitialized = true;
   </script>
 </body>
 </html>
