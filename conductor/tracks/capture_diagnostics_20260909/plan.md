@@ -13,3 +13,11 @@
   - **Verify**: Hosted Workflow lint (zizmor) on updated PR head.
   - **Done when**: Workflow lint passes; hosted result pending.
   - **Do not**: Suppress the finding or change runtime behavior.
+
+- [x] T3 Repair bounded checkpoint growth and retain actionable failure diagnostics (AC1–AC4), authorized by the user 2026-11-04.
+  - **Owner**: chat 01a1a4fa-a107-7502-8670-7abc4e934613; `/Users/doughnut/Documents/aegisarchive`; branch `codex/capture-stop-diagnostics-20261104`. Sole source writer. Native scope: read-only retained logs; no capture restart. Earlier assignments retained above.
+  - **Files**: `cli/usb_archive.py`, `cli/capture_bridge.py`, `cli/debug_journal.py`, `web/lib/native_capture.js`, `web/index.html`, `tests/test_usb_archive.py`, `tests/test_capture_bridge.py`, `tests/js/capture_failure.test.js`, `scripts/diagnostic_intake.py`, `tests/test_diagnostic_intake.py`, `docs/DIAGNOSTIC_WORKFLOW.md`, this track's plan and evidence.
+  - **Change**: Reproduce growth across the former checkpoint boundary, align bounded storage and transport limits, preserve precise safe native failure reasons and browser failure context/counts, and verify recovery without native target access.
+  - **Verify**: repo-local Python 3.15 unittest selectors for archive/bridge/diagnostics/debug journal; Node failure regressions; baseline gate and launcher help checks.
+  - **Done when**: synthetic growth/recovery and diagnostics tests pass, private evidence stays outside source, and limits and native acceptance gaps are documented.
+  - **Do not**: change launcher ownership, run a real capture, upload private evidence, or claim workstation acceptance from local checks.

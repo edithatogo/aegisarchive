@@ -309,6 +309,65 @@ class CaptureBridgeTests(unittest.TestCase):
         self.bridge.archives.close()
         self.temp.cleanup()
 
+    def post_capture(self, operation, payload):
+        request = urllib.request.Request(self.station_url + '/__station/capture/' + operation,
+            data=json.dumps(payload).encode(), headers={'X-Capture-Token':self.bridge.token})
+        return urllib.request.urlopen(request)
+
+    def test_checkpoint_growth_through_http_and_safe_failure_diagnostic(self):
+        archive = self.bridge.archives.start()
+        payload = {'archive_id':archive['archive_id'], 'generation':0, 'profile_hash':'a'*64,
+                   'lease':archive['lease'], 'state':{'frontier':['https://fixture.invalid/'+str(i)+'x'*200 for i in range(12000)]}}
+        self.assertGreater(len(json.dumps(payload)), 2*1024*1024)
+        with self.post_capture('archive-checkpoint', payload) as response:
+            self.assertEqual(json.load(response)['generation'], 1)
+        payload['generation'] = 1
+        self.bridge.debug.start()
+        with mock.patch('cli.usb_archive.STATE_LIMIT', 32):
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                self.post_capture('archive-checkpoint', payload)
+        result = json.load(caught.exception)
+        self.assertEqual(caught.exception.code, 413)
+        self.assertEqual(result['diagnostic']['stage'], 'checkpoint')
+        self.assertEqual(result['diagnostic']['reason_code'], 'state_limit')
+        self.assertEqual(result['diagnostic']['limit_bytes'], 32)
+        self.assertNotIn('fixture.invalid', json.dumps(result))
+        events = [json.loads(line) for line in self.bridge.debug.path.read_text().splitlines()]
+        self.assertEqual(events[-1]['reason_code'], 'state_limit')
+        self.assertEqual(events[-1]['limit_bytes'], 32)
+        with mock.patch('cli.capture_bridge.CHECKPOINT_REQUEST_LIMIT', 32):
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                self.post_capture('archive-checkpoint', {'padding':'x'*256})
+        self.assertEqual(json.load(caught.exception)['diagnostic']['reason_code'], 'request_limit')
+        reopened = self.bridge.archives.reopen(archive['archive_id'], 1, 'a'*64)
+        self.assertEqual(reopened['state'], payload['state'])
+
+    def test_diagnostic_write_failure_does_not_mask_original_or_echo_unknown_path(self):
+        from cli.usb_archive import CheckpointLimitError
+        with mock.patch.object(self.bridge.debug, 'native', side_effect=OSError('secret')):
+            with mock.patch.object(self.bridge.archives, 'checkpoint', side_effect=CheckpointLimitError('state_limit', 100, 32)):
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    self.post_capture('archive-checkpoint', {'archive_id':'a','generation':0,'state':{},'profile_hash':'a','lease':'b'})
+            result=json.load(caught.exception)
+            self.assertEqual(caught.exception.code,413)
+            self.assertTrue(result['diagnostic']['diagnostic_log_failed'])
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                self.post_capture('private-path-secret', {})
+            result=json.load(caught.exception)
+            self.assertEqual(result['diagnostic']['operation'],'unknown')
+            self.assertTrue(result['diagnostic']['diagnostic_log_failed'])
+            self.assertNotIn('private-path-secret',json.dumps(result))
+            self.assertNotIn('secret',json.dumps(result))
+
+    def test_generic_rejection_has_code_location_without_private_exception_text(self):
+        with self.assertRaises(urllib.error.HTTPError) as caught:
+            self.post_capture('archive-checkpoint', {'private':'password=never-save-this'})
+        result = json.load(caught.exception)
+        self.assertEqual(result['diagnostic']['error_type'], 'KeyError')
+        self.assertEqual(result['diagnostic']['code_file'], 'capture_bridge.py')
+        self.assertIsInstance(result['diagnostic']['code_line'], int)
+        self.assertNotIn('never-save-this', json.dumps(result))
+
     def test_token_and_same_origin_are_required(self):
         path = self.station_url + '/__station/capture/session'
         with self.assertRaises(urllib.error.HTTPError) as error: urllib.request.urlopen(path)

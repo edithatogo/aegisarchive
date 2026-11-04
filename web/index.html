@@ -616,17 +616,15 @@
       document.getElementById('captureState').textContent = 'RUNNING — archiving selected scope';
 
       crawler.start().catch(error => {
-        debugRecorder.record('capture_failed', {stage: error.diagnostic?.stage || 'capture', error_type: error.diagnostic?.error_type || error.name});
+        crawler.isRunning = false;
+        crawler.shouldStop = true;
+        const report = captureFailureReport(error, crawler);
+        debugRecorder.record('capture_failed', report.events[0]);
         log('[Error] ' + error.message);
         updateStatus('STOPPED');
         document.getElementById('btnStart').disabled = false;
         document.getElementById('captureState').textContent = 'FAILED — capture interrupted';
         document.getElementById('captureOutcome').textContent = error.message;
-        const report = {schema_version: 1, generated_at: new Date().toISOString(), outcome: 'failed',
-          coverage: {complete: false, counts: {captured: 0}, archive_storage_verified: false},
-          events: [{stage: error.diagnostic?.stage || 'capture',
-            error_type: error.diagnostic?.error_type || 'Error', timestamp: new Date().toISOString()}],
-          limitations: ['No successful archive receipt was produced. Partial bytes may remain on the USB.']};
         currentReportJSON = JSON.stringify(report, null, 2);
         document.getElementById('btnReport').disabled = false;
         NativeCapture.saveReport(report).then(saved => log('[Diagnostics] JSON saved on USB: ' + saved.log_file))

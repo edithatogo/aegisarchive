@@ -17,6 +17,16 @@ def report():
 
 
 class DiagnosticIntakeTests(unittest.TestCase):
+    def test_checkpoint_classifications_survive_without_private_details(self):
+        source = {'schema_version':1, 'coverage':{}, 'events':[
+            {'stage':'checkpoint','error_type':'CheckpointLimitError','error_message':'secret'},
+            {'stage':'native_request','error_type':'KeyError','code_file':'private.py'}]}
+        findings = ingest(source)['findings']
+        self.assertEqual({(x['stage'],x['error_type']) for x in findings},
+                         {('checkpoint','CheckpointLimitError'),('native_request','KeyError')})
+        self.assertNotIn('secret', json.dumps(findings))
+        self.assertNotIn('private.py', json.dumps(findings))
+
     def test_redacts_payload_and_untrusted_labels(self):
         source = report()
         source['events'].append({'stage': 'PrivatePerson', 'error_type': 'AccessToken123',

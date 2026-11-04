@@ -12,6 +12,7 @@ import socket
 import sys
 import threading
 import time
+import traceback
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -20,14 +21,14 @@ from pathlib import Path
 try:
     from .debug_journal import DebugJournal
     from .network_transport import NetworkTrace, route_handlers
-    from .usb_archive import UsbArchiveStore
+    from .usb_archive import UsbArchiveStore, CheckpointLimitError, CHECKPOINT_REQUEST_LIMIT
     from .politeness import PolitenessEngine
     from .auth import request_headers, ssl_context, SENSITIVE, redact_headers
     from .crawl_rules import validate_rules, evaluate_rules, scope_hosts, MAX_INTEGER
 except ImportError:
     from debug_journal import DebugJournal
     from network_transport import NetworkTrace, route_handlers
-    from usb_archive import UsbArchiveStore
+    from usb_archive import UsbArchiveStore, CheckpointLimitError, CHECKPOINT_REQUEST_LIMIT
     from politeness import PolitenessEngine
     from auth import request_headers, ssl_context, SENSITIVE, redact_headers
     from crawl_rules import validate_rules, evaluate_rules, scope_hosts, MAX_INTEGER
@@ -328,6 +329,14 @@ class CaptureBridge:
                 raise CaptureFailure(details) from error
 
 
+def record_failure(bridge, details):
+    try:
+        bridge.debug.native({'event': 'native_failure', **details})
+    except (OSError, ValueError):
+        # A diagnostic write must not replace the original failure response.
+        details['diagnostic_log_failed'] = True
+
+
 def handle(handler):
     """Handle only the capture API; caller retains station Host/path guards."""
     path = handler.path.split('?', 1)[0]
@@ -356,8 +365,10 @@ def handle(handler):
                 return True
             length = int(handler.headers.get('Content-Length', '0'))
             limit = (8 * 1024 * 1024 if path == '/__station/capture/diagnostics'
-                     else 2 * 1024 * 1024 if path == '/__station/capture/archive-checkpoint'
+                     else CHECKPOINT_REQUEST_LIMIT if path == '/__station/capture/archive-checkpoint'
                      else 400000 if path == '/__station/capture/archive-chunk' else 65536)
+            if path == '/__station/capture/archive-checkpoint' and length > limit:
+                raise CheckpointLimitError('request_limit', length, limit)
             if not 0 < length <= limit:
                 raise ValueError('Invalid request length')
             payload = json.loads(handler.rfile.read(length))
@@ -408,6 +419,11 @@ def handle(handler):
                 raise ValueError('Unknown capture endpoint')
         body = json.dumps(result).encode('utf-8')
         handler.send_response(200)
+    except CheckpointLimitError as error:
+        details = {**error.details, 'error_message': str(error)}
+        record_failure(bridge, details)
+        body = json.dumps({'error': str(error), 'diagnostic': details}).encode('utf-8')
+        handler.send_response(413)
     except CaptureFailure as error:
         body = json.dumps({'error': str(error), 'diagnostic': error.details}).encode('utf-8')
         handler.send_response(400)
@@ -415,8 +431,21 @@ def handle(handler):
         body = json.dumps({'error': 'USB storage failed; capture was not saved successfully. Check drive access and free space.',
                            'diagnostic': {'stage': 'storage', 'error_type': 'OSError'}}).encode('utf-8')
         handler.send_response(507)
-    except (ValueError, KeyError, TypeError, AttributeError):
-        body = json.dumps({'error': 'Native request rejected or failed; check capture scope, network access, TLS and local capture log.'}).encode('utf-8')
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        # Code locations reveal the actual failing operation without serializing
+        # exception text, locals, payloads, URLs or credential values.
+        frame = traceback.extract_tb(error.__traceback__)[-1]
+        details = {'stage': 'checkpoint' if path.endswith('archive-checkpoint') else 'native_request',
+                   'error_type': type(error).__name__, 'reason_code': 'request_rejected',
+                   'operation': path.rsplit('/', 1)[-1] if path.rsplit('/', 1)[-1] in {
+                       'debug-start','debug-status','debug-events','archive-start','archive-chunk',
+                       'archive-discover','archive-checkpoint','archive-reopen','archive-finalize',
+                       'start','fetch','diagnostics','recover','stop','session'} else 'unknown',
+                   'code_file': Path(frame.filename).name,
+                   'code_function': frame.name, 'code_line': frame.lineno}
+        record_failure(bridge, details)
+        body = json.dumps({'error': 'Native request rejected; diagnostic includes the exception type and code location.',
+                           'diagnostic': details}).encode('utf-8')
         handler.send_response(400)
     handler.send_header('Content-Type', 'application/json')
     handler.send_header('Content-Length', str(len(body)))
