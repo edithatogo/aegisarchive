@@ -80,13 +80,13 @@ test('disk failure stops retrying and preserves unacknowledged batch', async () 
   assert.equal(state.permanent,true);
 });
 
-test('queue overflow is explicit and calls the capture pause hook', () => {
+test('queue overflow stays bounded and explicit without pausing capture', () => {
   let state;let paused=0;
   const recorder=new DebugRecorder(()=>{},value=>state=value,()=>paused++);
   recorder.active=true;recorder.sending=true;
   for(let i=0;i<1025;i++)recorder.record('progress');
   assert.equal(recorder.queue.length,1024);
-  assert.equal(state.overflow,true);assert.equal(paused,1);
+  assert.equal(state.overflow,true);assert.equal(paused,0);
 });
 
 test('overflow leaves a durable gap marker after delivery recovers', async () => {

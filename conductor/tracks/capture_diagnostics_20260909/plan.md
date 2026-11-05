@@ -21,3 +21,8 @@
   - **Verify**: repo-local Python 3.15 unittest selectors for archive/bridge/diagnostics/debug journal; Node failure regressions; baseline gate and launcher help checks.
   - **Done when**: synthetic growth/recovery and diagnostics tests pass, private evidence stays outside source, and limits and native acceptance gaps are documented.
   - **Do not**: change launcher ownership, run a real capture, upload private evidence, or claim workstation acceptance from local checks.
+
+- [x] T4 Prevent debug queue overflow from pausing capture (user authorized 2026-11-05).
+  - Owner: chat 01a1a4fa-a107-7502-8670-7abc4e934613, existing repository and branch; sole writer. Scope: web/lib/debug_recorder.js, web/index.html, tests/js/debug_recorder.test.js, docs/DIAGNOSTIC_WORKFLOW.md and track evidence. Native scope: two application files; preserve saved archive and checkpoint.
+  - Change: bounded diagnostic loss emits a counted gap warning without invoking pause; genuine storage/delivery failures retain existing handling.
+  - Verify: focused debug/resume JS, archive Python, baseline gate; isolated reopen of retained checkpoint and prefix hashes; deployed source byte readback.

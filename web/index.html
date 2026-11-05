@@ -317,7 +317,9 @@
       }
       return debugSession.call(action, payload);
     }, state => {
-      document.getElementById('debugStatus').textContent = state.failed
+      document.getElementById('debugStatus').textContent = state.overflow
+        ? `DEBUG GAP — ${state.pending} events pending; ${debugRecorder.droppedTotal} events omitted. Queue overflow does not pause capture; a gap count will be saved when delivery catches up.`
+        : state.failed
         ? `DEBUG SAVE FAILED — ${state.pending} events pending${state.overflow ? '; backlog full, some new events could not be queued' : ''}. Capture paused. Check USB access/free space. ${state.permanent ? 'Recording stopped: restart the launcher and reload this page after fixing storage.' : 'Retrying delivery automatically.'} Saved log: ${state.path}`
         : `DEBUG ON — ${state.saved} events saved; ${state.pending} pending.${state.dropped ? ` Recording gap: ${state.dropped} events could not be queued.` : ''} ${state.path}`;
     }, () => { if (crawler?.isRunning && !crawler.isPaused) togglePause(); });
