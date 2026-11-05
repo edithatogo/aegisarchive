@@ -26,3 +26,7 @@
   - Owner: chat 01a1a4fa-a107-7502-8670-7abc4e934613, existing repository and branch; sole writer. Scope: web/lib/debug_recorder.js, web/index.html, tests/js/debug_recorder.test.js, docs/DIAGNOSTIC_WORKFLOW.md and track evidence. Native scope: two application files; preserve saved archive and checkpoint.
   - Change: bounded diagnostic loss emits a counted gap warning without invoking pause; genuine storage/delivery failures retain existing handling.
   - Verify: focused debug/resume JS, archive Python, baseline gate; isolated reopen of retained checkpoint and prefix hashes; deployed source byte readback.
+
+- [x] T5 Restore deployment resume settings (user authorized 2026-11-06).
+  - Scope: web/index.html and track evidence. Optional private web/resume-settings.json maps archive identity to public capture settings; never commit the deployment file. Resume verifies the full settings hash against the selected archive before applying URL/profile/route/robots settings. Missing mapping retains existing manual flow. Credentials are not saved.
+  - Verification: reconstructed existing settings hash exactly matches retained checkpoint; focused resume/failure tests5 PASS; native UI and private settings downloaded byte-identical after upload. Deployment cleanup uses recycling and preserves the selected archive and diagnostic logs.

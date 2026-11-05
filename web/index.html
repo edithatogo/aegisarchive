@@ -397,6 +397,25 @@
     async function resumeFromCheckpoint() {
       pendingArchive = recoveryArchives.find(item=>item.archive_id===document.getElementById('resumeArchive').value) || null;
       if (!pendingArchive) return;
+      // Optional private deployment settings; verify against checkpoint identity before use.
+      try {
+        const response = await fetch('resume-settings.json', {cache:'no-store'});
+        if (response.ok) {
+          const saved = (await response.json())[pendingArchive.archive_id];
+          if (saved) {
+            if (await NativeCapture.profileHash(saved.profile,saved.route) !== pendingArchive.profile_hash)
+              throw Error('Saved resume settings do not match the checkpoint');
+            activeProfile = saved.profile;
+            document.getElementById('captureRoute').value = saved.route;
+            document.getElementById('simpleTarget').value = '';
+            document.getElementById('robotsPolicy').value = activeProfile.politeness.robots_policy || 'respect';
+            updateProfileDisplay();
+          }
+        }
+      } catch (error) {
+        document.getElementById('captureOutcome').textContent = 'Resume settings could not be restored: '+error.message;
+        return;
+      }
       document.getElementById('resumeBanner').style.display = 'none';
       await startHarvest();
     }
