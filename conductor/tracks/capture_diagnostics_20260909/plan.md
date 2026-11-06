@@ -30,3 +30,7 @@
 - [x] T5 Restore deployment resume settings (user authorized 2026-11-06).
   - Scope: web/index.html and track evidence. Optional private web/resume-settings.json maps archive identity to public capture settings; never commit the deployment file. Resume verifies the full settings hash against the selected archive before applying URL/profile/route/robots settings. Missing mapping retains existing manual flow. Credentials are not saved.
   - Verification: reconstructed existing settings hash exactly matches retained checkpoint; focused resume/failure tests5 PASS; native UI and private settings downloaded byte-identical after upload. Deployment cleanup uses recycling and preserves the selected archive and diagnostic logs.
+
+- [x] T6 Discover declarative lazy media (user authorized 2026-11-06).
+  - Scope: web/lib/mirror_resources.js, tests/js/mirror_capture.test.js and track evidence. Add data-src gallery/media references and data-srcset without executing scripts. Keep existing capture scope and pacing. Package only while user capture runs.
+  - Verify: regression failed before fix, all6mirror tests pass afterward; full baseline gate PASS; leak and whitespace checks PASS. Private offline retained-byte audit confirms148previously undiscovered image references. Generic script-only rendering remains unresolved. No native application or capture state altered.
