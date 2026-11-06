@@ -390,7 +390,8 @@
         for (const archive of recoveryArchives) {
           const option=document.createElement('option');
           const settings=resumeSettings[archive.archive_id];
-          const matches=settings && await NativeCapture.profileHash(settings.profile,settings.route) === archive.profile_hash;
+          let matches=false;
+          try { matches=!!settings && await NativeCapture.profileHash(settings.profile,settings.route) === archive.profile_hash; } catch (_) {}
           const site=matches ? (settings.profile.target?.seed_urls?.tier_1_core?.[0] || settings.profile.profile_name || 'Saved capture') : 'Saved capture';
           option.value=archive.archive_id;option.textContent=`${site} · ${archive.visited ?? '?'} visited · ${archive.queued ?? '?'} queued · ${archive.saved_at || 'time unavailable'} · settings ${matches ? 'available' : 'need selection'} · ${archive.archive_id}`;
           select.append(option);

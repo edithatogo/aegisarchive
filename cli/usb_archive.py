@@ -464,9 +464,9 @@ class UsbArchiveStore:
                         frontier = {}
                     result.append({'archive_id': entry.name, 'generation': metadata['generation'],
                                    'profile_hash': metadata['profile_hash'],
-                                   'visited': len(frontier.get('visited', [])),
-                                   'queued': len(frontier.get('queue', [])),
-                                   'saved_at': frontier.get('savedAt'),
+                                   'visited': len(frontier['visited']) if isinstance(frontier.get('visited'), list) else 0,
+                                   'queued': len(frontier['queue']) if isinstance(frontier.get('queue'), list) else 0,
+                                   'saved_at': frontier.get('savedAt') if isinstance(frontier.get('savedAt'), str) else None,
                                    'offsets': {kind: metadata['prefixes'][kind]['bytes'] for kind in KINDS}})
                 except (OSError, ValueError):
                     continue
