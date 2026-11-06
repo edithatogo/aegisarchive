@@ -2,7 +2,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {NativeCapture}=require('../../web/lib/native_capture.js');
 test('resume restores public settings while preserving freshly imported authentication',async()=>{
  const authentication={mode:'basic_env',allowed_domains:['fixture.invalid'],source:'FIXTURE_AUTH'};
- const profile={profile_id:'fixture',target:{allowed_domains:['fixture.invalid']},authentication:{mode:'basic_env',allowed_domains:['fixture.invalid']}};
+ const profile={profile_id:'fixture',politeness:{},target:{allowed_domains:['fixture.invalid']},authentication:{mode:'basic_env',allowed_domains:['fixture.invalid']}};
  const hash=await NativeCapture.profileHash({...profile,authentication});
  const archive={archive_id:'fixture',profile_hash:hash};
  const elements=new Map();const element=id=>{if(!elements.has(id))elements.set(id,{value:id==='resumeArchive'?'fixture':'',style:{}});return elements.get(id);};
