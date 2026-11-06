@@ -9,5 +9,6 @@ test('checkpoint status handles finalization and only reports acknowledged saves
  await callback(null);assert.equal(calls,1);assert.equal(status.textContent,'previous');
  const state={frontier:{visited:['one'],queue:['two','three']}};
  await callback(state);assert.match(status.textContent,/1 visited, 2 queued/);
+ await callback({});assert.match(status.textContent,/\? visited, \? queued/);
  const saved=status.textContent;fail=true;await assert.rejects(callback(state));assert.equal(status.textContent,saved);
 });
