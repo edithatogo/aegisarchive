@@ -336,32 +336,32 @@ class UsbArchiveTests(unittest.TestCase):
 
 class CheckpointGrowthTests(unittest.TestCase):
     def test_large_frontier_survives_save_reopen_and_next_generation(self):
-        with tempfile.TemporaryDirectory() as directory:
-            store = UsbArchiveStore(Path(directory) / 'captures')
-            self.addCleanup(store.close)
-            archive = store.start()
-            state = {'frontier': [{'url': 'https://fixture.invalid/' + str(i),
-                                  'description': 'x' * 200} for i in range(12000)]}
-            self.assertGreater(len(json.dumps(state)), 2 * 1024 * 1024)
-            result = store.checkpoint(archive['archive_id'], 0, state, 'a' * 64, archive['lease'])
-            reopened = store.reopen(archive['archive_id'], result['generation'], 'a' * 64)
-            self.assertEqual(reopened['state'], state)
-            self.assertEqual(store.checkpoint(archive['archive_id'], reopened['generation'], state,
-                                             'a' * 64, reopened['lease'])['generation'], 3)
+        directory = self.enterContext(tempfile.TemporaryDirectory())
+        store = UsbArchiveStore(Path(directory) / 'captures')
+        self.addCleanup(store.close)
+        archive = store.start()
+        state = {'frontier': [{'url': 'https://fixture.invalid/' + str(i),
+                              'description': 'x' * 200} for i in range(12000)]}
+        self.assertGreater(len(json.dumps(state)), 2 * 1024 * 1024)
+        result = store.checkpoint(archive['archive_id'], 0, state, 'a' * 64, archive['lease'])
+        reopened = store.reopen(archive['archive_id'], result['generation'], 'a' * 64)
+        self.assertEqual(reopened['state'], state)
+        self.assertEqual(store.checkpoint(archive['archive_id'], reopened['generation'], state,
+                                         'a' * 64, reopened['lease'])['generation'], 3)
 
     def test_over_budget_retains_previous_checkpoint(self):
         from cli.usb_archive import CheckpointLimitError
-        with tempfile.TemporaryDirectory() as directory:
-            store = UsbArchiveStore(Path(directory) / 'captures')
-            self.addCleanup(store.close)
-            archive = store.start()
-            store.checkpoint(archive['archive_id'], 0, {}, 'a' * 64, archive['lease'])
-            path = store.root / archive['archive_id'] / 'checkpoint.json'
-            before = path.read_bytes()
-            with patch('cli.usb_archive.STATE_LIMIT', 32):
-                with self.assertRaises(CheckpointLimitError) as caught:
-                    store.checkpoint(archive['archive_id'], 1, {'data':'x'*100}, 'a'*64, archive['lease'])
-            self.assertEqual(caught.exception.details['reason_code'], 'state_limit')
-            self.assertEqual(caught.exception.details['limit_bytes'], 32)
-            self.assertEqual(path.read_bytes(), before)
-            self.assertEqual(store.reopen(archive['archive_id'], 1, 'a'*64)['state'], {})
+        directory = self.enterContext(tempfile.TemporaryDirectory())
+        store = UsbArchiveStore(Path(directory) / 'captures')
+        self.addCleanup(store.close)
+        archive = store.start()
+        store.checkpoint(archive['archive_id'], 0, {}, 'a' * 64, archive['lease'])
+        path = store.root / archive['archive_id'] / 'checkpoint.json'
+        before = path.read_bytes()
+        with patch('cli.usb_archive.STATE_LIMIT', 32):
+            with self.assertRaises(CheckpointLimitError) as caught:
+                store.checkpoint(archive['archive_id'], 1, {'data':'x'*100}, 'a'*64, archive['lease'])
+        self.assertEqual(caught.exception.details['reason_code'], 'state_limit')
+        self.assertEqual(caught.exception.details['limit_bytes'], 32)
+        self.assertEqual(path.read_bytes(), before)
+        self.assertEqual(store.reopen(archive['archive_id'], 1, 'a'*64)['state'], {})
