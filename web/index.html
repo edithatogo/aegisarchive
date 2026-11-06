@@ -403,9 +403,10 @@
         if (response.ok) {
           const saved = (await response.json())[pendingArchive.archive_id];
           if (saved) {
-            if (await NativeCapture.profileHash(saved.profile,saved.route) !== pendingArchive.profile_hash)
+            const restored = {...saved.profile, ...(activeProfile?.authentication ? {authentication:activeProfile.authentication} : {})};
+            if (await NativeCapture.profileHash(restored,saved.route) !== pendingArchive.profile_hash)
               throw Error('Saved resume settings do not match the checkpoint');
-            activeProfile = saved.profile;
+            activeProfile = restored;
             document.getElementById('captureRoute').value = saved.route;
             document.getElementById('simpleTarget').value = '';
             document.getElementById('robotsPolicy').value = activeProfile.politeness.robots_policy || 'respect';
