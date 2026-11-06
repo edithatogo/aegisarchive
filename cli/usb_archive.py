@@ -11,8 +11,18 @@ import stat
 import threading
 
 CHUNK_LIMIT = 256 * 1024
-STATE_LIMIT = 1024 * 1024
-METADATA_LIMIT = 2 * 1024 * 1024
+STATE_LIMIT = 32 * 1024 * 1024
+METADATA_LIMIT = STATE_LIMIT + 1024 * 1024
+CHECKPOINT_REQUEST_LIMIT = METADATA_LIMIT
+
+
+class CheckpointLimitError(ValueError):
+    """Fixed diagnostic text; never includes checkpoint content or credentials."""
+    def __init__(self, reason, size, limit):
+        self.details = {"stage": "checkpoint", "error_type": "CheckpointLimitError",
+                        "reason_code": reason, "bytes": size, "limit_bytes": limit}
+        super().__init__(f"Checkpoint {reason}: {size} bytes exceeds {limit} byte limit. "
+                         "The previous checkpoint is retained; narrow the capture scope.")
 KINDS = ('warc', 'cdx')
 
 
@@ -47,7 +57,7 @@ def encoded_state(state):
     except (RecursionError, UnicodeError) as exc:
         raise ValueError('Invalid checkpoint state') from exc
     if len(raw) > STATE_LIMIT:
-        raise ValueError('Checkpoint state too large')
+        raise CheckpointLimitError('state_limit', len(raw), STATE_LIMIT)
     return raw
 
 
@@ -294,7 +304,7 @@ class UsbArchiveStore:
         raw = json.dumps(metadata, sort_keys=True, separators=(',', ':'),
                          ensure_ascii=False, allow_nan=False).encode('utf-8')
         if len(raw) > METADATA_LIMIT:
-            raise ValueError('Checkpoint metadata too large')
+            raise CheckpointLimitError('metadata_limit', len(raw), METADATA_LIMIT)
         if (folder / 'checkpoint.json').is_symlink():
             raise ValueError('Checkpoint must not be a symbolic link')
         temporary = folder / ('.checkpoint.' + secrets.token_hex(16) + '.tmp')
@@ -316,7 +326,7 @@ class UsbArchiveStore:
         with self.open_file(folder / 'checkpoint.json') as saved:
             raw = saved.read(METADATA_LIMIT + 1)
         if len(raw) > METADATA_LIMIT:
-            raise ValueError('Checkpoint metadata too large')
+            raise CheckpointLimitError('metadata_limit', len(raw), METADATA_LIMIT)
         try:
             value = json.loads(raw.decode('utf-8'), object_pairs_hook=pairs)
             if (type(value) is not dict or set(value) !=

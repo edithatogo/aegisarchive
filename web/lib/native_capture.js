@@ -47,10 +47,20 @@ class NativeCapture {
     const controller = action.startsWith('debug-') ? new AbortController() : null;
     const timeout = controller ? setTimeout(() => controller.abort(), 5000) : null;
     try {
+    const body = JSON.stringify(payload);
+    if (action === 'archive-checkpoint') {
+      const bytes = new TextEncoder().encode(body).byteLength;
+      const limit = 33 * 1024 * 1024;
+      if (bytes > limit) {
+        const error = Error('Checkpoint request exceeds the local request limit; previous checkpoint retained.');
+        error.diagnostic = {stage:'checkpoint', error_type:'CheckpointLimitError', reason_code:'request_limit', bytes, limit_bytes:limit};
+        throw error;
+      }
+    }
     const response = await fetch('/__station/capture/' + action, {
       method: 'POST', keepalive: action === 'stop' || action === 'debug-events', signal: controller?.signal,
       headers: {'Content-Type': 'application/json', 'X-Capture-Token': this.token},
-      body: JSON.stringify(payload)
+      body
     });
     const result = await response.json();
     if (!response.ok) {
@@ -101,9 +111,14 @@ class UsbArchiveStreamer {
   async checkpoint(state, profileHash) {
     if (!state) return; // Finalization, not a null callback, closes the on-disk checkpoint.
     if (this.failed) throw Error('USB archive storage has failed');
-    const result=await this.session.call('archive-checkpoint',{archive_id:this.id,
-      generation:this.generation,state,profile_hash:profileHash,lease:this.lease});
-    this.generation=result.generation;
+    try {
+      const result=await this.session.call('archive-checkpoint',{archive_id:this.id,
+        generation:this.generation,state,profile_hash:profileHash,lease:this.lease});
+      this.generation=result.generation;
+    } catch (error) {
+      error.diagnostic = {stage:'checkpoint', error_type:error.name, ...error.diagnostic};
+      throw error;
+    }
   }
   async writeChunk(bytes, kind = 'warc') {
     if (this.failed) throw Error('USB archive storage has failed');
@@ -136,3 +151,25 @@ class UsbArchiveStreamer {
   }
   getTotalBytes() { return this.offsets.warc; }
 }
+
+// Persist only safe native diagnostics and code locations, never arbitrary exception text.
+function captureFailureReport(error, crawler) {
+  const diagnostic = error.diagnostic || {};
+  const event = {stage:diagnostic.stage || 'capture', error_type:diagnostic.error_type || error.name || 'Error',
+    timestamp:new Date().toISOString()};
+  for (const key of ['reason_code','operation','code_file','code_function'])
+    if (typeof diagnostic[key] === 'string' && /^[\w .:/()-]{1,100}$/.test(diagnostic[key])) event[key]=diagnostic[key];
+  for (const key of ['bytes','limit_bytes','code_line'])
+    if (Number.isSafeInteger(diagnostic[key]) && diagnostic[key]>=0) event[key]=diagnostic[key];
+  if (event.error_type === 'CheckpointLimitError' && ['state_limit','metadata_limit','request_limit'].includes(event.reason_code))
+    event.error_message = `Checkpoint ${event.reason_code}: ${event.bytes} bytes exceeds ${event.limit_bytes} byte limit. Previous checkpoint retained; narrow the capture scope.`;
+  else event.error_message = `${event.error_type} during ${event.stage}${event.code_file ? ' at '+event.code_file+':'+event.code_line+' ('+event.code_function+')' : ''}.`;
+  if (diagnostic.diagnostic_log_failed === true) event.diagnostic_log_failed = true;
+  const counts=Object.fromEntries(['captured','excluded','failed','pending','unsupported'].map(k=>[k,0]));
+  for (const item of crawler?.resourceOutcomes?.values() || []) if (item.state in counts) counts[item.state]++;
+  return {schema_version:1, generated_at:event.timestamp, outcome:'failed',
+    coverage:{complete:false, counts, archive_storage_verified:false}, events:[event],
+    progress:{visited: crawler?.visited?.size || 0, queued:crawler?.queue?.length || 0},
+    limitations:['No successful archive receipt was produced. Partial bytes and the previous checkpoint may remain on the USB.']};
+}
+if (typeof module !== 'undefined') module.exports = {NativeCapture, UsbArchiveStreamer, captureFailureReport};

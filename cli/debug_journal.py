@@ -13,13 +13,13 @@ import urllib.parse
 
 LABELS = frozenset(('event', 'stage', 'state', 'source', 'category', 'route', 'reason_code',
                     'error_type', 'cause_type', 'action', 'mimeType', 'digest', 'robots_policy',
-                    'native_log_name', 'archive_id', 'session_id', 'label', 'network_transport', 'platform'))
+                    'operation', 'code_file', 'code_function', 'native_log_name', 'archive_id', 'session_id', 'label', 'network_transport', 'platform'))
 NUMBERS = frozenset(('status', 'elapsed_ms', 'latency_ms', 'size_bytes', 'bytes', 'attempt',
                      'visitedCount', 'queueLength', 'documentsFound', 'availableTokens',
                      'ewmaLatencyMs', 'consecutiveErrors', 'errno', 'winerror', 'captured',
-                     'failed', 'pending', 'excluded', 'unsupported', 'max_pages', 'max_depth',
+                     'limit_bytes', 'code_line', 'failed', 'pending', 'excluded', 'unsupported', 'max_pages', 'max_depth',
                      'min_delay_ms', 'max_delay_ms', 'max_requests_per_minute', 'offset', 'dropped_events'))
-FLAGS = frozenset(('complete', 'archive_storage_verified', 'auto_detect', 'pac_present',
+FLAGS = frozenset(('diagnostic_log_failed', 'complete', 'archive_storage_verified', 'auto_detect', 'pac_present',
                    'static_proxy_present', 'bypass_present', 'bypass', 'proxy_configured'))
 
 

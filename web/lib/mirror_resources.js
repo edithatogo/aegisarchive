@@ -35,9 +35,11 @@
       if (tag === 'base' && base === null && a.href) base = a.href;
       if (['a','area','link'].includes(tag) && a.href) links.push([a.href, tag === 'link' ? 'asset' : 'page']);
       if (['img','script','iframe','source','video','audio','input','embed','track'].includes(tag) && a.src) links.push([a.src, tag === 'iframe' ? 'page' : 'asset']);
+      if (['a','img','source','video','audio','iframe'].includes(tag) && a['data-src']) links.push([a['data-src'], tag === 'iframe' ? 'page' : 'asset']);
       if (a.poster) links.push([a.poster, 'asset']);
       if (tag === 'object' && a.data) links.push([a.data, 'asset']);
-      if (['img','source'].includes(tag) && a.srcset) {
+      if (['img','source'].includes(tag) && (a.srcset || a['data-srcset'])) {
+        a.srcset = [a.srcset, a['data-srcset']].filter(Boolean).join(', ');
         let position = 0;
         while (position < a.srcset.length) {
           while (position < a.srcset.length && /[\s,]/.test(a.srcset[position])) position++;

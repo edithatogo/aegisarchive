@@ -35,7 +35,7 @@ class DebugRecorder {
     if (this.queue.length >= 1024) {
       this.dropped++; this.droppedTotal++;
       this.notify({failed: true, path: this.path, pending: this.queue.length, overflow: true});
-      this.onFailure(); return;
+      return;
     }
     // Call sites pass structured scalar fields only; filter again on the server.
     const value = {event};
