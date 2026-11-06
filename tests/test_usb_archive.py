@@ -165,6 +165,13 @@ class UsbArchiveTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.chunk(b'one')
 
+    def test_discovery_reports_saved_progress_without_exposing_state(self):
+        state={'frontier':{'visited':['https://fixture.invalid/a'], 'queue':[{'url':'https://fixture.invalid/b'}], 'savedAt':'2026-01-01T00:00:00Z'}}
+        self.store.checkpoint(self.sid, 0, state, 'a'*64, self.started['lease'])
+        item=self.store.discover()[0]
+        self.assertEqual((item['visited'],item['queued'],item['saved_at']),(1,1,'2026-01-01T00:00:00Z'))
+        self.assertNotIn('state', item)
+
     def test_discovery_metadata_and_invalid_paths(self):
         self.saved_checkpoint()
         found = self.store.discover()
