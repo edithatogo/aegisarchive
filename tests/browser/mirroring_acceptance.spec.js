@@ -1,4 +1,5 @@
 const {test,expect}=require('playwright/test');
+test.beforeEach(async ({page}) => { page.on('dialog', dialog => dialog.accept()); });
 const fs=require('node:fs/promises');
 const path=require('node:path');
 const os=require('node:os');
