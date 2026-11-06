@@ -2,7 +2,7 @@
   "name": "aegisarchive-browser-tests",
   "private": true,
   "devDependencies": {
-    "playwright": "1.63.0"
+    "playwright": "1.65.0"
   },
   "scripts": {
     "test:offline": "playwright test --config tests/browser/playwright.config.js tests/browser/offline_replay.spec.js",
