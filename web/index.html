@@ -626,7 +626,7 @@
         onStatusChange: (status) => updateStatus(status),
         onDocumentFound: (doc) => addDocumentRow(doc),
         onCheckpoint: (cp) => saveCheckpoint(cp),
-        onRecoveryCheckpoint: async state => { await usbStorage.checkpoint(state,usbStorage.profileHash); document.getElementById('checkpointStatus').textContent = `Checkpoint saved locally at ${new Date().toLocaleTimeString()} — ${state.frontier.visited.length} visited, ${state.frontier.queue.length} queued. OneDrive sync status is not available here.`; },
+        onRecoveryCheckpoint: async state => { await usbStorage.checkpoint(state,usbStorage.profileHash); if (!state) return; document.getElementById('checkpointStatus').textContent = `Checkpoint saved locally at ${new Date().toLocaleTimeString()} — ${state.frontier.visited.length} visited, ${state.frontier.queue.length} queued. OneDrive sync status is not available here.`; },
         onComplete: (results) => handleComplete(results)
       });
 
