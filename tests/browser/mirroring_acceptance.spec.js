@@ -263,12 +263,12 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
     // Retry must rediscover that generation and retain this archive, not start over.
     await page.route('**/__station/capture/start',route=>route.fulfill({status:503,
       contentType:'application/json',body:JSON.stringify({error:'Synthetic setup interruption'})}));
-    await page.locator('#resumeBanner').getByRole('button',{name:'▶️ Resume',exact:true}).click();
+    await page.locator('#resumeBanner').getByRole('button',{name:'▶️ Resume saved capture',exact:true}).click();
     await expect(page.locator('#captureOutcome')).toContainText('Synthetic setup interruption');
     await expect(page.locator('#resumeBanner')).toBeVisible();
     await expect(page.locator('#resumeArchive')).toHaveValue(saved.id);
     await page.unroute('**/__station/capture/start');
-    await page.locator('#resumeBanner').getByRole('button',{name:'▶️ Resume',exact:true}).click();
+    await page.locator('#resumeBanner').getByRole('button',{name:'▶️ Resume saved capture',exact:true}).click();
     await expect(page.locator('#captureState')).toContainText('INCOMPLETE');
     await expect.poll(()=>page.evaluate(()=>!!finalResults?.storageReceipt)).toBe(true);
     const result=await page.evaluate(()=>({receipt:finalResults.storageReceipt,report:currentReportJSON,log:nativeCapture.logFile}));
