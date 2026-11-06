@@ -70,6 +70,5 @@ test('discovers declarative lazy media and gallery assets without executing scri
  const {discover}=require('../../web/lib/mirror_resources.js');
  const html='<a data-src="/full.png"><img src="/thumb.png"></a><img data-src="/lazy.jpg" data-srcset="/large.jpg 2x"><script>fetch("/private-api")</script>';
  const urls=discover(html,'text/html','https://fixture.invalid/').resources.map(x=>x.url);
- for(const p of ['full.png','thumb.png','lazy.jpg','large.jpg'])assert.ok(urls.includes('https://fixture.invalid/'+p),p);
- assert.ok(!urls.includes('https://fixture.invalid/private-api'));
+ assert.deepEqual(urls.sort(), ['full.png','large.jpg','lazy.jpg','thumb.png'].map(p=>new URL(p,'https://fixture.invalid/').href));
 });
