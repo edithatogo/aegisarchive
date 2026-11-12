@@ -106,15 +106,18 @@
     <button id="btnRecoverNative" class="btn btn-secondary" hidden onclick="recoverNativeSession()">Stop previous local capture session</button>
     <button id="btnDebug" class="btn btn-secondary" onclick="enableDebug()">Debug</button>
     <p id="debugStatus" role="status">Debug is off. Enable it before capture to save detailed logs progressively on the USB.</p>
+    <p id="checkpointStatus" role="status">Checkpoint: no save confirmed in this session. OneDrive sync status is not available here.</p>
     <p id="captureOutcome" role="status">Local capture uses this computer’s network access. Browser logins are not automatically shared; authenticated sites require an explicit authentication profile. HTTP 401/403 cannot be overridden by the robots option.</p>
 
     <div id="resumeBanner" class="controls-bar" style="display:none; gap: 12px; align-items: center;">
       <span id="resumeBannerText"></span>
       <select id="resumeArchive" aria-label="Saved archive to resume"></select>
-      <button class="btn btn-emerald" onclick="resumeFromCheckpoint()">▶️ Resume</button>
-      <button class="btn btn-secondary" onclick="discardCheckpoint()">Discard</button>
+      <button class="btn btn-emerald" onclick="resumeFromCheckpoint()">▶️ Resume saved capture</button>
+      <button class="btn btn-secondary" onclick="discardCheckpoint()">Hide resume prompt</button>
     </div>
 
+    <ul id="coverageDetails" hidden aria-live="polite"></ul>
+    <p>Pause holds the running session. Stop &amp; Finalize closes the capture and writes its final archive. Hiding the resume prompt never deletes the saved archive.</p>
     <!-- Live Telemetry Grid -->
     <div class="telemetry-grid">
       <div class="telemetry-card">
@@ -152,13 +155,15 @@
     <!-- Controls Bar -->
     <div class="controls-bar">
       <div class="button-cluster">
-        <button class="btn btn-emerald" id="btnStart" onclick="startHarvest()">🚀 Start Harvest</button>
+        <button class="btn btn-emerald" id="btnStart" onclick="startHarvest()">🚀 Start a new capture</button>
         <button class="btn btn-warning" id="btnPause" onclick="togglePause()" disabled>⏸️ Pause</button>
         <button class="btn btn-danger" id="btnStop" onclick="stopHarvest()" disabled>⏹️ Stop &amp; Finalize</button>
       </div>
       <div class="button-cluster">
         <button class="btn btn-primary" id="btnExportWarc" onclick="exportWarc()" disabled>📦 Show saved archive location</button>
         <button class="btn btn-secondary" id="btnExportCsv" onclick="exportAuditCsv()" disabled>📋 Export Audit CSV</button>
+        <button class="btn btn-secondary" onclick="copyDiagnosticSummary()">Copy diagnostic summary</button>
+        <button class="btn btn-secondary" id="btnCoverage" onclick="showCoverage()">Coverage</button>
         <button class="btn btn-secondary" id="btnReport" onclick="openReportModal()" disabled>📊 Diagnostic Report</button>
       </div>
     </div>
@@ -379,10 +384,16 @@
       try {
         recoveryArchives = await NativeCapture.discoverArchives();
         const select=document.getElementById('resumeArchive');
+        let resumeSettings = {};
+        try { const response=await fetch('resume-settings.json',{cache:'no-store'}); if(response.ok) resumeSettings=await response.json(); } catch (_) {}
         select.replaceChildren();
         for (const archive of recoveryArchives) {
           const option=document.createElement('option');
-          option.value=archive.archive_id;option.textContent=archive.archive_id;
+          const settings=resumeSettings[archive.archive_id];
+          let matches=false;
+          try { matches=!!settings && await NativeCapture.profileHash(settings.profile,settings.route) === archive.profile_hash; } catch (_) {}
+          const site=matches ? (settings.profile.target?.seed_urls?.tier_1_core?.[0] || settings.profile.profile_name || 'Saved capture') : 'Saved capture';
+          option.value=archive.archive_id;option.textContent=`${site} · ${archive.visited ?? '?'} visited · ${archive.queued ?? '?'} queued · ${archive.saved_at || 'time unavailable'} · settings ${matches ? 'available' : 'need selection'} · ${archive.archive_id}`;
           select.append(option);
         }
         if (preferredId) {
@@ -556,6 +567,17 @@
       }
       debugRecorder.record('capture_start_requested', {route: document.getElementById('captureRoute').value});
       if (!activeProfile) return;
+      if (!pendingArchive) {
+        const seeds=activeProfile.target?.seed_urls || {};
+        const target = document.getElementById('simpleTarget').value.trim() || seeds.tier_1_core?.[0] || seeds.tier_2_breadth?.[0] || seeds.tier_3_discovery?.[0] || activeProfile.target?.sitemap_seeds?.[0] || '';
+        if (!target) { document.getElementById('captureOutcome').textContent='Enter a capture address or select a profile with a target.'; return; }
+        let host; try { host = new URL(target).hostname; } catch (_) { document.getElementById('captureOutcome').textContent='Enter a complete http(s) address.'; return; }
+        const example = ['example.org','example.com','localhost','127.0.0.1'].includes(host);
+        if (!window.confirm((example ? 'This is an example or local test address. ' : '') + 'Start a NEW capture at ' + target + '?')) return;
+      }
+      document.getElementById('checkpointStatus').textContent = 'Checkpoint: no save confirmed in this session. OneDrive sync status is not available here.';
+      document.getElementById('coverageDetails').replaceChildren();
+      document.getElementById('coverageDetails').hidden = true;
       const quick = document.getElementById('simpleTarget').value.trim();
       if (quick) {
         let parsed;
@@ -608,7 +630,7 @@
         onStatusChange: (status) => updateStatus(status),
         onDocumentFound: (doc) => addDocumentRow(doc),
         onCheckpoint: (cp) => saveCheckpoint(cp),
-        onRecoveryCheckpoint: state => usbStorage.checkpoint(state,usbStorage.profileHash),
+        onRecoveryCheckpoint: async state => { await usbStorage.checkpoint(state,usbStorage.profileHash); if (!state) return; document.getElementById('checkpointStatus').textContent = `Checkpoint saved locally at ${new Date().toLocaleTimeString()} — ${Array.isArray(state.frontier?.visited) ? state.frontier.visited.length : '?'} visited, ${Array.isArray(state.frontier?.queue) ? state.frontier.queue.length : '?'} queued. OneDrive sync status is not available here.`; },
         onComplete: (results) => handleComplete(results)
       });
 
@@ -812,6 +834,22 @@
       URL.revokeObjectURL(url);
     }
 
+    async function copyDiagnosticSummary() {
+      const summary = document.getElementById('captureState').textContent + '\n' + document.getElementById('captureOutcome').textContent + '\n' + document.getElementById('checkpointStatus').textContent + '\n' + document.getElementById('debugStatus').textContent;
+      try { await navigator.clipboard.writeText(summary); document.getElementById('captureOutcome').textContent = 'Diagnostic summary copied.'; }
+      catch (_) { document.getElementById('captureOutcome').textContent = 'Could not copy. Select and copy the status messages instead.'; }
+    }
+    function showCoverage() {
+      const counts = {captured:0, failed:0, excluded:0, pending:0, unsupported:0};
+      for (const item of crawler?.resourceOutcomes?.values() || []) if (Object.hasOwn(counts,item.state)) counts[item.state]++;
+      const output = document.getElementById('coverageDetails'); output.replaceChildren();
+      const summary = document.createElement('p'); summary.textContent = Object.entries(counts).map(([key,value])=>`${key}: ${value}`).join(' · '); output.append(summary);
+      for (const item of crawler?.resourceOutcomes?.values() || []) {
+        if (!['failed','excluded','unsupported'].includes(item.state)) continue;
+        const row=document.createElement('li'); row.textContent=`${item.state}: ${item.url} — ${item.reason || item.status || 'unknown'}`; output.append(row);
+      }
+      output.hidden = false;
+    }
     function openReportModal() {
       document.getElementById('reportMarkdownContainer').textContent = currentReportJSON || "No report available.";
       document.getElementById('reportModal').style.display = 'flex';

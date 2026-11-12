@@ -1,4 +1,5 @@
 const { test, expect } = require('playwright/test');
+test.beforeEach(async ({page}) => { page.on('dialog', dialog => dialog.accept()); });
 const http = require('node:http');
 const fs = require('node:fs/promises');
 let source, origin, requests;
@@ -39,7 +40,7 @@ test('Debug saves audit and native events before completion and survives reload 
   await page.getByRole('button',{name:'Debug',exact:true}).click();
   await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
   const path=await page.evaluate(()=>debugRecorder.path);
-  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button',{name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
   await expect.poll(async()=>await fs.readFile(path,'utf8')).toContain('"event": "audit"');
   const live=await fs.readFile(path,'utf8');
@@ -66,7 +67,7 @@ test('failed Debug activation blocks capture until recording can start', async (
   await setup(page);
   await page.getByRole('button',{name:'Debug',exact:true}).click();
   await expect(page.locator('#debugStatus')).toContainText('recording could not start');
-  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button',{name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('READY — nothing is running');
   await page.unroute('**/__station/capture/debug-start');
   await page.getByRole('button',{name:'Debug',exact:true}).click();
@@ -77,7 +78,7 @@ test('transient debug delivery failure offers Resume after recovery', async ({pa
   await setup(page,'/long');
   await page.getByRole('button',{name:/^Debug/}).click();
   await expect(page.locator('#debugStatus')).toContainText('DEBUG ON');
-  await page.getByRole('button',{name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button',{name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
   await page.route('**/__station/capture/debug-events',route=>route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({error:'Synthetic transient failure'})}));
   await expect(page.locator('#debugStatus')).toContainText('DEBUG SAVE FAILED');
@@ -97,7 +98,7 @@ test('normal UI captures a multi-page non-CORS site and exports actual responses
     navigator.storage.getDirectory = () => { throw Error('OPFS is forbidden'); };
   });
   await setup(page);
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('COMPLETE — discovered resources saved');
   await expect(page.locator('#captureOutcome')).toContainText('7 responses saved');
   expect(requests).toEqual(expect.arrayContaining(['/robots.txt','/','/redirect','/second','/third','/site.css','/image.svg','/document.pdf']));
@@ -128,7 +129,7 @@ test('normal UI captures a multi-page non-CORS site and exports actual responses
 });
 test('HTTP denial is visibly a failure, not one saved page', async ({page}) => {
   await setup(page,'/denied');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
   await expect(page.locator('#captureOutcome')).toContainText('0 responses saved; 1 failed');
   await expect(page.locator('#logContainer')).toContainText('HTTP 403');
@@ -146,31 +147,31 @@ test('HTTP denial is visibly a failure, not one saved page', async ({page}) => {
 });
 test('robots exclusion is explicit and the authorised option is optional', async ({page}) => {
   await setup(page,'/blocked');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
   await expect(page.locator('#captureOutcome')).toContainText('1 excluded');
   await page.getByLabel('Robots policy:').selectOption('ignore_authorised');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('COMPLETE — discovered resources saved');
 });
 
 test('explicit imported session is optional and enables a protected fixture', async ({page}) => {
   await setup(page,'/protected');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
   await expect(page.locator('#logContainer')).toContainText('HTTP 401');
   const profile=require('../../profiles/default_polite.json');
   const configured={...profile,politeness:{...profile.politeness,min_delay_ms:250,max_delay_ms:250,max_requests_per_minute:300},
     authentication:{mode:'browser_session',allowed_domains:['127.0.0.1'],source:JSON.stringify({cookies:[{name:'session',value:'synthetic',domain:'127.0.0.1',path:'/',expires:-1}]})}};
   await page.locator('#profileFileInput').setInputFiles({name:'synthetic-profile.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(configured))});
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toHaveText('COMPLETE — discovered resources saved');
   await expect(page.locator('#captureOutcome')).toContainText('1 responses saved');
 });
 
 test('pause, resume and stop preserve an explicitly incomplete archive', async ({page}) => {
   await setup(page,'/long');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
   await page.getByRole('button', {name:'⏸️ Pause'}).click();
   await expect(page.locator('#captureState')).toHaveText('PAUSED — capture held in memory');
@@ -189,7 +190,7 @@ for (const endpoint of ['archive-chunk', 'archive-finalize']) {
       status: 507, contentType: 'application/json',
       body: JSON.stringify({error: 'Synthetic USB write failure', diagnostic: {stage: 'storage', error_type: 'OSError'}})
     }));
-    await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+    await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
     await expect(page.locator('#captureState')).toHaveText('FAILED — capture interrupted');
     await expect(page.locator('#captureOutcome')).toContainText('USB write failure');
     await expect(page.getByRole('button', {name:'📦 Show saved archive location'})).toBeDisabled();
@@ -203,16 +204,16 @@ for (const endpoint of ['archive-chunk', 'archive-finalize']) {
 
 test('reload can recover the native session without restarting the launcher', async ({page}) => {
   await setup(page,'/long');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#telemetryQueue')).not.toHaveText('0');
   await page.reload();
   await page.getByLabel('Quick capture address:').fill(origin + '/denied');
-  await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+  await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   await expect(page.locator('#captureState')).toContainText('FAILED');
   if (await page.locator('#btnRecoverNative').isVisible()) {
     await page.getByRole('button', {name:'Stop previous local capture session'}).click();
     await expect(page.locator('#btnRecoverNative')).toBeHidden();
-    await page.getByRole('button', {name:'🚀 Start Harvest'}).click();
+    await page.getByRole('button', {name:'🚀 Start a new capture'}).click();
   }
   await expect(page.locator('#captureState')).toHaveText('FAILED — no responses saved');
   await expect(page.locator('#logContainer')).toContainText('HTTP 403');
