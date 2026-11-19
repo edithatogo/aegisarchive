@@ -30,3 +30,16 @@ complete local static gate rather than silently skipped.
 - Promotion depends on a real hosted run, current finding review, and the
   binary/rule-source attestations. This PR alone is not evidence of
   scan execution or a clean security result.
+
+### Qualified parser remediation
+
+The first hosted OpenGrep run (commit ec0d550) loaded 1,098 community
+rules and reported zero findings, but correctly failed strict analysis on
+`web/lib/mirror_resources.js` line 26 because its JavaScript parser
+partially analysed a complex regex literal. The revised source expresses
+the **same constant regex** through `new RegExp(String.raw`...`, 'gi')`.
+Native Node.js verification compared original and replacement `.source`,
+`.flags` and match captures on seven synthetic inputs; the focused JS
+regression tests also cover comments, quoted greater-than signs, script
+bodies and CSS extraction. No file or rule has been excluded to make the
+scan pass. CI must independently verify the new exact head.
