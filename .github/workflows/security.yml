@@ -100,7 +100,7 @@ jobs:
       # pinning them requires an independently qualified rule-parity follow-up.
       - name: Scan complete selected source
         run: >-
-          "$RUNNER_TEMP/opengrep-bin/opengrep" scan --strict --error
+          "$RUNNER_TEMP/opengrep-bin/opengrep" scan --verbose --strict --error
           --severity WARNING --severity ERROR
           --config p/default --config p/python --config p/javascript --config p/owasp-top-ten
           --exclude-rule python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
