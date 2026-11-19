@@ -23,7 +23,7 @@
   function html(text) {
     const links = [], styles = []; let base = null, dynamic = false;
     // Tokenise tags with quoted > support and consume raw script bodies as one token.
-    const token = /<!--[\s\S]*?(?:-->|$)|<(script|style)\b((?:"[^"]*"|'[^']*'|[^'">])*)>([\s\S]*?)(?:<\/\1\s*>|$)|<([a-z][\w:-]*)\b((?:"[^"]*"|'[^']*'|[^'">])*)>/gi;
+    const token = new RegExp(String.raw`<!--[\s\S]*?(?:-->|$)|<(script|style)\b((?:"[^"]*"|'[^']*'|[^'">])*)>([\s\S]*?)(?:<\/\1\s*>|$)|<([a-z][\w:-]*)\b((?:"[^"]*"|'[^']*'|[^'">])*)>`, 'gi');
     let m;
     while ((m = token.exec(text))) {
       const tag = (m[1] || m[4] || '').toLowerCase();

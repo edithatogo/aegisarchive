@@ -69,23 +69,39 @@ jobs:
         with:
           sarif_file: sarif-results
 
-  semgrep:
-    name: Static analysis (Semgrep)
+  opengrep:
+    name: Static analysis (OpenGrep)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
-        with:
-          python-version: "3.14"
-      - run: python -m pip install --quiet -r tests/requirements-dev.txt
-      # WARNING == medium, ERROR == high. --error makes any remaining finding fail the job.
-      # The single excluded audit rule duplicates Bandit B310 (tracked via .bandit-baseline.json);
-      # cli/aegis_cli.py allow-lists http/https before urlopen.
-      - run: >
-          semgrep scan --error --severity WARNING --severity ERROR
+      - name: Install SHA-256-qualified OpenGrep v1.33.1
+        run: |
+          python3 scripts/install_opengrep.py "$RUNNER_TEMP/opengrep-bin"
+          "$RUNNER_TEMP/opengrep-bin/opengrep" --version
+      - name: Verify scanner positive and negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'eval("1 + 1")\n' > "$RUNNER_TEMP/opengrep-positive.py"
+          printf 'print("safe")\n' > "$RUNNER_TEMP/opengrep-negative.py"
+          scanner="$RUNNER_TEMP/opengrep-bin/opengrep"
+          set +e
+          "$scanner" scan --strict --error --pattern 'eval(...)' --lang python "$RUNNER_TEMP/opengrep-positive.py"
+          observed=$?
+          set -e
+          test "$observed" -eq 1
+          "$scanner" scan --strict --error --pattern 'eval(...)' --lang python "$RUNNER_TEMP/opengrep-negative.py"
+      # Preserve the prior Semgrep pack selection and one reviewed duplicate Bandit rule.
+      # WARNING == medium, ERROR == high. Any finding, warning-level analysis failure
+      # or invalid rule remains blocking. These registry packs are not yet immutable;
+      # pinning them requires an independently qualified rule-parity follow-up.
+      - name: Scan complete selected source
+        run: >-
+          "$RUNNER_TEMP/opengrep-bin/opengrep" scan --verbose --strict --error
+          --severity WARNING --severity ERROR
           --config p/default --config p/python --config p/javascript --config p/owasp-top-ten
           --exclude-rule python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
           --exclude web/lib/minisearch.min.js
