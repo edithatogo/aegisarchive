@@ -43,7 +43,7 @@ jobs:
           python -c "import json,sys; r=json.load(open('artifacts/acquire/acquisition.json')); failed=any(f.get('status')=='failed' for f in r['files']); assert r['inference_claimed'] is False; assert r['runtimes_complete'] is True; sys.exit(1 if failed or not r['runtimes_complete'] else 0)"
       - name: Retain acquisition receipts
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: locked-acquire-${{ matrix.os }}
           path: |
@@ -81,7 +81,7 @@ jobs:
         shell: bash
         run: python portable/native_platform_probe.py --output artifacts/platform-probe.json
       - name: Retain native execution receipt
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: platform-probe-${{ matrix.os }}
           path: artifacts/platform-probe.json
