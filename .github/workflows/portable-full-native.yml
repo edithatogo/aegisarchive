@@ -4,17 +4,29 @@ on:
   # Pull requests use the fast portable probe matrix instead of downloading
   # multi-gigabyte optional runtimes on every change.
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to qualify
+        type: choice
+        default: all
+        options: [all, linux, windows, macos]
 permissions:
   contents: read
 concurrency:
-  group: portable-full-native-${{ github.workflow }}-${{ github.ref }}
+  group: portable-full-native-${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform }}
   cancel-in-progress: true
 jobs:
   native:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        os: >-
+          ${{ fromJSON(
+            inputs.platform == 'linux' && '["ubuntu-latest"]' ||
+            inputs.platform == 'windows' && '["windows-latest"]' ||
+            inputs.platform == 'macos' && '["macos-15"]' ||
+            '["ubuntu-latest","windows-latest","macos-15"]'
+          ) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
