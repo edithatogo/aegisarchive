@@ -1,0 +1,3 @@
+{"ts":"2026-11-26T14:36:42Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested addressing the remaining GitHub pull requests and issues and publishing the roadmap tracks."}
+{"ts":"2026-11-26T14:36:42Z","kind":"task_started","task":"T1","actor":"codex","summary":"Integrated on an isolated worktree. Verified Python 3.15.2 embedded ZIP against publisher SHA-256 and action commit IDs against their upstream tags."}
+{"ts":"2026-11-26T14:36:42Z","kind":"blocked","task":"T4","actor":"codex","summary":"PR #91 depends on repository-standards PR #126, which has failing validate-policy, image-controls, policy-gate, and behavioral-tests checks on its current head."}

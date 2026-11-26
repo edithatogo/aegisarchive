@@ -3,42 +3,100 @@ name: Release artefacts
 on:
   release:
     types: [published]
-  workflow_dispatch:
+  workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  release:
-    permissions:
-      contents: write
-      id-token: write
+  build:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'v')
     runs-on: ubuntu-latest
     steps:
-      - name: Check out source
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-      - name: Build source archive
-        run: git archive --format=tar.gz --prefix=aegisarchive-${GITHUB_REF_NAME}/ -o aegisarchive-${GITHUB_REF_NAME}.tar.gz HEAD
-      - name: Write SHA256SUMS
-        run: sha256sum aegisarchive-${GITHUB_REF_NAME}.tar.gz > SHA256SUMS
-      - name: Generate SLSA provenance
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Build and verify source artefacts
         env:
-          ARCHIVE: aegisarchive-${{ github.ref_name }}.tar.gz
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
         run: |
-          python3 - <<'PYPROV'
-          import hashlib, json, os
-          archive = os.environ["ARCHIVE"]
-          digest = hashlib.sha256(open(archive, "rb").read()).hexdigest()
+          set -euo pipefail
+          version="$RELEASE_TAG"
+          if [[ -z "$version" ]]; then
+            version="$(git rev-parse --short=12 HEAD)"
+          fi
+          if [[ ! "$version" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "Unsupported version name" >&2
+            exit 1
+          fi
+          mkdir release
+          cd release
+          export ARCHIVE="aegisarchive-$version.tar.gz"
+          git archive --format=tar.gz --prefix="aegisarchive-$version/" -o "$ARCHIVE" HEAD
+          tar -tzf "$ARCHIVE" > archive-members.txt
+          grep -Fx "aegisarchive-$version/README.md" archive-members.txt
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          source = Path(os.environ["ARCHIVE"])
           statement = {
               "_type": "https://in-toto.io/Statement/v1",
-              "subject": [{"name": archive, "digest": {"sha256": digest}}],
+              "subject": [{"name": source.name, "digest": {"sha256": hashlib.sha256(source.read_bytes()).hexdigest()}}],
               "predicateType": "https://slsa.dev/provenance/v1",
-              "predicate": {"buildDefinition": {"buildType": "https://github.com/aegisarchive/release"}, "runDetails": {"builder": {"id": "https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"}}},
+              "predicate": {
+                  "buildDefinition": {
+                      "buildType": "https://github.com/edithatogo/aegisarchive/.github/workflows/release.yml",
+                      "externalParameters": {"revision": os.environ["GITHUB_SHA"]},
+                  },
+                  "runDetails": {"builder": {"id": "https://github.com/" + os.environ["GITHUB_REPOSITORY"] +
+                                                       "/actions/runs/" + os.environ["GITHUB_RUN_ID"]}},
+              },
           }
-          json.dump(statement, open("SLSA-provenance.json", "w"), indent=2)
-          PYPROV
-      - name: Upload release assets
+          Path("SLSA-provenance.json").write_text(json.dumps(statement, indent=2) + "\n", encoding="utf-8")
+          PY
+          sha256sum "$ARCHIVE" SLSA-provenance.json > SHA256SUMS
+          sha256sum --check SHA256SUMS
+      - name: Retain source artefacts
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: release-source-${{ github.sha }}
+          path: |
+            release/*.tar.gz
+            release/SHA256SUMS
+            release/SLSA-provenance.json
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    if: github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v')
+    needs: build
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - name: Audit runner egress
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release-source-${{ github.sha }}
+          path: release
+      - name: Publish verified assets to the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${GITHUB_REF_NAME}" aegisarchive-${GITHUB_REF_NAME}.tar.gz SHA256SUMS SLSA-provenance.json --clobber
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd release
+          sha256sum --check SHA256SUMS
+          gh release upload "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+            "aegisarchive-$RELEASE_TAG.tar.gz" SHA256SUMS SLSA-provenance.json

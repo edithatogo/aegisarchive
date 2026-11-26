@@ -50,26 +50,34 @@ jobs:
       matrix:
         language: [python, javascript-typescript]
     steps:
+      - name: Audit runner egress
+        uses: step-security/harden-runner@aebdcf6156ab6691adf63218240e476564a1ed4c # v2.23.0
+        with:
+          egress-policy: audit
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/init@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           languages: ${{ matrix.language }}
           config-file: .github/codeql/codeql-config.yml
-      - uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+      - uses: github/codeql-action/analyze@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           upload: never
           output: sarif-results
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
       - name: Gate on medium-or-higher findings
         run: python3 scripts/sarif_gate.py sarif-results/*.sarif
       - name: Upload SARIF to code scanning (always, for visibility)
         if: always()
-        uses: github/codeql-action/upload-sarif@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        uses: github/codeql-action/upload-sarif@915412ff23e8b7659517e607487dbeae018f2934 # v4.39.5
         with:
           sarif_file: sarif-results
 
-  semgrep:
+  opengrep:
+    # Keep the existing required check identity while changing the scanner.
     name: Static analysis (Semgrep)
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -77,15 +85,34 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.14"
-      - run: python -m pip install --quiet -r tests/requirements-dev.txt
-      # WARNING == medium, ERROR == high. --error makes any remaining finding fail the job.
-      # The single excluded audit rule duplicates Bandit B310 (tracked via .bandit-baseline.json);
-      # cli/aegis_cli.py allow-lists http/https before urlopen.
-      - run: >
-          semgrep scan --error --severity WARNING --severity ERROR
+          python-version: '3.15.2'
+      - name: Install SHA-256-qualified OpenGrep v1.33.1
+        run: |
+          python3 scripts/install_opengrep.py "$RUNNER_TEMP/opengrep-bin"
+          "$RUNNER_TEMP/opengrep-bin/opengrep" --version
+      - name: Verify scanner positive and negative controls
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'eval("1 + 1")\n' > "$RUNNER_TEMP/opengrep-positive.py"
+          printf 'print("safe")\n' > "$RUNNER_TEMP/opengrep-negative.py"
+          scanner="$RUNNER_TEMP/opengrep-bin/opengrep"
+          set +e
+          "$scanner" scan --strict --error --pattern 'eval(...)' --lang python "$RUNNER_TEMP/opengrep-positive.py"
+          observed=$?
+          set -e
+          test "$observed" -eq 1
+          "$scanner" scan --strict --error --pattern 'eval(...)' --lang python "$RUNNER_TEMP/opengrep-negative.py"
+      # Preserve the prior Semgrep pack selection and one reviewed duplicate Bandit rule.
+      # WARNING == medium, ERROR == high. Any finding, warning-level analysis failure
+      # or invalid rule remains blocking. These registry packs are not yet immutable;
+      # pinning them requires an independently qualified rule-parity follow-up.
+      - name: Scan complete selected source
+        run: >-
+          "$RUNNER_TEMP/opengrep-bin/opengrep" scan --verbose --strict --error
+          --severity WARNING --severity ERROR
           --config p/default --config p/python --config p/javascript --config p/owasp-top-ten
           --exclude-rule python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
           --exclude web/lib/minisearch.min.js
@@ -99,10 +126,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.14"
-      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+          python-version: '3.15.2'
+      - run: python -m pip install --quiet "$(grep '^bandit==' tests/requirements-dev.txt)"
       # -ll = medium+ severity, -ii = medium+ confidence. Baseline holds one finding in a file
       # owned by another track (see handoff.md); nothing else may be added to it.
       - run: bandit -r cli mcp -ll -ii -b .bandit-baseline.json
@@ -115,10 +142,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: "3.14"
-      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+          python-version: '3.15.2'
+      - run: python -m pip install --quiet "$(grep '^zizmor==' tests/requirements-dev.txt)"
       - run: zizmor --min-severity medium --min-confidence medium --offline .github/workflows
 
   fuzz:
@@ -129,13 +156,14 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
+          # Atheris 3.1.0 publishes wheels only through CPython 3.14.
           python-version: "3.14"
-      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "24"
-      - run: python -m pip install --quiet -r tests/requirements-dev.txt
+      - run: python -m pip install --quiet -r tests/requirements-fuzz.txt
       - name: atheris harnesses (60 s each, crash = failure)
         run: |
           set -e

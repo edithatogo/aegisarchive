@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name = "aegisarchive"
 description = "Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic engine with CDX-11 indexing and an MCP server."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.15.2,<3.16"
 license = "Apache-2.0"
 license-files = ["LICENSE", "NOTICE"]
 authors = [{ name = "Dylan Mordaunt" }]
