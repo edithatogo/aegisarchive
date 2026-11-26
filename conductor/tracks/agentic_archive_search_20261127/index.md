@@ -3,3 +3,4 @@
 - [Specification](spec.md)
 - [Implementation plan](plan.md)
 - [Evidence](evidence.jsonl)
+- [Local model benchmark](benchmark.json)

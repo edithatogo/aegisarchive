@@ -78,6 +78,26 @@ Segmented and encoded records are counted as skips. Intake checks their framing
 and any declared block digest. Payload validation requires the stored or resolved
 entity bytes. [WARC format](https://iipc.github.io/warc-specifications/specifications/warc-format/warc-1.1/)
 
+## Compare search modes
+
+Run the fixed-corpus comparison with a provisioned local model manifest.
+
+```sh
+python -m tests.benchmark_agentic_search /path/to/manifest.json
+```
+
+On macOS arm64, the locked Qwen2.5 1.5B Scout model with llama.cpp b10819
+retrieved the same three exact matches as ordinary search and recovered zero
+of six paraphrases. Both modes left the two out-of-scope queries empty and
+returned valid citations. Median query time across 11 queries was
+0.21 ms for ordinary search and 8.37 s for agentic search.
+The agent made eight model calls, including two replies rejected as invalid rewrites.
+
+The six synthetic documents came from the same indexed WARC. Both modes used the
+same literal all-terms query for their initial lookup. Timings exclude intake and
+include model hashing, startup, and inference for the agent's follow-up.
+[Benchmark receipt](../conductor/tracks/agentic_archive_search_20261127/benchmark.json)
+
 ## History and comparisons
 
 `Catalogue.compare_revisions(before_revision_id, after_revision_id)` compares

@@ -4,6 +4,8 @@ For T1, chat 01a1a4fa-a107-7502-8670-7abc4e934613 owned `codex/aegis-agentic-sea
 
 The same chat owns T2 and T3 on `codex/aegis-warc-search-20261127` in that worktree. Scope is local WARC intake, the fixed-corpus comparison, and protected publication of those changes.
 
+## Status: COMPLETED (2026-11-27 — WARC intake and local Scout comparison verified)
+
 - [x] T1 Search an indexed saved catalogue with one opt-in follow-up. (AC1, AC2, AC3)
   - **Files**: `portable/document_catalogue.py`, `portable/document_search.py`, `tests/test_agentic_search.py`, `docs/DOCUMENT_LIFECYCLE.md`, `docs/adr/README.md`.
   - **Change**: Open the saved catalogue in SQLite read-only mode. Expose ordinary keyword search by default and an explicit local model option that can supply one alternate keyword query after an empty first lookup. Reuse the documented search eligibility and citation logic.
@@ -18,7 +20,7 @@ The same chat owns T2 and T3 on `codex/aegis-warc-search-20261127` in that workt
   - **Done when**: Plain text and HTML from a saved WARC are searchable, a restricted or unknown record is ineligible, duplicates preserve their recorded identity, and a corrupt record is rejected.
   - **Do not**: Fetch missing resources or assign public handling automatically.
 
-- [ ] T3 Measure incremental retrieval value on a fixed fixture corpus. (AC4)
+- [x] T3 Measure incremental retrieval value on a fixed fixture corpus. (AC4)
   - **Files**: `tests/benchmark_agentic_search.py`, `docs/DOCUMENT_LIFECYCLE.md`, and `benchmark.json` in this track.
   - **Change**: Record expected revisions for exact, paraphrased and out-of-scope questions. Run both modes on the same prepared index. Record relevant results, incorrect citations, model calls and elapsed time.
   - **Verify**: `.venv/bin/python -m unittest tests.test_agentic_search` and `.venv/bin/python -m tests.benchmark_agentic_search /path/to/manifest.json` using the qualified offline Scout model.
