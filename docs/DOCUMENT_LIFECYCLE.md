@@ -47,8 +47,58 @@ with closing(Catalogue('saved.sqlite')) as catalogue:
     SearchIndex(catalogue).add(extract(body, 'text/html'), record['source_id'], record['revision_id'])
 ```
 
-Use the captured source URL and recorded handling for your file. Direct intake
-from WARC is the next task in the [agentic search track](../conductor/tracks/agentic_archive_search_20261127/index.md).
+Use the captured source URL and recorded handling for your file.
+
+## Index saved WARC files
+
+Choose the saved files explicitly. For archives cleared for search under the
+catalogue's public handling policy, build a new local index with the following
+command. Supply split files in capture order so revisit references can resolve.
+
+```sh
+python -m portable.archive_search_intake saved.sqlite capture.warc next.warc.gz --handling public
+python -m portable.document_search saved.sqlite 'leave approval'
+```
+
+Intake reads WARC 1.0 and 1.1, including gzip streams, and indexes eligible HTML
+and plain text. Search hits include the archive name and input number, record ID,
+capture time, record span, acquisition receipt ID, and original payload SHA-256.
+The intake output and the local `warc_inputs` table map each input number to its
+path, including archives with the same filename. Offsets in gzip inputs refer to
+the uncompressed stream.
+When selected archives overlap, intake keeps one occurrence of each identical
+record ID and reports the duplicate in the skip counts.
+
+The command reports skipped records, including unsupported formats and
+revisits whose original payload is unavailable. Use `--handling restricted`
+or `--handling unknown` for material with those labels. It is checked without
+copying its content into the search index. The output catalogue is published
+after framing and declared SHA-1 or SHA-256 digest checks. Choose a new output
+path for each build. The saved WARC files are read-only inputs.
+
+Segmented and encoded records are counted as skips. Intake checks their framing
+and any declared block digest. Payload validation requires the stored or resolved
+entity bytes. [WARC format](https://iipc.github.io/warc-specifications/specifications/warc-format/warc-1.1/)
+
+## Compare search modes
+
+Run the fixed-corpus comparison with a provisioned local model manifest.
+
+```sh
+python -m tests.benchmark_agentic_search /path/to/manifest.json
+```
+
+On macOS arm64, the locked Qwen2.5 1.5B Scout model with llama.cpp b10819
+retrieved the same three exact matches as ordinary search and recovered zero
+of six paraphrases. Both modes left the two out-of-scope queries empty and
+returned valid citations. Median query time across 11 queries was
+0.19 ms for ordinary search and 3.68 s for agentic search.
+The agent made eight model calls, including two replies rejected as invalid rewrites.
+
+The six synthetic documents came from the same indexed WARC. Both modes used the
+same literal all-terms query for their initial lookup. Timings exclude intake and
+include model hashing, startup, and inference for the agent's follow-up.
+[Benchmark receipt](../conductor/tracks/agentic_archive_search_20261127/benchmark.json)
 
 ## History and comparisons
 

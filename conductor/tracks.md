@@ -1,7 +1,7 @@
 # AegisArchive Track Registry
 
-- [ ] **Track: Opt-in agentic search for saved archives**
-  *Status: T1 implemented. WARC intake and comparison remain open.*
+- [x] **Track: Opt-in agentic search for saved archives**
+  *Status: Completed. Ordinary search remains the default after measured comparison.*
   *Link: [./tracks/agentic_archive_search_20261127/index.md](./tracks/agentic_archive_search_20261127/index.md)*
 
 - [x] **Track: Repository health and contributor safeguards**

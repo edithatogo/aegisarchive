@@ -221,3 +221,10 @@ historical references separately; chain integrity does not verify missing bytes.
 ## 2026-11-27 — repository_health_20261127
 
 Historical test fixtures can be reviewed at immutable Git locations. Fingerprints for URI findings bind the detector, commit, file, line and both scanner value fields. Keep scanner diagnostics separate from any raw credential output.
+
+## 2026-11-27 — agentic_archive_search_20261127
+
+Resolve archive offsets with an input ID even when filenames match. Verify block
+and payload digests at their respective boundaries. An actual offline model
+comparison can confirm the default search choice even when its fallback adds
+latency and recovers zero additional results.

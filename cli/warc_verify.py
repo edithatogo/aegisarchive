@@ -13,6 +13,29 @@ import gzip
 import argparse
 import re
 
+RECORD_SEPARATOR = b'\r\n\r\n'
+
+
+def header_fields(block, *, unique=()):
+    headers = {}
+    for line in block.decode('utf-8', errors='replace').split('\r\n'):
+        key, colon, value = line.partition(':')
+        if colon:
+            key = key.strip().lower()
+            if key in unique and key in headers:
+                raise ValueError(f'Duplicate {key} header')
+            headers[key] = value.strip()
+    return headers
+
+
+def parse_warc_header(block, *, unique=()):
+    headers = header_fields(block, unique=unique)
+    length = headers.get('content-length', '')
+    if not block.startswith((b'WARC/1.1\r\n', b'WARC/1.0\r\n')) or not re.fullmatch(r'[0-9]{1,18}', length):
+        raise ValueError('Malformed WARC version or Content-Length')
+    return headers, int(length)
+
+
 def read_container(path):
     """Reads a .warc or (multi-member) .warc.gz container fully into memory."""
     opener = gzip.open if path.endswith('.gz') else open
@@ -82,32 +105,20 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
 
     while pos < content_len:
         rec_start = pos
-        header_end = content.find(b"\r\n\r\n", pos)
+        header_end = content.find(RECORD_SEPARATOR, pos)
         if header_end == -1:
             corrupt_count += 1
             break
 
-        header_bytes = content[pos:header_end]
         try:
-            header_str = header_bytes.decode('utf-8', errors='replace')
-        except Exception:
+            headers, body_len = parse_warc_header(content[pos:header_end])
+        except ValueError as exc:
+            print(f"  [Warning] {exc} at offset {pos}; stopping scan.")
             corrupt_count += 1
             break
-
-        headers = {}
-        for line in header_str.split('\r\n'):
-            idx = line.find(':')
-            if idx != -1:
-                headers[line[:idx].strip().lower()] = line[idx+1:].strip()
 
         rec_type = headers.get('warc-type', 'unknown')
         target_uri = headers.get('warc-target-uri', '-')
-        raw_len = headers.get('content-length', '')
-        if not header_bytes.startswith((b'WARC/1.1\r\n', b'WARC/1.0\r\n')) or not re.fullmatch(r'[0-9]{1,18}', raw_len):
-            print(f"  [Warning] Malformed Content-Length {raw_len!r} at offset {pos}; stopping scan.")
-            corrupt_count += 1
-            break
-        body_len = int(raw_len)
 
         total_records += 1
         if rec_type == 'warcinfo':
@@ -121,7 +132,7 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
 
         rec_body_start = header_end + 4
         rec_body_end = rec_body_start + body_len
-        if rec_body_end > content_len or content[rec_body_end:rec_body_end+4] != b'\r\n\r\n':
+        if rec_body_end > content_len or content[rec_body_end:rec_body_end+4] != RECORD_SEPARATOR:
             print(f"  [Warning] Truncated record or missing terminator at offset {pos}")
             corrupt_count += 1
             break
@@ -132,7 +143,7 @@ def verify_warc(warc_path, cdx_path=None, _spans_out=None):
             # Check payload digest (skip HTTP header in response)
             expected_hex = expected_digest.split(':', 1)[1]
             if rec_type == 'response':
-                http_sep = rec_body.find(b"\r\n\r\n")
+                http_sep = rec_body.find(RECORD_SEPARATOR)
                 if http_sep == -1:
                     corrupt_count += 1
                 if http_sep != -1:
