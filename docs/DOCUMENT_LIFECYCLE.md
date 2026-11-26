@@ -47,8 +47,36 @@ with closing(Catalogue('saved.sqlite')) as catalogue:
     SearchIndex(catalogue).add(extract(body, 'text/html'), record['source_id'], record['revision_id'])
 ```
 
-Use the captured source URL and recorded handling for your file. Direct intake
-from WARC is the next task in the [agentic search track](../conductor/tracks/agentic_archive_search_20261127/index.md).
+Use the captured source URL and recorded handling for your file.
+
+## Index saved WARC files
+
+Choose the saved files explicitly. For archives cleared for search under the
+catalogue's public handling policy, build a new local index with the following
+command. Supply split files in capture order so revisit references can resolve.
+
+```sh
+python -m portable.archive_search_intake saved.sqlite capture.warc next.warc.gz --handling public
+python -m portable.document_search saved.sqlite 'leave approval'
+```
+
+Intake reads WARC 1.0 and 1.1, including gzip streams, and indexes eligible HTML
+and plain text. Search hits include the archive name and input number, record ID,
+capture time, record span, acquisition receipt ID, and original payload SHA-256.
+The intake output and the local `warc_inputs` table map each input number to its
+path, including archives with the same filename. Offsets in gzip inputs refer to
+the uncompressed stream.
+
+The command reports skipped records, including unsupported formats and
+revisits whose original payload is unavailable. Use `--handling restricted`
+or `--handling unknown` for material with those labels. It is checked without
+copying its content into the search index. The output catalogue is published
+after framing and declared SHA-1 or SHA-256 digest checks. Choose a new output
+path for each build. The saved WARC files are read-only inputs.
+
+Segmented and encoded records are counted as skips. Intake checks their framing
+and any declared block digest. Payload validation requires the stored or resolved
+entity bytes. [WARC format](https://iipc.github.io/warc-specifications/specifications/warc-format/warc-1.1/)
 
 ## History and comparisons
 

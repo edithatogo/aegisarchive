@@ -52,7 +52,7 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | contributor_experience_20260905 | T1 | done | - | - |
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
-| P1 | agentic_archive_search_20261127 | T2 | open | - | - |
+| P1 | agentic_archive_search_20261127 | T3 | in_progress | codex | - |
 | P1 | warc_gzip_export_20261127 | T1 | open | - | - |
 | P1 | cdxj_index_export_20261127 | T1 | open | - | warc_gzip_export_20261127/T2 |
 | P1 | wacz_export_20261127 | T1 | open | - | cdxj_index_export_20261127/T2 |
