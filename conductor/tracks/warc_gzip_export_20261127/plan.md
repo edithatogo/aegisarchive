@@ -11,7 +11,7 @@ Use the repository-local Python 3.15 environment and the existing hosted browser
   - **Done when**: Test independent compressed ranges, complete source-byte round trip, revisit data and bounded handling of a truncated final record.
   - **Do not**: Change the plain-WARC default or the CDX-11 index contract. Write to a partial capture.
 
-- [ ] T2 Expose a safe export command and verify publication.
+- [x] T2 Expose a safe export command and verify publication.
   - **Files**: `cli/export_mirror.py`, `cli/warc_verify.py`, `tests/test_warc_gzip_export.py`, `docs/PORTABLE_EXPORTS.md`.
   - **Change**: Add a narrow `python -m cli.export_mirror` entry point for explicit gzip export. Reject partial input or an invalid span and publish only after validated readback.
   - **Verify**: `.venv/bin/python -m unittest tests.test_warc_gzip_export tests.test_warc_python`. Expected exit code 0.

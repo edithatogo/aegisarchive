@@ -73,3 +73,16 @@ class GzipMembersTest(unittest.TestCase):
                 export_warc_gzip(self.warc, self.output)
         self.assertFalse(self.output.exists())
         self.assertEqual(self.warc.read_bytes(), original)
+
+    def test_finalization_receipt_must_match_source_bytes(self):
+        receipt = self.root / 'receipt.json'
+        data = self.warc.read_bytes()
+        metadata = {'complete': True, 'archives': {'warc': {'bytes': len(data), 'sha256': '0' * 64}}}
+        receipt.write_text(json.dumps(metadata), encoding='utf-8')
+        with self.assertRaisesRegex(ValueError, 'does not match'):
+            export_warc_gzip(self.warc, self.output)
+        self.assertFalse(self.output.exists())
+        metadata['archives']['warc']['sha256'] = hashlib.sha256(data).hexdigest()
+        receipt.write_text(json.dumps(metadata), encoding='utf-8')
+        export_warc_gzip(self.warc, self.output)
+        self.assertEqual(gzip.decompress(self.output.read_bytes()), data)

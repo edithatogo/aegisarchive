@@ -181,8 +181,8 @@
 
 ---
 
-- [ ] **Track: Record-at-a-time compressed WARC export**
-  *Status: Planned*
+- [x] **Track: Record-at-a-time compressed WARC export**
+  *Status: Completed*
   *Link: [./tracks/warc_gzip_export_20261127/index.md](./tracks/warc_gzip_export_20261127/index.md)*
 
 ---
