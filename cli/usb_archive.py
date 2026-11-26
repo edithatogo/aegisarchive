@@ -459,8 +459,14 @@ class UsbArchiveStore:
                     folder = self.folder(entry.name)
                     self.refuse_finalized(folder)
                     metadata = self.read_checkpoint(entry.name, folder)
+                    frontier = metadata['state'].get('frontier')
+                    if not isinstance(frontier, dict):
+                        frontier = {}
                     result.append({'archive_id': entry.name, 'generation': metadata['generation'],
                                    'profile_hash': metadata['profile_hash'],
+                                   'visited': len(frontier['visited']) if isinstance(frontier.get('visited'), list) else 0,
+                                   'queued': len(frontier['queue']) if isinstance(frontier.get('queue'), list) else 0,
+                                   'saved_at': frontier.get('savedAt') if isinstance(frontier.get('savedAt'), str) else None,
                                    'offsets': {kind: metadata['prefixes'][kind]['bytes'] for kind in KINDS}})
                 except (OSError, ValueError):
                     continue

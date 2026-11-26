@@ -34,3 +34,7 @@
 - [x] T6 Discover declarative lazy media (user authorized 2026-11-06).
   - Scope: web/lib/mirror_resources.js, tests/js/mirror_capture.test.js and track evidence. Add data-src gallery/media references and data-srcset without executing scripts. Keep existing capture scope and pacing. Package only while user capture runs.
   - Verify: regression failed before fix, all6mirror tests pass afterward; full baseline gate PASS; leak and whitespace checks PASS. Private offline retained-byte audit confirms148previously undiscovered image references. Generic script-only rendering remains unresolved. No native application or capture state altered.
+
+- [ ] T7 Clarify capture controls and recovery (user requested 2026-11-06).
+  - Owner: chat 01a1a4fa-a107-7502-8670-7abc4e934613, branch codex/capture-console-clarity-20261106, actual checkout /Users/doughnut/Documents/aegisarchive. Native scope: staged package only while capture is running.
+  - Scope: web/index.html, cli/usb_archive.py and tests; distinguish new capture/resume, describe controls, show checkpoint metadata and coverage, and copy diagnostics. Verify resume and storage tests, baseline, browser behavior and hosted checks before promotion.
