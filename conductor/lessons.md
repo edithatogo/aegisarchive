@@ -245,3 +245,9 @@ to a verified payload before publishing its index.
 Validate both the saved package and the application-level index. A reference
 validator's output and an independent byte-range read cover distinct failure
 modes.
+
+## 2026-11-27 — isolated_worker_replay_20261127
+
+Keep replay startup independent of DNS, give each session its own origin and
+clear displayed archive data as soon as the worker receives Stop. Report
+server shutdown after it responds.

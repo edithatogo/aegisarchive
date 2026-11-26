@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Isolated archive replay</title>
+  <script defer src="app.js"></script>
+  <style>
+    body { font: 1rem system-ui, sans-serif; max-width: 76rem; margin: 1rem auto; padding: 0 1rem; }
+    header { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+    select { max-width: min(52rem, 70vw); }
+    iframe { box-sizing: border-box; width: 100%; min-height: 65vh; border: 1px solid #6b7280; }
+  </style>
+</head>
+<body>
+  <h1>Isolated archive replay</h1>
+  <header>
+    <label>Archived page <select id="pages" disabled></select></label>
+    <button id="stop" type="button">Stop replay</button>
+  </header>
+  <p id="status" role="status">Opening the saved archive…</p>
+  <iframe id="replayFrame" title="Archived page" sandbox="allow-same-origin" hidden></iframe>
+</body>
+</html>

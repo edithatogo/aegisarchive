@@ -20,6 +20,27 @@ If a tab was lost during capture and a new start fails, use **Stop previous loca
 
 Each local capture writes request/response/failure JSONL to `archive/capture-logs/`, with the exact path shown in the UI. Status codes, byte counts and timing are retained. Credential headers and exception contents are not logged. URLs can contain private information: these logs are local and ignored by Git. Do not publish real-source logs without reviewing their contents.
 
+## Isolated replay for a saved WARC
+
+With the project's Python 3.15 environment active, run this from the AegisArchive
+folder and open the printed address in your browser.
+
+```sh
+python -m cli.replay_serve "path/to/capture.warc.gz"
+```
+
+The command accepts one saved `.warc` or `.warc.gz`. It opens a separate
+loopback origin and loads the selected archive into memory. Choose an archived
+page from the list or follow its links. The sandbox displays passive HTML and
+supported archived assets. Captured scripts and external requests are blocked.
+A link to a page absent from the archive shows a missing-resource message.
+
+**Stop replay** clears the displayed material, unregisters its worker and stops
+the local server. The next launch uses a fresh origin, including after an
+unclean shutdown. If the browser cannot activate the worker, press Ctrl+C in
+the replay terminal and open the saved file through the station’s **Offline WARC
+Viewer**.
+
 ## Reproducible acceptance
 
 Install development dependencies with `npm ci` and `npx playwright install --with-deps chromium`. Run `npm run test:capture` on macOS, Windows or Linux. The acceptance suite uses only local synthetic fixtures; it never depends on an intranet or production site. To use an installed Chrome locally, set `AEGIS_BROWSER_CHANNEL=chrome` before the command. `AEGIS_TEST_PYTHON` can select the Python command.

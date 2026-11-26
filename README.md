@@ -30,11 +30,9 @@ Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic e
 | Synthesised WARC `request` records | Implemented |
 | `.warc.gz` input in verifier and viewer | Implemented |
 | Record-compressed WARC, CDXJ and WACZ 1.1.1 export | [CLI commands and format limits](docs/PORTABLE_EXPORTS.md) |
-| Isolated service-worker replay | Planned |
+| Isolated service-worker replay | [Opt-in replay of saved WARC files](docs/CAPTURE_ACCEPTANCE.md#isolated-replay-for-a-saved-warc) |
 | Windows x64 portable Python | Maintainer preparation supported; see Windows USB setup below |
 | Offline AI features | Optional, separately qualified |
-
-Evidence limitation: features marked Planned are described in `conductor/` tracks and are not yet present in code.
 
 ### Roadmap
 
