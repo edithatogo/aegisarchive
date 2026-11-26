@@ -140,28 +140,32 @@ frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8"><meta http-equi
   'script-src \'none\'; connect-src \'none\'; form-action \'none\'; base-uri \'none\'"></head><body></body></html>';
 
 pages.addEventListener('change', () => show(pages.value).catch(reportError));
-function clearPage() {
+function clearPage(message) {
   stopped = true;
   frame.hidden = true;
-  frame.contentDocument?.body?.replaceChildren();
+  const view = frame.contentDocument;
+  if (view) {
+    view.title = '';
+    view.body?.replaceChildren();
+  }
   pages.replaceChildren();
   pages.disabled = true;
   stop.disabled = true;
+  status.textContent = message;
 }
 navigator.serviceWorker?.addEventListener('message', event => {
-  if (event.source === navigator.serviceWorker.controller && event.data === 'aegis-replay-stopped') {
-    clearPage();
-    status.textContent = stoppedMessage;
+  if (!stopped && event.source === navigator.serviceWorker.controller && event.data === 'aegis-replay-cleared') {
+    clearPage('Replay cleared. You can close this tab.');
   }
 });
 stop.addEventListener('click', async () => {
-  clearPage();
+  clearPage('Closing replay…');
   try {
     const reply = await fetch('stop', {method:'POST', mode:'same-origin', signal:AbortSignal.timeout(10000)});
     if (!reply.ok) throw new Error('Replay server did not confirm stop');
     status.textContent = stoppedMessage;
   } catch (_) {
-    status.textContent = 'Replay closed in this tab. Press Ctrl+C in the replay terminal to stop the server.';
+    status.textContent = 'Replay cleared. If the replay server is still running, press Ctrl+C in its terminal.';
   } finally {
     await registration?.unregister();
   }

@@ -125,7 +125,7 @@ test('worker replay isolation serves only the selected archive and clears it on 
   await expect.poll(() => page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
   await expect(page.locator('#replayFrame')).toBeHidden();
   await expect(page.locator('#pages option')).toHaveCount(0);
-  await expect(secondTab.getByRole('status')).toContainText('Replay stopped');
+  await expect(secondTab.getByRole('status')).toContainText('Replay cleared');
   await expect(secondTab.locator('#replayFrame')).toBeHidden();
   expect((await running.closed)[0]).toBe(0);
   await station.close();
@@ -135,6 +135,9 @@ test('worker replay starts on a fresh origin after an unclean exit and keeps the
   const ended = await replay.launch('old.warc', 'Old session');
   await page.goto(ended.address.href);
   await expect(page.frameLocator('#replayFrame').getByRole('heading', {name:'Old session'})).toBeVisible();
+  const oldSibling = await context.newPage();
+  await oldSibling.goto(ended.address.href);
+  await expect(oldSibling.frameLocator('#replayFrame').getByRole('heading', {name:'Old session'})).toBeVisible();
   ended.child.kill();
   await ended.closed;
   expect(await page.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(1);
@@ -147,6 +150,13 @@ test('worker replay starts on a fresh origin after an unclean exit and keeps the
   expect(await fresh.evaluate(() => navigator.serviceWorker.controller.scriptURL)).toBe(next.address.href + 'worker.js');
   await fresh.getByRole('button', {name:'Stop replay'}).click();
   await expect(fresh.getByRole('status')).toContainText('Replay stopped');
+
+  await page.getByRole('button', {name:'Stop replay'}).click();
+  await expect(page.getByRole('status')).toContainText('If the replay server is still running');
+  await expect(oldSibling.getByRole('status')).toContainText('Replay cleared');
+  await expect(oldSibling.locator('#replayFrame')).toBeHidden();
+  expect(await oldSibling.locator('#replayFrame').evaluate(frame => frame.contentDocument.title)).toBe('');
+  await expect.poll(() => oldSibling.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
 
   const fallback = await context.newPage();
   const unsupported = await replay.launch('fallback.warc', 'Fallback viewer');

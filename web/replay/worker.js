@@ -89,12 +89,9 @@ async function respond(request) {
     stopped = true;
     archiveRead.abort();
     archive = null;
-    const reply = await fetch(request);
-    if (reply.ok) {
-      const clients = await self.clients.matchAll({type:'window'});
-      for (const client of clients) client.postMessage('aegis-replay-stopped');
-    }
-    return reply;
+    const clients = await self.clients.matchAll({type:'window'});
+    for (const client of clients) client.postMessage('aegis-replay-cleared');
+    return fetch(request);
   }
   if (stopped || request.method !== 'GET') return absent();
   if (!url.search && (name === '' || name === 'app.js')) return fetch(request);
