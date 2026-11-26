@@ -266,11 +266,11 @@
       });
     }
 
-    rewriteStyles(text, pageUrl) {
+    rewriteStyles(text, pageUrl, assetUrlFor = record => this.blobUrlFor(record)) {
       return String(text).replace(/url\(\s*(["']?)([^)"']+)\1\s*\)/gi, (m, quote, raw) => {
         const target = this.resolveArchiveUrl(raw.trim(), pageUrl);
         const record = target && this.getRecord(target);
-        return record ? `url(${quote}${this.blobUrlFor(record)}${quote})` : 'url(data:,)';
+        return record ? `url(${quote}${assetUrlFor(record)}${quote})` : 'url(data:,)';
       });
     }
 

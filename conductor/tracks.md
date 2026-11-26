@@ -199,8 +199,8 @@
 
 ---
 
-- [ ] **Track: Isolated service-worker replay**
-  *Status: Planned*
+- [~] **Track: Isolated service-worker replay**
+  *Status: In progress*
   *Link: [./tracks/isolated_worker_replay_20261127/index.md](./tracks/isolated_worker_replay_20261127/index.md)*
 
 ---

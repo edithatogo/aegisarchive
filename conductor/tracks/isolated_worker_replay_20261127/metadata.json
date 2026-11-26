@@ -1,9 +1,9 @@
 {
   "track_id": "isolated_worker_replay_20261127",
   "type": "feature",
-  "status": "planned",
+  "status": "in_progress",
   "created_at": "2026-11-26T14:20:37Z",
-  "updated_at": "2026-11-26T14:20:37Z",
+  "updated_at": "2026-11-26T21:43:12Z",
   "description": "Isolated service-worker replay",
   "dependencies": [
     "web_console_security_20260905",
