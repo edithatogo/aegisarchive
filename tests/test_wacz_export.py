@@ -3,6 +3,7 @@ import gzip
 import hashlib
 import json
 from pathlib import Path
+import re
 import subprocess
 import sys
 from tempfile import TemporaryDirectory
@@ -111,3 +112,19 @@ class WaczPackageTest(unittest.TestCase):
                 export_wacz(self.warc, self.bundle)
         self.assertFalse(self.bundle.exists())
         self.assertEqual(self.warc.read_bytes(), original)
+
+    def test_revisit_without_http_headers_does_not_invent_a_successful_page(self):
+        payload = b'<h1>Not found</h1>' * 100
+        with closing(PythonWarcWriter(str(self.warc))) as writer:
+            writer.write_response(self.origin + '/not-found', 404, {'Content-Type': 'text/html'}, payload)
+            writer.write_response(self.origin + '/also-missing', 404, {'Content-Type': 'text/html'}, payload)
+        contents = self.warc.read_bytes()
+        prefix, _, revisit = contents.rpartition(b'WARC/1.1\r\n')
+        header, _ = revisit.split(b'\r\n\r\n', 1)
+        header = re.sub(rb'Content-Length: \d+', b'Content-Length: 0', header)
+        self.warc.write_bytes(prefix + b'WARC/1.1\r\n' + header + b'\r\n\r\n\r\n\r\n')
+        self.assertEqual(export_wacz(self.warc, self.bundle)['pages'], 0)
+        with ZipFile(self.bundle) as package:
+            rows = [json.loads(line.split(b' ', 2)[2]) for line in package.read('indexes/index.cdxj').splitlines()]
+            self.assertEqual([(row['mime'], row['status']) for row in rows],
+                             [('warc/revisit', '-'), ('text/html', '404')])

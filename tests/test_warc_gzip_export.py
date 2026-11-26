@@ -64,10 +64,13 @@ class GzipMembersTest(unittest.TestCase):
             export_warc_gzip(self.warc, self.output)
         self.assertFalse(self.output.exists())
         self.warc.write_bytes(original)
-        (self.root / 'receipt.json').write_text('{"complete": false}', encoding='utf-8')
-        with self.assertRaisesRegex(ValueError, 'does not mark'):
-            export_warc_gzip(self.warc, self.output)
-        (self.root / 'receipt.json').unlink()
+        for marker in ('archive.cdx.partial', 'receipt.partial.json', '.writer.lock'):
+            pending = self.root / marker
+            pending.touch()
+            with self.assertRaisesRegex(ValueError, 'incomplete|receipt is missing'):
+                export_warc_gzip(self.warc, self.output)
+            self.assertFalse(self.output.exists())
+            pending.unlink()
         with patch('cli.export_mirror._scan_members', side_effect=OSError('fixture interruption')):
             with self.assertRaisesRegex(OSError, 'interruption'):
                 export_warc_gzip(self.warc, self.output)
@@ -77,7 +80,7 @@ class GzipMembersTest(unittest.TestCase):
     def test_finalization_receipt_must_match_source_bytes(self):
         receipt = self.root / 'receipt.json'
         data = self.warc.read_bytes()
-        metadata = {'complete': True, 'archives': {'warc': {'bytes': len(data), 'sha256': '0' * 64}}}
+        metadata = {'complete': False, 'archives': {'warc': {'bytes': len(data), 'sha256': '0' * 64}}}
         receipt.write_text(json.dumps(metadata), encoding='utf-8')
         with self.assertRaisesRegex(ValueError, 'does not match'):
             export_warc_gzip(self.warc, self.output)

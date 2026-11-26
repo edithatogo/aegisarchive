@@ -17,9 +17,8 @@ from tempfile import TemporaryDirectory
 import zipfile
 import zlib
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urlsplit
 
-from .aegis_cli import to_surt
 from .warc_verify import (STREAM_CHUNK, copy_record_block, copy_record_bytes,
                           header_fields, parse_warc_header, read_record_header)
 
@@ -88,14 +87,16 @@ def _finalized_source(source):
     if not path.is_file() or path.suffix.lower() != '.warc' or '.partial' in path.suffixes:
         raise ValueError('Select a finalized uncompressed .warc file')
     receipt = None
-    if path.name == 'archive.warc':
-        if any(path.with_name(name).exists() for name in ('archive.warc.partial', 'receipt.partial.json')):
+    if path.name.lower() == 'archive.warc':
+        if any(path.with_name(name).exists() for name in ('archive.warc.partial', 'archive.cdx.partial', 'receipt.partial.json')):
             raise ValueError('Archive finalization is incomplete')
         receipt_path = path.with_name('receipt.json')
         if receipt_path.is_file():
             receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
-            if not isinstance(receipt, dict) or receipt.get('complete') is not True:
-                raise ValueError('Archive receipt does not mark the capture complete')
+            if not isinstance(receipt, dict) or type(receipt.get('complete')) is not bool:
+                raise ValueError('Invalid archive finalization receipt')
+        elif any(path.with_name(name).exists() for name in ('.writer.lock', 'checkpoint.json')):
+            raise ValueError('Finalized archive receipt is missing')
     return path, receipt
 
 
@@ -224,12 +225,16 @@ def _index_capture(stream, headers, length, originals):
     url = headers.get('warc-target-uri', '')
     if url.startswith('<') and url.endswith('>'):
         url = url[1:-1]
-    parsed = urlparse(url)
+    parsed = urlsplit(url)
     if parsed.scheme not in ('http', 'https') or not parsed.hostname or parsed.username is not None or any(c.isspace() for c in url):
         raise ValueError('Invalid HTTP capture URL for CDXJ')
-    if parsed.port == 0:
+    port = parsed.port
+    if port == 0:
         raise ValueError('Invalid HTTP capture port')
-    key = to_surt(parsed._replace(path=parsed.path or '/').geturl()).lower()
+    host = f'[{parsed.hostname}]' if ':' in parsed.hostname else ','.join(reversed(parsed.hostname.split('.')))
+    authority = f'{host}:{port}' if port is not None else host
+    query = '?' + parsed.query if parsed.query else ''
+    key = f"{authority}){parsed.path or '/'}{query}".lower()
     try:
         stamp = datetime.fromisoformat(headers.get('warc-date', ''))
     except ValueError:
@@ -245,7 +250,7 @@ def _index_capture(stream, headers, length, originals):
     block_label = headers.get('warc-block-digest')
     block = _digest_spec(block_label) if block_label is not None else None
     mime = headers.get('content-type', '').split(';', 1)[0].strip().lower()
-    status = '200'
+    status = '-'
     if kind in ('response', 'revisit') and length:
         if mime != 'application/http':
             raise ValueError('Expected archived HTTP response headers')
@@ -255,10 +260,18 @@ def _index_capture(stream, headers, length, originals):
         if not match or not 100 <= int(match[1]) <= 599:
             raise ValueError('Invalid archived HTTP status')
         status = match[1].decode('ascii')
-        fields = header_fields(raw, unique=('content-type', 'transfer-encoding'))
+        fields = header_fields(raw, unique=('content-type', 'content-length', 'transfer-encoding'))
         if fields.get('transfer-encoding', 'identity').lower() != 'identity':
             raise ValueError('CDXJ requires a decoded archived HTTP payload')
         mime = fields.get('content-type', '').split(';', 1)[0].strip().lower()
+        if kind == 'response':
+            declared_length = fields.get('content-length')
+            if status.startswith('1') or status in ('204', '304'):
+                if length:
+                    raise ValueError('Unexpected archived HTTP payload for status')
+            elif declared_length is not None and (not re.fullmatch(r'[0-9]{1,18}', declared_length)
+                                                  or int(declared_length) != length):
+                raise ValueError('Archived HTTP Content-Length does not match the payload')
         if block:
             block[0].update(raw)
     elif kind == 'response':
@@ -380,7 +393,7 @@ def _wacz_pages(members):
         {'id': str(member['offset']), 'url': capture['url'], 'ts': capture['date']}
         for member in members if (capture := member['capture'])
         and capture['page_mime'] in ('text/html', 'application/xhtml+xml')
-        and 200 <= int(capture['status']) < 300
+        and capture['status'].startswith('2')
     ]
 
 

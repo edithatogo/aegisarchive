@@ -34,6 +34,7 @@ jobs:
         run: |
           python -m venv "$RUNNER_TEMP/wacz-validation"
           validator_python="$RUNNER_TEMP/wacz-validation/bin/python"
+          "$validator_python" -VV
           "$validator_python" -m pip install --require-hashes -r tests/requirements-wacz-validation.txt
           echo "AEGIS_WACZ_PYTHON=$validator_python" >> "$GITHUB_ENV"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0

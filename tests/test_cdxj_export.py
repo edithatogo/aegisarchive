@@ -107,3 +107,24 @@ class CdxjRowsTest(unittest.TestCase):
         failed = subprocess.run([*command, 'verify-cdxj', *args], capture_output=True, text=True)
         self.assertEqual(failed.returncode, 2)
         self.assertIn('does not match', failed.stderr)
+
+    def test_path_parameters_and_http_length(self):
+        warc = self.root / 'editions.warc'
+        compressed = self.root / 'editions.warc.gz'
+        with closing(PythonWarcWriter(str(warc))) as writer:
+            for edition, status in (('One', 200), ('Two', 304)):
+                writer.write_response('https://example.test/path;edition=' + edition, status,
+                                      {'Content-Type': 'text/html'}, b'first' if status == 200 else b'')
+        source = warc.read_bytes().replace(b'Content-Length: 0\r\n\r\n', b'Content-Length: 9\r\n\r\n')
+        warc.write_bytes(source)
+        export_warc_gzip(warc, compressed)
+        export_cdxj(compressed, self.index)
+        self.assertEqual([row.split(' ')[0] for row in self.index.read_text().splitlines()],
+                         ['test,example)/path;edition=one', 'test,example)/path;edition=two'])
+        compressed.unlink()
+        self.index.unlink()
+        warc.write_bytes(source.replace(b'Content-Length: 5\r\n\r\nfirst', b'Content-Length: 9\r\n\r\nfirst'))
+        export_warc_gzip(warc, compressed)
+        with self.assertRaisesRegex(ValueError, 'HTTP Content-Length'):
+            export_cdxj(compressed, self.index)
+        self.assertFalse(self.index.exists())
