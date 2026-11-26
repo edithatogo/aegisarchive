@@ -342,6 +342,58 @@ class CaptureBridgeTests(unittest.TestCase):
         reopened = self.bridge.archives.reopen(archive['archive_id'], 1, 'a'*64)
         self.assertEqual(reopened['state'], payload['state'])
 
+    def test_checkpoint_windows_storage_error_retains_safe_diagnostic_and_checkpoint(self):
+        archive = self.bridge.archives.start()
+        payload = {'archive_id': archive['archive_id'], 'generation': 0,
+                   'profile_hash': 'a' * 64, 'lease': archive['lease'], 'state': {'saved': True}}
+        with self.post_capture('archive-checkpoint', payload) as response:
+            self.assertEqual(json.load(response)['generation'], 1)
+        checkpoint = self.bridge.archives.folder(archive['archive_id']) / 'checkpoint.json'
+        previous = checkpoint.read_bytes()
+        payload['generation'] = 1
+        self.bridge.debug.start()
+        error = PermissionError(13, 'private error text', 'C:\\private\\capture')
+        error.winerror = 32
+        with mock.patch('cli.usb_archive.os.replace', side_effect=error):
+            with self.assertRaises(urllib.error.HTTPError) as caught:
+                self.post_capture('archive-checkpoint', payload)
+        self.assertEqual(caught.exception.code, 507)
+        result = json.load(caught.exception)
+        caught.exception.close()
+        details = result['diagnostic']
+        self.assertEqual(details['stage'], 'checkpoint')
+        self.assertEqual(details['error_type'], 'OSError')
+        self.assertEqual(details['cause_type'], 'PermissionError')
+        self.assertEqual(details['operation'], 'archive-checkpoint')
+        self.assertEqual(details['errno'], 13)
+        self.assertEqual(details['winerror'], 32)
+        self.assertEqual(details['code_file'], 'usb_archive.py')
+        self.assertEqual(details['code_function'], 'publish_checkpoint')
+        self.assertIn('Windows error 32', result['error'])
+        self.assertNotIn('private', json.dumps(result))
+        self.assertEqual(checkpoint.read_bytes(), previous)
+        events = [json.loads(line) for line in self.bridge.debug.path.read_text().splitlines()]
+        self.assertEqual(events[-1]['event'], 'native_failure')
+        self.assertEqual(events[-1]['winerror'], 32)
+        self.assertNotIn('private', json.dumps(events))
+        resumed = self.bridge.archives.reopen(archive['archive_id'], 1, 'a' * 64)
+        self.assertEqual(resumed['state'], {'saved': True})
+
+    def test_storage_diagnostic_log_failure_does_not_hide_original_error(self):
+        error = PermissionError(13, 'private error text', 'C:\\private\\capture')
+        error.winerror = 32
+        with mock.patch.object(self.bridge.debug, 'native', side_effect=OSError('private log error')):
+            with mock.patch.object(self.bridge.archives, 'checkpoint', side_effect=error):
+                with self.assertRaises(urllib.error.HTTPError) as caught:
+                    self.post_capture('archive-checkpoint', {'archive_id': 'a', 'generation': 0,
+                        'profile_hash': 'a', 'lease': 'b', 'state': {}})
+        result = json.load(caught.exception)
+        caught.exception.close()
+        self.assertEqual(caught.exception.code, 507)
+        self.assertEqual(result['diagnostic']['winerror'], 32)
+        self.assertTrue(result['diagnostic']['diagnostic_log_failed'])
+        self.assertNotIn('private', json.dumps(result))
+
     def test_diagnostic_write_failure_does_not_mask_original_or_echo_unknown_path(self):
         from cli.usb_archive import CheckpointLimitError
         with mock.patch.object(self.bridge.debug, 'native', side_effect=OSError('secret')):

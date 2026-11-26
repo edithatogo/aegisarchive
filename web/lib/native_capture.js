@@ -140,7 +140,7 @@ class UsbArchiveStreamer {
       }
     } catch (error) {
       this.failed = true;
-      error.diagnostic = {stage: 'storage', error_type: 'StorageError'};
+      error.diagnostic = {stage: 'storage', error_type: 'StorageError', ...error.diagnostic};
       throw error;
     }
   }
@@ -157,13 +157,17 @@ function captureFailureReport(error, crawler) {
   const diagnostic = error.diagnostic || {};
   const event = {stage:diagnostic.stage || 'capture', error_type:diagnostic.error_type || error.name || 'Error',
     timestamp:new Date().toISOString()};
-  for (const key of ['reason_code','operation','code_file','code_function'])
+  for (const key of ['reason_code','operation','code_file','code_function','cause_type'])
     if (typeof diagnostic[key] === 'string' && /^[\w .:/()-]{1,100}$/.test(diagnostic[key])) event[key]=diagnostic[key];
-  for (const key of ['bytes','limit_bytes','code_line'])
+  for (const key of ['bytes','limit_bytes','code_line','errno','winerror'])
     if (Number.isSafeInteger(diagnostic[key]) && diagnostic[key]>=0) event[key]=diagnostic[key];
   if (event.error_type === 'CheckpointLimitError' && ['state_limit','metadata_limit','request_limit'].includes(event.reason_code))
     event.error_message = `Checkpoint ${event.reason_code}: ${event.bytes} bytes exceeds ${event.limit_bytes} byte limit. Previous checkpoint retained; narrow the capture scope.`;
-  else event.error_message = `${event.error_type} during ${event.stage}${event.code_file ? ' at '+event.code_file+':'+event.code_line+' ('+event.code_function+')' : ''}.`;
+  else {
+    const windowsReason = {32:'file is in use',33:'part of the file is locked'}[event.winerror];
+    const systemCode = event.winerror !== undefined ? ' (Windows error '+event.winerror+(windowsReason ? ': '+windowsReason : '')+')' : event.errno !== undefined ? ' (OS error '+event.errno+')' : '';
+    event.error_message = `${event.cause_type || event.error_type} during ${event.stage}${event.code_file ? ' at '+event.code_file+':'+event.code_line+' ('+event.code_function+')' : ''}${systemCode}.`;
+  }
   if (diagnostic.diagnostic_log_failed === true) event.diagnostic_log_failed = true;
   const counts=Object.fromEntries(['captured','excluded','failed','pending','unsupported'].map(k=>[k,0]));
   for (const item of crawler?.resourceOutcomes?.values() || []) if (item.state in counts) counts[item.state]++;

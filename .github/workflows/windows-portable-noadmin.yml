@@ -18,6 +18,19 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Set up Python 3.15 for storage diagnostics
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.15.2'
+      - name: Check Windows storage diagnostics and checkpoint recovery
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          $testPython = Join-Path $PWD '.venv/Scripts/python.exe'
+          $actualVersion = & $testPython -c 'import sys; print(".".join(map(str, sys.version_info[:3])))'
+          if ($actualVersion -ne '3.15.2') { throw "Unexpected Python version: $actualVersion" }
+          & $testPython -m unittest tests.test_capture_bridge.CaptureBridgeTests.test_checkpoint_windows_storage_error_retains_safe_diagnostic_and_checkpoint tests.test_capture_bridge.CaptureBridgeTests.test_storage_diagnostic_log_failure_does_not_hide_original_error -v
+          if ($LASTEXITCODE -ne 0) { throw 'Windows storage diagnostics regression failed' }
       - name: Prepare the USB embedded runtime
         shell: pwsh
         run: ./scripts/prepare_windows_runtime.ps1

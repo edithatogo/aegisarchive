@@ -337,6 +337,37 @@ def record_failure(bridge, details):
         details['diagnostic_log_failed'] = True
 
 
+def storage_failure_details(path, error):
+    """Return bounded OS diagnostics without exception text or private paths."""
+    operations = {'debug-start', 'debug-status', 'debug-events', 'archive-start',
+                  'archive-chunk', 'archive-discover', 'archive-checkpoint',
+                  'archive-reopen', 'archive-finalize', 'start', 'fetch',
+                  'diagnostics', 'recover', 'stop', 'session'}
+    operation = path.rsplit('/', 1)[-1]
+    if operation not in operations:
+        operation = 'unknown'
+    details = {'stage': 'checkpoint' if operation == 'archive-checkpoint' else 'storage',
+               'error_type': 'OSError', 'operation': operation}
+    cause_type = type(error).__name__
+    if cause_type in {'OSError', 'PermissionError', 'FileNotFoundError', 'FileExistsError',
+                      'IsADirectoryError', 'NotADirectoryError', 'BlockingIOError', 'TimeoutError'}:
+        details['cause_type'] = cause_type
+    for name in ('errno', 'winerror'):
+        value = getattr(error, name, None)
+        if type(value) is int and 0 <= value <= 2**31 - 1:
+            details[name] = value
+    # Avoid further filesystem I/O while reporting a possible disk failure.
+    source_dir = os.path.normcase(os.path.abspath(os.path.dirname(__file__)))
+    frame = error.__traceback__
+    while frame is not None:
+        code = frame.tb_frame.f_code
+        if os.path.normcase(os.path.abspath(os.path.dirname(code.co_filename))) == source_dir:
+            details.update(code_file=os.path.basename(code.co_filename),
+                           code_function=code.co_name, code_line=frame.tb_lineno)
+        frame = frame.tb_next
+    return details
+
+
 def handle(handler):
     """Handle only the capture API; caller retains station Host/path guards."""
     path = handler.path.split('?', 1)[0]
@@ -427,9 +458,16 @@ def handle(handler):
     except CaptureFailure as error:
         body = json.dumps({'error': str(error), 'diagnostic': error.details}).encode('utf-8')
         handler.send_response(400)
-    except OSError:
-        body = json.dumps({'error': 'USB storage failed; capture was not saved successfully. Check drive access and free space.',
-                           'diagnostic': {'stage': 'storage', 'error_type': 'OSError'}}).encode('utf-8')
+    except OSError as error:
+        details = storage_failure_details(path, error)
+        record_failure(bridge, details)
+        message = f"{details.get('cause_type', 'OSError')} during {details['operation']}"
+        if 'winerror' in details:
+            message += f" (Windows error {details['winerror']})"
+        elif 'errno' in details:
+            message += f" (OS error {details['errno']})"
+        body = json.dumps({'error': message + '; see the saved diagnostic for details.',
+                           'diagnostic': details}).encode('utf-8')
         handler.send_response(507)
     except (ValueError, KeyError, TypeError, AttributeError) as error:
         # Code locations reveal the actual failing operation without serializing
