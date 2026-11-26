@@ -1,0 +1,13 @@
+{
+  "track_id": "wacz_export_20261127",
+  "type": "feature",
+  "status": "planned",
+  "created_at": "2026-11-26T14:20:37Z",
+  "updated_at": "2026-11-26T14:20:37Z",
+  "description": "WACZ export from a finalized capture",
+  "dependencies": [
+    "warc_gzip_export_20261127",
+    "cdxj_index_export_20261127",
+    "portable_exports_20260906"
+  ]
+}

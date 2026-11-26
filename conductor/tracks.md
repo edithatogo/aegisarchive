@@ -170,3 +170,27 @@
 - [x] **Track: Structured capture diagnostics**
   *Status: Completed — structured JSON diagnostics, safe intake, and regression workflow merged in PR #79*
   *Link: [./tracks/capture_diagnostics_20260909/index.md](./tracks/capture_diagnostics_20260909/index.md)*
+
+---
+
+- [ ] **Track: Record-at-a-time compressed WARC export**
+  *Status: Planned*
+  *Link: [./tracks/warc_gzip_export_20261127/index.md](./tracks/warc_gzip_export_20261127/index.md)*
+
+---
+
+- [ ] **Track: CDXJ index for compressed WARC**
+  *Status: Planned*
+  *Link: [./tracks/cdxj_index_export_20261127/index.md](./tracks/cdxj_index_export_20261127/index.md)*
+
+---
+
+- [ ] **Track: WACZ export from a finalized capture**
+  *Status: Planned*
+  *Link: [./tracks/wacz_export_20261127/index.md](./tracks/wacz_export_20261127/index.md)*
+
+---
+
+- [ ] **Track: Isolated service-worker replay**
+  *Status: Planned*
+  *Link: [./tracks/isolated_worker_replay_20261127/index.md](./tracks/isolated_worker_replay_20261127/index.md)*

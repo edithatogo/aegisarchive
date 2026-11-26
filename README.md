@@ -38,7 +38,7 @@ Evidence limitation: features marked Planned are described in `conductor/` track
 
 ### Roadmap
 
-AegisArchive is planned to expand with portable runtimes and offline intelligence tools. See [conductor/tracks.md](conductor/tracks.md) for active track specifications and development status.
+The [Conductor roadmap](conductor/tracks.md) has executable tracks for compressed WARC, CDXJ, WACZ export, and isolated service-worker replay. The [ADR handoff](docs/adr/README.md#roadmap-handoff) records the dependencies and remaining design decisions.
 
 ## Install
 

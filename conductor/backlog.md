@@ -50,6 +50,10 @@ Archived tracks in `conductor/tracks.md` are `done` here. Hosted G1 work already
 | P2 | contributor_experience_20260905 | T1 | done | - | - |
 | P2 | release_and_packaging_20260905 | T1 | done | - | - |
 | P3 | future_capabilities_20260905 | T0 | done | - | - |
+| P1 | warc_gzip_export_20261127 | T1 | open | - | - |
+| P1 | cdxj_index_export_20261127 | T1 | open | - | warc_gzip_export_20261127/T2 |
+| P1 | wacz_export_20261127 | T1 | open | - | cdxj_index_export_20261127/T2 |
+| P2 | isolated_worker_replay_20261127 | T1 | open | - | - |
 
 The archived baseline and static capture are complete. Extension work is tracked individually; do not use the former blanket count of nine pending tracks because several registry/backlog statuses were stale. Deployment-specific work remains outside engine completion gates.
 
