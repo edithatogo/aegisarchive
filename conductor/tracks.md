@@ -194,3 +194,9 @@
 - [ ] **Track: Isolated service-worker replay**
   *Status: Planned*
   *Link: [./tracks/isolated_worker_replay_20261127/index.md](./tracks/isolated_worker_replay_20261127/index.md)*
+
+---
+
+- [~] **Track: Workflow and dependency reconciliation**
+  *Status: In progress*
+  *Link: [./tracks/workflow_reconciliation_20261127/index.md](./tracks/workflow_reconciliation_20261127/index.md)*

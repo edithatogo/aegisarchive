@@ -4,7 +4,7 @@
 Subcommands (default: all):
   leak    mirror of the leak-prevention gate in .github/workflows/ci.yml
   test    python unittest discovery (tests/) + station tests + node --test tests/js
-  static  bandit / semgrep / gitleaks / zizmor when installed (skipped otherwise)
+  static  bandit / OpenGrep / gitleaks / zizmor (OpenGrep required; others optional)
   fuzz    fuzz harness smoke runs (tests/fuzz/*.py without atheris)
   all     leak, test, static, fuzz in that order
 
@@ -78,7 +78,7 @@ def check_static():
     rc = 0
     tools = [
         ("bandit", ["bandit", "-q", "-r", "cli", "mcp", "-ll", "-ii", "-b", ".bandit-baseline.json"]),
-        ("semgrep", ["semgrep", "scan", "--quiet", "--error", "--severity", "WARNING", "--severity", "ERROR",
+        ("opengrep", ["opengrep", "scan", "--quiet", "--strict", "--error", "--severity", "WARNING", "--severity", "ERROR",
                      "--config", "p/default", "--config", "p/python", "--config", "p/javascript",
                      "--config", "p/owasp-top-ten",
                      "--exclude-rule", "python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected",
@@ -90,7 +90,9 @@ def check_static():
         if shutil.which(name):
             rc |= _run(cmd)
         else:
-            print("skip: %s not installed" % name)
+            print(("%s: required scanner not installed" if name == "opengrep" else "skip: %s not installed") % name)
+            if name == "opengrep":
+                rc |= 1
     return rc
 
 

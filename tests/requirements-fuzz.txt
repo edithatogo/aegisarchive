@@ -1,0 +1,2 @@
+# Coverage-guided CI fuzzing on the qualified Linux runner.
+atheris==3.1.0

@@ -154,7 +154,7 @@ test('measured capture reload recovery and disconnected replay',async({page,brow
     capture:null,offline:null,authentication:null,recovery:null,launcher:null,artifacts:{}};
   observations.runtime.browser={name:browser.browserType().name(),version:browser.version(),
     playwright_version:require('playwright/package.json').version};
-  expect(observations.runtime.browser.playwright_version).toBe('1.63.0');
+  expect(observations.runtime.browser.playwright_version).toBe(require('../../package-lock.json').packages['node_modules/playwright'].version);
   const requests=[];
   const secret='synthetic-t2-cookie-value';
   let expired=false,holdSecond=false,heldResponse=null,closed=false,replayContext,station;

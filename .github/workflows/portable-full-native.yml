@@ -4,17 +4,29 @@ on:
   # Pull requests use the fast portable probe matrix instead of downloading
   # multi-gigabyte optional runtimes on every change.
   workflow_dispatch:
+    inputs:
+      platform:
+        description: Platform to qualify
+        type: choice
+        default: all
+        options: [all, linux, windows, macos]
 permissions:
   contents: read
 concurrency:
-  group: portable-full-native-${{ github.workflow }}-${{ github.ref }}
+  group: portable-full-native-${{ github.workflow }}-${{ github.ref }}-${{ inputs.platform }}
   cancel-in-progress: true
 jobs:
   native:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-14]
+        os: >-
+          ${{ fromJSON(
+            inputs.platform == 'linux' && '["ubuntu-latest"]' ||
+            inputs.platform == 'windows' && '["windows-latest"]' ||
+            inputs.platform == 'macos' && '["macos-15"]' ||
+            '["ubuntu-latest","windows-latest","macos-15"]'
+          ) }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 180
     steps:
@@ -28,6 +40,9 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y patchelf zlib1g-dev
           df -h .
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
       - name: Write pinned licence and source inventory
         shell: bash
         run: python portable/provision_native.py --inventory artifacts/full-native/native-source-inventory.json
@@ -45,7 +60,7 @@ jobs:
         run: python portable/check_native_receipt.py artifacts/full-native/native-qualification.json
       - name: Retain native receipts and provisioning logs
         if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: full-native-${{ matrix.os }}
           path: |

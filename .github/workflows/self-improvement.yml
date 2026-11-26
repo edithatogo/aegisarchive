@@ -2,12 +2,11 @@ name: Self-Improvement Loop
 
 on:
   schedule:
-    - cron: '17 3 * * 1'   # weekly, Monday 03:17 UTC
+    - cron: '17 3 * * 1'
   workflow_dispatch: {}
 
 permissions:
-  contents: write
-  issues: write
+  contents: read
 
 concurrency:
   group: self-improvement
@@ -18,92 +17,52 @@ jobs:
     name: Claims & Track Health Audit
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
-
-      - name: Set up Python
-        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.14'
-
+          python-version: '3.15.2'
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
       - name: Baseline tests
         id: baseline
         continue-on-error: true
+        shell: bash
         run: |
           set -o pipefail
           {
-            git ls-files '*.py' | xargs python3 -m py_compile && echo "py_compile: OK"
-            python3 cli/test_station_hardening.py 2>&1 | tail -n 3
-            if [ -d tests ]; then python3 -m unittest discover -s tests -p 'test_*.py' 2>&1 | tail -n 3; fi
-            if [ -d tests/js ]; then node --test tests/js 2>&1 | tail -n 5; fi
-          } | tee baseline.txt
-
-      - name: Claims audit (report mode)
-        run: python3 scripts/claims_audit.py --allow-fail | tee claims.md
-
-      - name: Track health
-        run: python3 scripts/track_health.py | tee health.md
-
-      - name: Assemble report
+            git ls-files -z '*.py' | xargs -0 python -m py_compile &&
+              python scripts/gate.py test
+          } 2>&1 | tee baseline.txt
+      - name: Claims and track health
         run: |
-          mkdir -p audits/latest
+          python scripts/claims_audit.py --allow-fail > claims.md
+          python scripts/track_health.py > health.md
+      - name: Assemble report
+        env:
+          BASELINE_OUTCOME: ${{ steps.baseline.outcome }}
+        run: |
           {
             echo "# Self-improvement report"
             echo
-            echo "Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ) from commit ${GITHUB_SHA::7}."
+            echo "Source revision $GITHUB_SHA"
             echo
-            echo "## Baseline tests"
+            echo "Baseline tests $BASELINE_OUTCOME. Full test output is in the report artifact."
             echo
-            echo '```'
-            cat baseline.txt
-            echo '```'
-            echo
-            echo "## Claims audit"
-            echo
-            cat claims.md
-            echo
-            cat health.md
-            echo
-            echo "## How to act on this"
-            echo
-            echo "Each MISMATCH or finding should become a row under \`## Proposed\` in \`conductor/backlog.md\`, then a task in the owning track. Follow \`conductor/implementation_contract.md\`."
-          } > audits/latest/self-improvement.md
-          echo "REPORT_PATH=audits/latest/self-improvement.md" >> "$GITHUB_ENV"
-
-      - name: Commit report
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add audits/latest/self-improvement.md
-          if git diff --cached --quiet; then
-            echo "Report unchanged; nothing to commit."
-            exit 0
-          fi
-          git commit -m "chore(audits): weekly self-improvement report [skip ci]"
-          git pull --rebase origin "${GITHUB_REF_NAME}"
-          git push origin "HEAD:${GITHUB_REF_NAME}"
-
-      - name: Upsert self-improvement issue
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          gh label create self-improvement --description "Automated weekly audit findings" --color 0E8A16 --force
-          TITLE="Self-improvement report (automated)"
-          {
-            echo "Automated weekly audit. Full report: [\`audits/latest/self-improvement.md\`](https://github.com/${GITHUB_REPOSITORY}/blob/${GITHUB_REF_NAME}/audits/latest/self-improvement.md)"
-            echo
-            cat claims.md
-            echo
-            cat health.md
-            echo
-            echo "_Last run: $(date -u +%Y-%m-%dT%H:%M:%SZ) · workflow run [#${GITHUB_RUN_NUMBER}](https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID})_"
-          } > issue_body.md
-          EXISTING=$(gh issue list --label self-improvement --state open --json number --jq '.[0].number // empty')
-          if [ -n "$EXISTING" ]; then
-            gh issue edit "$EXISTING" --title "$TITLE" --body-file issue_body.md
-            echo "Updated issue #$EXISTING"
-          else
-            gh issue create --title "$TITLE" --label self-improvement --body-file issue_body.md
-          fi
+            cat claims.md health.md
+          } > self-improvement.md
+          cat self-improvement.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Retain report
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: self-improvement-${{ github.sha }}
+          path: |
+            self-improvement.md
+            baseline.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Require baseline success
+        if: steps.baseline.outcome == 'failure'
+        run: exit 1

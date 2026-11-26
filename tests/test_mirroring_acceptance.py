@@ -19,6 +19,8 @@ class MirroringAcceptanceTests(unittest.TestCase):
         (self.root / 'scripts').mkdir()
         # Explicit bytes keep fixture identity independent of host newlines.
         (self.root / 'scripts/implementation.py').write_bytes(b'implementation = 1\nsecond = 2\n')
+        self.lock = self.root / 'package-lock.json'
+        self.lock.write_text(json.dumps({'packages': {'node_modules/playwright': {'version': '1.63.0'}}}))
         fixture = self.root / 'tests/browser/fixtures/mirroring-site.json'
         fixture.parent.mkdir(parents=True)
         fixture.write_text(json.dumps({'/index.html': {'mime': 'text/html', 'body': 'fixture'}}))
@@ -85,10 +87,18 @@ class MirroringAcceptanceTests(unittest.TestCase):
         self.assertEqual(acceptance.receipt(self.output, path)['qualification_status'], 'passed')
         self.assertTrue(acceptance.check(self.output))
 
+    def test_historical_receipt_uses_its_own_lockfile(self):
+        path, _ = self.observations()
+        acceptance.receipt(self.output, path)
+        self.lock.write_text(json.dumps({'packages': {'node_modules/playwright': {'version': '1.65.1'}}}))
+        self.git('add', 'package-lock.json')
+        self.git('-c', 'user.name=Contract Test', '-c', 'user.email=test@example.invalid', 'commit', '-qm', 'update lock')
+        self.assertTrue(acceptance.check(self.output))
+
     def test_supported_numeric_runtime_required(self):
         valid = {'python': '3.9.0', 'browser': {'name': 'chromium',
                  'version': '149.0.0.0', 'playwright_version': '1.63.0'}}
-        self.assertEqual(acceptance.runtime_status(valid), 'passed')
+        self.assertEqual(acceptance.runtime_status(valid, '1.63.0'), 'passed')
         for key, values in {
                 'python': ('3.8.20', '3', '3.9', 'unknown', 'fake', '3.11.0rc1', ''),
                 'name': ('firefox', 'webkit', 'unknown', 'fake', ''),
@@ -98,12 +108,12 @@ class MirroringAcceptanceTests(unittest.TestCase):
             original = target[key]
             for value in values:
                 target[key] = value
-                self.assertEqual(acceptance.runtime_status(valid), 'failed', (key, value))
+                self.assertEqual(acceptance.runtime_status(valid, '1.63.0'), 'failed', (key, value))
             target[key] = None
-            self.assertEqual(acceptance.runtime_status(valid), 'pending')
+            self.assertEqual(acceptance.runtime_status(valid, '1.63.0'), 'pending')
             target[key] = True
             with self.assertRaises(ValueError):
-                acceptance.runtime_status(valid)
+                acceptance.runtime_status(valid, '1.63.0')
             target[key] = original
 
     def test_unknown_browser_cannot_be_promoted_by_status_flip(self):

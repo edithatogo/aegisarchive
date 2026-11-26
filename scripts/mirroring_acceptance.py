@@ -21,9 +21,8 @@ from pathlib import Path, PurePosixPath, PureWindowsPath
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE = 'tests/browser/fixtures/mirroring-site.json'
 SCHEMA = 'aegis.mirroring-acceptance.v2'
-# pyproject.toml requires >=3.9; package.json/package-lock.json pin Playwright.
+# Historical receipts were qualified with Python 3.9 or newer.
 MINIMUM_PYTHON = (3, 9, 0)
-PLAYWRIGHT_VERSION = '1.63.0'
 MAX_JSON_BYTES = 4 * 1024 * 1024
 MAX_ARTIFACT_BYTES = 64 * 1024 * 1024
 MEASUREMENTS = {
@@ -203,7 +202,7 @@ def runtime():
             'python': platform.python_version(), 'browser': None}
 
 
-def runtime_status(observed):
+def runtime_status(observed, playwright_version):
     """Qualify only numeric supported Python and the pinned Chromium harness."""
     if observed is None:
         return 'pending'
@@ -229,7 +228,7 @@ def runtime_status(observed):
         return 'failed'
     if version is not None and not re.fullmatch(r'[0-9]+(?:\.[0-9]+){1,3}', version):
         return 'failed'
-    if playwright is not None and playwright != PLAYWRIGHT_VERSION:
+    if playwright is not None and playwright != playwright_version:
         return 'failed'
     return 'pending' if pending else 'passed'
 
@@ -317,7 +316,9 @@ def build(output, observations_path=None, enforce_runtime=True, recorded_source=
             elif value != source or not source['worktree_clean']:
                 status = 'failed'
         observed_runtime = observations.get('runtime')
-        runtime_qualification = runtime_status(observed_runtime)
+        lock = (json.loads(blobs['package-lock.json']) if blobs is not None
+                else load(safe_path(ROOT, 'package-lock.json')))
+        runtime_qualification = runtime_status(observed_runtime, lock['packages']['node_modules/playwright']['version'])
         if runtime_qualification == 'failed':
             status = 'failed'
         elif runtime_qualification == 'pending' and status != 'failed':
