@@ -1,0 +1,7 @@
+contact_links:
+  - name: Support and capture diagnostics
+    url: https://github.com/edithatogo/aegisarchive/blob/main/SUPPORT.md
+    about: Find support and prepare diagnostics for sharing.
+  - name: Report a security vulnerability privately
+    url: https://github.com/edithatogo/aegisarchive/security/advisories/new
+    about: Use GitHub's private vulnerability reporting form.

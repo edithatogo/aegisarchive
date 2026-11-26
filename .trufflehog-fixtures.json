@@ -1,0 +1,10 @@
+[
+  {"detector":"URI","commit":"55ee53dd7dbf097c393ef43f92f6e270239103f3","file":"tests/js/capture_failure.test.js","line":5,"sha256":"377711c45bdac1bda7599950214bf85d0e7a2210ad9b08ec60726edc79b33874"},
+  {"detector":"URI","commit":"71497308cd7280d6e3c159b1d676b346ae749527","file":"tests/js/crawl_rules.test.js","line":45,"sha256":"8dc78ad31f0431737c2fc24c88469a0fa3ab3d88a93f2d5867aad6ba00ccc469"},
+  {"detector":"URI","commit":"71497308cd7280d6e3c159b1d676b346ae749527","file":"tests/test_crawl_rules.py","line":75,"sha256":"8dc78ad31f0431737c2fc24c88469a0fa3ab3d88a93f2d5867aad6ba00ccc469"},
+  {"detector":"URI","commit":"7f8e1a3733f7e972db0dacf5ac0028fac0cb1808","file":"tests/js/offline_navigation.test.js","line":7,"sha256":"7aa5cacf707b57d92ba06ac0c7d4eb0422004dddf7ee8f17d78ddcef57bcf91a"},
+  {"detector":"URI","commit":"83cc6caab2fd85db8dc323d897cc6c9c5bf9b416","file":"tests/js/debug_recorder.test.js","line":34,"sha256":"d941df5dfc406db4e98bf3ec3011c3797338469b0710dee913f002741b0da5cd"},
+  {"detector":"URI","commit":"83cc6caab2fd85db8dc323d897cc6c9c5bf9b416","file":"tests/test_debug_journal.py","line":76,"sha256":"d941df5dfc406db4e98bf3ec3011c3797338469b0710dee913f002741b0da5cd"},
+  {"detector":"URI","commit":"bd05e094ce11950a171638f7c627eb3780ec376e","file":"tests/js/diagnostic_report.test.js","line":13,"sha256":"3ff262c243e50f672b4633c2fe5540bb87eff1cdd8c4fe7581fc5060ec0fef80"},
+  {"detector":"URI","commit":"e404606c08891562c5a3f62e98a2f9b5558e10c5","file":"tests/test_crawl_rules.py","line":472,"sha256":"8dc78ad31f0431737c2fc24c88469a0fa3ab3d88a93f2d5867aad6ba00ccc469"}
+]

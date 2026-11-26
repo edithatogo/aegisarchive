@@ -1,0 +1,21 @@
+minimum_pre_commit_version: "4.7.0"
+repos:
+  - repo: local
+    hooks:
+      - id: staged-whitespace
+        name: Check staged whitespace
+        entry: git diff --cached --check
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: gitleaks
+        name: Gitleaks staged secret scan
+        entry: gitleaks git --staged --redact=100 --no-banner --config=.gitleaks.toml
+        language: system
+        pass_filenames: false
+        always_run: true
+      - id: actionlint
+        name: Lint changed GitHub Actions workflows
+        entry: actionlint
+        language: system
+        files: '^\.github/workflows/[^/]+\.ya?ml$'

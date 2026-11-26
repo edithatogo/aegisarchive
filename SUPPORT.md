@@ -9,6 +9,8 @@ AegisArchive is maintained on a best-effort basis by volunteers.
 - **Improvement ideas**: use the *Improvement proposal* issue template; it maps to the project backlog in `conductor/backlog.md`.
 - **Security vulnerabilities**: do **not** open a public issue. Follow `SECURITY.md`.
 
+Review diagnostic excerpts before sharing. Remove credentials, private URLs, identifiers, and captured page content. Use the [diagnostic workflow](docs/DIAGNOSTIC_WORKFLOW.md) to prepare a report for public triage.
+
 ## What to include
 
 1. What you expected, what happened, and the smallest set of steps that reproduces it.

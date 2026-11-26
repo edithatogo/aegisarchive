@@ -1,14 +1,28 @@
 # Contributing to AegisArchive
 
-Thank you for helping. This page gets you from clone to a green local gate in five minutes and tells you exactly what a mergeable change looks like.
+Thank you for helping. Follow these steps to run the local checks and prepare a pull request.
 
-## 5-minute setup
+## Local setup
 
-1. Clone: `git clone <repository-url> && cd aegisarchive`
-2. Run the local gate (tests, compile checks, leak gate): `python3 scripts/gate.py test`
-3. Try the app: double-click `START_MAC.command`, `START_WINDOWS.cmd`, or run `./START_LINUX.sh`
+1. Clone the repository and change into its directory.
+2. Create and activate a repo-local `.venv` from a qualified Python 3.15.2 interpreter. Confirm `python -VV` reports 3.15.2.
+3. Run `python scripts/gate.py test` for the test suites and `python scripts/gate.py leak` for the private identifier check.
+4. Try the app by double-clicking `START_MAC.command` or `START_WINDOWS.cmd`, or running `./START_LINUX.sh`.
 
-That is all. The runtime is Python 3 standard library plus a modern browser; there is nothing to `pip install`, `npm install`, or containerise. Development-only tools (linters, fuzzers) live in `tests/requirements-dev.txt` and are optional.
+The application runs with the Python 3 standard library and a modern browser. Install the following tools for source development.
+
+## Git hooks and repository checks
+
+Install Gitleaks and actionlint on your PATH, then run the following with the repo-local environment activated.
+
+```sh
+python -m pip install pre-commit==4.7.0
+pre-commit install
+```
+
+Commits check staged whitespace and secrets. Changes to workflow YAML also run actionlint. Run `pre-commit run --all-files` to check all workflows and catch any missing tools. The Gitleaks hook always scans the staged diff.
+
+The [Repository health workflow](.github/workflows/repository-health.yml) runs TruffleHog on Git history patches reachable from the checked-out revision with credential verification disabled. TruffleHog's patch scan can omit changes introduced solely by merge conflict resolution. Logs show the detector, commit, line, path hash, and match counts. The fixture list matches eight reviewed synthetic URI values by commit, path, line, detector, and SHA-256. New matches fail the job. This workflow also runs alint for repository policy and reports the advisory RepoHealth score. The [security policy](SECURITY.md) describes the other scanners and private reporting.
 
 ## Picking a task
 
@@ -23,14 +37,14 @@ The full procedure, including what to do when something does not match, is `cond
 
 - Touch only the files the task lists.
 - Keep the runtime zero-install: standard library in `cli/` and `mcp/`, vanilla ES6+ in `web/`. Vendored browser libraries need an entry in `web/lib/VENDORED.json` with a SHA-256.
-- Run the task's **Verify** commands verbatim, then `python3 scripts/gate.py test`.
+- Run the task's **Verify** commands, then `python scripts/gate.py test` and `python scripts/gate.py leak` in the active repo-local environment.
 - Never commit private hostnames, organisation names, or product/vendor names; the CI leak gate will fail the build and the text has to change, not the gate.
 - One task = one commit = one pull request. Commit message: `<type>(<scope>): <summary> (T<n>, AC<m>) [<track_id>]`.
 
 ## Pull request checklist
 
 - [ ] The PR implements exactly one task and references it as `T<n>` in the title.
-- [ ] `python3 scripts/gate.py test` passes locally; output summary pasted in the PR description.
+- [ ] `python scripts/gate.py test` and `python scripts/gate.py leak` pass in the repo-local environment. Include the output summary in the PR description.
 - [ ] Task box ticked in `conductor/tracks/<track_id>/plan.md` and a `task_verified` line appended to that track's `evidence.jsonl`.
 - [ ] No new runtime dependencies; no files starting with `._`.
 - [ ] No documentation claims about features that are not in this PR (see `scripts/claims_audit.py`).

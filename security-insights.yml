@@ -1,13 +1,12 @@
 header:
   schema-version: 2.2.0
-  last-updated: '2026-09-05'
-  last-reviewed: '2026-09-05'
+  last-updated: '2026-11-27'
+  last-reviewed: '2026-11-27'
   url: https://github.com/edithatogo/aegisarchive/blob/main/security-insights.yml
   comment: |
     Machine-readable security posture for AegisArchive. Runtime is browser
     Web APIs plus the Python standard library; no third-party runtime
-    dependencies exist. Development tooling is confined to CI and
-    tests/requirements-dev.txt.
+    dependencies exist. Development checks run in CI and local Git hooks.
 
 project:
   name: AegisArchive
@@ -41,9 +40,11 @@ repository:
       self:
         comment: |
           Automated evidence: CI validation and leak-prevention gate, secret
-          scanning, CodeQL, Semgrep, Bandit, workflow linting, fuzzing,
-          Scorecard, SBOM and provenance on release. Sole maintainer; zero
-          mandatory human approvals by design.
+          scanning with Gitleaks and TruffleHog, Presidio identifier checks,
+          CodeQL, OpenGrep, Bandit, workflow linting, fuzzing, OpenSSF
+          Scorecard, SBOM and release provenance. Repository health runs
+          alint and reports an advisory RepoHealth score. GitHub dependency
+          alerts and secret push protection are enabled.
     tools:
       - name: CodeQL
         type: SCA

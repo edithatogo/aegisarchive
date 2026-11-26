@@ -1,0 +1,34 @@
+version: 1
+extends:
+  - alint://bundled/oss-baseline@v1
+  - alint://bundled/ci/github-actions@v1
+
+rules:
+  - id: oss-readme-exists
+    level: error
+  - id: oss-license-exists
+    level: error
+  - id: oss-code-of-conduct-exists
+    level: error
+  - id: oss-security-policy-exists
+    level: error
+  - id: contribution-guide
+    kind: file_exists
+    paths: ["CONTRIBUTING.md"]
+    level: error
+    message: "Keep the contributor guide."
+  - id: support-guide
+    kind: file_exists
+    paths: ["SUPPORT.md"]
+    level: error
+    message: "Keep the support guide."
+  - id: bug-report-template
+    kind: file_exists
+    paths: [".github/ISSUE_TEMPLATE/bug_report.md"]
+    level: error
+    message: "Keep a bug report template."
+  - id: pull-request-template
+    kind: file_exists
+    paths: [".github/PULL_REQUEST_TEMPLATE.md"]
+    level: error
+    message: "Keep a pull request template."
