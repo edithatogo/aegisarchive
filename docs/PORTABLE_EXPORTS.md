@@ -33,3 +33,20 @@ payload earlier in the same archive. The input must contain complete,
 independently compressed WARC records with decoded HTTP transfer framing.
 The verifier checks exact coverage and values for an index produced by this
 command.
+
+## Package a finalized capture as WACZ
+
+```sh
+python -m cli.export_mirror wacz archive.warc capture.wacz
+python -m cli.export_mirror verify-wacz capture.wacz
+```
+
+The unsigned WACZ 1.1.1 bundle contains the original WARC records in
+independent gzip members, a CDXJ index, a list of captured HTML pages and
+SHA-256 hashes for all bundled resources. AegisArchive reads back the bundle
+before publishing it. The reference validation runs on synthetic fixtures
+with py-wacz and warcio. WACZ export accepts one finalized WARC at a time.
+
+All three export commands need space for staged output beside the
+destination. On macOS and Linux, use a destination filesystem that supports
+hard links for atomic publication.

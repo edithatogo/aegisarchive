@@ -193,8 +193,8 @@
 
 ---
 
-- [ ] **Track: WACZ export from a finalized capture**
-  *Status: Planned*
+- [x] **Track: WACZ export from a finalized capture**
+  *Status: Completed*
   *Link: [./tracks/wacz_export_20261127/index.md](./tracks/wacz_export_20261127/index.md)*
 
 ---

@@ -239,3 +239,9 @@ independent decoder before publishing the archive.
 Keep the transformed lookup key and the original capture URL distinct.
 Check each range against gzip framing and prove that revisit metadata resolves
 to a verified payload before publishing its index.
+
+## 2026-11-27 — wacz_export_20261127
+
+Validate both the saved package and the application-level index. A reference
+validator's output and an independent byte-range read cover distinct failure
+modes.

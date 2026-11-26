@@ -11,6 +11,7 @@ import json
 import os
 import posixpath
 import re
+from shutil import copyfileobj
 import sys
 from tempfile import TemporaryDirectory
 import zipfile
@@ -28,6 +29,18 @@ _REVISIT_PROFILES = {
 _INDEX_HEADERS = ('warc-type', 'warc-target-uri', 'warc-date', 'warc-record-id', 'content-type',
                   'warc-payload-digest', 'warc-block-digest', 'warc-refers-to',
                   'warc-refers-to-target-uri', 'warc-refers-to-date', 'warc-profile')
+_WACZ_ARCHIVE = 'archive/data.warc.gz'
+_WACZ_INDEX = 'indexes/index.cdxj'
+_WACZ_PAGES = 'pages/pages.jsonl'
+_WACZ_MANIFEST = 'datapackage.json'
+_WACZ_DIGEST = 'datapackage-digest.json'
+_WACZ_RESOURCES = (_WACZ_ARCHIVE, _WACZ_INDEX, _WACZ_PAGES)
+
+
+def _zip_entry(path, compression=zipfile.ZIP_STORED):
+    entry = zipfile.ZipInfo(path, date_time=(1980, 1, 1, 0, 0, 0))
+    entry.compress_type = compression
+    return entry
 
 def safe_path(url: str) -> str:
     p = urlparse(url)
@@ -53,7 +66,7 @@ def export_zip(records, destination):
         with zipfile.ZipFile(destination,'w',zipfile.ZIP_DEFLATED) as z:
             for p in sorted(Path(t).rglob('*')):
                 if p.is_file():
-                    info=zipfile.ZipInfo(p.relative_to(t).as_posix(),date_time=(1980,1,1,0,0,0)); info.compress_type=zipfile.ZIP_DEFLATED; z.writestr(info,p.read_bytes())
+                    z.writestr(_zip_entry(p.relative_to(t).as_posix(), zipfile.ZIP_DEFLATED), p.read_bytes())
 
 
 @contextmanager
@@ -300,6 +313,10 @@ def _indexed_members(stream):
     return _scan_members(stream, _discard, lambda record, headers, length: _index_capture(record, headers, length, originals))
 
 
+def _json_line(value):
+    return (json.dumps(value, sort_keys=True, separators=(',', ':')) + '\n').encode('utf-8')
+
+
 def _cdxj_bytes(members, filename):
     rows = []
     for member in members:
@@ -308,8 +325,8 @@ def _cdxj_bytes(members, filename):
             continue
         data = {key: capture[key] for key in ('url', 'mime', 'status', 'digest')}
         data.update(filename=filename, offset=str(member['offset']), length=str(member['length']))
-        line = f"{capture['key']} {capture['timestamp']} {json.dumps(data, sort_keys=True, separators=(',', ':'))}\n"
-        rows.append(line.encode('utf-8'))
+        prefix = f"{capture['key']} {capture['timestamp']} ".encode('utf-8')
+        rows.append(prefix + _json_line(data))
     if not rows:
         raise ValueError('No replayable records to index')
     # ponytail: sort index rows in memory. Consider an external merge when
@@ -330,9 +347,13 @@ def _cdxj_for_file(archive):
     return rows
 
 
-def _check_index(stream, expected):
+def _check_bytes(stream, expected, message):
     if stream.read(len(expected) + 1) != expected:
-        raise ValueError('CDXJ index does not match verified compressed records')
+        raise ValueError(message)
+
+
+def _check_index(stream, expected):
+    _check_bytes(stream, expected, 'CDXJ index does not match verified compressed records')
 
 
 def verify_cdxj(archive, index):
@@ -354,6 +375,98 @@ def export_cdxj(archive, destination):
     return {'entries': expected.count(b'\n')}
 
 
+def _wacz_pages(members):
+    return [
+        {'id': str(member['offset']), 'url': capture['url'], 'ts': capture['date']}
+        for member in members if (capture := member['capture'])
+        and capture['page_mime'] in ('text/html', 'application/xhtml+xml')
+        and 200 <= int(capture['status']) < 300
+    ]
+
+
+def _wacz_page_list(pages):
+    header = {'format': 'json-pages-1.0', 'id': 'pages', 'title': 'Pages'}
+    return b''.join(_json_line(row) for row in (header, *pages))
+
+
+def _sha256(data):
+    return 'sha256:' + hashlib.sha256(data).hexdigest()
+
+
+def _wacz_resource(path, stream, size):
+    digest = hashlib.file_digest(stream, 'sha256')
+    return {'path': path, 'name': posixpath.basename(path),
+            'bytes': size, 'hash': 'sha256:' + digest.hexdigest()}
+
+
+def _wacz_manifest(resources, pages):
+    metadata = {'profile': 'data-package', 'wacz_version': '1.1.1',
+                'resources': resources, 'software': 'AegisArchive'}
+    if pages:
+        metadata.update(mainPageUrl=pages[0]['url'], mainPageDate=pages[0]['ts'])
+    manifest = _json_line(metadata)
+    return manifest, _json_line({'path': _WACZ_MANIFEST, 'hash': _sha256(manifest)})
+
+
+def verify_wacz(path):
+    """Verify the exact package layout and all archive, index and manifest contents."""
+    with zipfile.ZipFile(path, 'r') as package:
+        infos = package.infolist()
+        expected_paths = {*_WACZ_RESOURCES, _WACZ_MANIFEST, _WACZ_DIGEST}
+        if (len(infos) != len(expected_paths) or {info.filename for info in infos} != expected_paths
+                or any(info.orig_filename != info.filename for info in infos)
+                or package.getinfo(_WACZ_ARCHIVE).compress_type != zipfile.ZIP_STORED):
+            raise ValueError('Unexpected, duplicate or compressed WACZ member path')
+        with io.BufferedReader(package.open(_WACZ_ARCHIVE), buffer_size=STREAM_CHUNK) as archive:
+            members = _indexed_members(archive)
+        index = _cdxj_bytes(members, posixpath.basename(_WACZ_ARCHIVE))
+        pages = _wacz_pages(members)
+        with package.open(_WACZ_INDEX) as stream:
+            _check_index(stream, index)
+        with package.open(_WACZ_PAGES) as stream:
+            _check_bytes(stream, _wacz_page_list(pages), 'WACZ pages do not match verified captures')
+        resources = []
+        for resource in _WACZ_RESOURCES:
+            with package.open(resource) as stream:
+                resources.append(_wacz_resource(resource, stream, package.getinfo(resource).file_size))
+        manifest, digest = _wacz_manifest(resources, pages)
+        with package.open(_WACZ_MANIFEST) as stream:
+            _check_bytes(stream, manifest, 'WACZ manifest does not match resources')
+        with package.open(_WACZ_DIGEST) as stream:
+            _check_bytes(stream, digest, 'WACZ manifest digest does not match')
+    return {'entries': index.count(b'\n'), 'pages': len(pages), 'wacz_version': '1.1.1'}
+
+
+def export_wacz(source, destination):
+    if Path(destination).suffix.lower() != '.wacz':
+        raise ValueError('WACZ output must end in .wacz')
+    with _new_export(destination) as staged:
+        compressed = staged.with_name(posixpath.basename(_WACZ_ARCHIVE))
+        export_warc_gzip(source, compressed)
+        with compressed.open('rb') as archive:
+            size = os.fstat(archive.fileno()).st_size
+            members = _indexed_members(archive)
+            archive.seek(0)
+            resources = [_wacz_resource(_WACZ_ARCHIVE, archive, size)]
+            archive.seek(0)
+            index = _cdxj_bytes(members, compressed.name)
+            pages = _wacz_pages(members)
+            with zipfile.ZipFile(staged, 'w') as package:
+                entry = _zip_entry(_WACZ_ARCHIVE)
+                entry.file_size = resources[0]['bytes']
+                with package.open(entry, 'w') as target:
+                    copyfileobj(archive, target, STREAM_CHUNK)
+                for path, data in ((_WACZ_INDEX, index), (_WACZ_PAGES, _wacz_page_list(pages))):
+                    package.writestr(_zip_entry(path), data)
+                    resources.append({'path': path, 'name': posixpath.basename(path),
+                                      'hash': _sha256(data), 'bytes': len(data)})
+                manifest, digest = _wacz_manifest(resources, pages)
+                package.writestr(_zip_entry(_WACZ_MANIFEST), manifest)
+                package.writestr(_zip_entry(_WACZ_DIGEST), digest)
+        result = verify_wacz(staged)
+    return result
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description='Export a finalized saved capture.')
     commands = parser.add_subparsers(dest='command', required=True)
@@ -366,11 +479,18 @@ def main(argv=None):
     check = commands.add_parser('verify-cdxj', help='Check a CDXJ index against the compressed WARC')
     check.add_argument('source')
     check.add_argument('output', metavar='index')
+    wacz = commands.add_parser('wacz', help='Package a finalized WARC as WACZ')
+    wacz.add_argument('source')
+    wacz.add_argument('output')
+    verify_bundle = commands.add_parser('verify-wacz', help='Check a WACZ created by this command')
+    verify_bundle.add_argument('source')
     args = parser.parse_args(argv)
     try:
-        operation = {'warc-gzip': export_warc_gzip, 'cdxj': export_cdxj, 'verify-cdxj': verify_cdxj}
-        result = operation[args.command](args.source, args.output)
-    except (OSError, ValueError) as error:
+        operation = {'warc-gzip': export_warc_gzip, 'cdxj': export_cdxj, 'verify-cdxj': verify_cdxj,
+                     'wacz': export_wacz, 'verify-wacz': verify_wacz}
+        arguments = [args.source, args.output] if hasattr(args, 'output') else [args.source]
+        result = operation[args.command](*arguments)
+    except (OSError, ValueError, zipfile.BadZipFile) as error:
         print(error, file=sys.stderr)
         return 2
     print(json.dumps(result))
