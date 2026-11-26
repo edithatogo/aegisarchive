@@ -1,11 +1,13 @@
 """Serve one selected saved WARC on a private, disposable loopback origin."""
 import argparse
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from http.server import BaseHTTPRequestHandler
 import os
 from pathlib import Path
 from secrets import token_hex
 from shutil import copyfileobj
 from threading import Thread
+
+from .launch import ThreadingHTTPServer
 
 
 _WEB = Path(__file__).resolve().parents[1] / 'web'

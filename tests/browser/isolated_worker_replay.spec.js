@@ -22,7 +22,7 @@ def page(name, body):
     writer.write_response(origin + '/' + name, 200, {'Content-Type':'text/html'}, body.encode())
 with closing(PythonWarcWriter(str(a))) as writer:
     page('seed', f'''
-      <h1>{label}</h1><link rel="stylesheet" href="saved.css">
+      <h1>{label}</h1><link rel="stylesheet" href="saved.css"><style>@import "inline.css";</style>
       <a href="redirect">Next</a>
       <a href="missing" target="_blank" ping="{origin}/ping">Missing page</a>
       <img src="{origin}/not-captured">
@@ -34,7 +34,9 @@ with closing(PythonWarcWriter(str(a))) as writer:
     page('second', '<h1>Second archived page</h1>')
     writer.write_response(origin + '/redirect', 302, {'Location':'/second'}, b'')
     writer.write_response(origin + '/saved.css', 200, {'Content-Type':'text/css'},
-                          f'@import "{origin}/remote.css"; h1 {{color:rgb(10,20,30)}}'.encode())
+                          f'@import "theme.css"; @import "{origin}/remote.css"; h1 {{color:rgb(10,20,30)}}'.encode())
+    writer.write_response(origin + '/theme.css', 200, {'Content-Type':'text/css'}, b'h1{background-color:rgb(42,43,44)}')
+    writer.write_response(origin + '/inline.css', 200, {'Content-Type':'text/css'}, b'h1{text-align:right}')
 if target.endswith('.gz'):
     Path(target).write_bytes(gzip.compress(a.read_bytes(), mtime=0))
 `;
@@ -59,12 +61,22 @@ const test = base.extend({
       let stderr = '';
       child.stderr.on('data', bytes => { stderr += bytes; });
       const address = await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Replay server startup timed out for ' + filename + ': ' + stderr)), 20000);
         let stdout = '';
-        child.on('error', reject);
-        child.on('exit', code => reject(new Error('Replay server exited ' + code + ': ' + stderr)));
+        child.once('error', error => {
+          clearTimeout(timeout);
+          reject(error);
+        });
+        child.once('exit', (code, signal) => {
+          clearTimeout(timeout);
+          reject(new Error('Replay server exited ' + (code ?? signal) + ' for ' + filename + ': ' + stderr));
+        });
         child.stdout.on('data', bytes => {
           stdout += bytes;
-          if (stdout.includes('\n')) resolve(new URL(stdout.trim()));
+          if (stdout.includes('\n')) {
+            clearTimeout(timeout);
+            resolve(new URL(stdout.trim()));
+          }
         });
       });
       return {archive, address, child, closed};
@@ -105,6 +117,8 @@ test('worker replay isolation serves only the selected archive and clears it on 
   const heading = frame.getByRole('heading', {name:'Saved page'});
   await expect(heading).toBeVisible();
   await expect(heading).toHaveCSS('color', 'rgb(10, 20, 30)');
+  await expect(heading).toHaveCSS('background-color', 'rgb(42, 43, 44)');
+  await expect(heading).toHaveCSS('text-align', 'right');
   await missingAsset;
   expect(await page.evaluate(() => navigator.serviceWorker.controller.scriptURL)).toBe(address.href + 'worker.js');
   expect(await station.evaluate(() => navigator.serviceWorker.controller)).toBeNull();
@@ -148,6 +162,16 @@ test('worker replay starts on a fresh origin after an unclean exit and keeps the
   await fresh.goto(next.address.href);
   await expect(fresh.frameLocator('#replayFrame').getByRole('heading', {name:'New session'})).toBeVisible();
   expect(await fresh.evaluate(() => navigator.serviceWorker.controller.scriptURL)).toBe(next.address.href + 'worker.js');
+  const fallback = await context.newPage();
+  await fallback.addInitScript(() => {
+    Object.defineProperty(navigator, 'serviceWorker', {value:undefined});
+  });
+  await fallback.goto(next.address.href);
+  await expect(fallback.getByRole('status')).toContainText('Offline WARC Viewer');
+  await fallback.goto('/viewer.html');
+  await fallback.locator('#warcFileInput').setInputFiles(next.archive);
+  await expect(fallback.frameLocator('#replayFrame').getByRole('heading', {name:'New session'})).toBeVisible();
+
   await fresh.getByRole('button', {name:'Stop replay'}).click();
   await expect(fresh.getByRole('status')).toContainText('Replay stopped');
 
@@ -158,15 +182,5 @@ test('worker replay starts on a fresh origin after an unclean exit and keeps the
   expect(await oldSibling.locator('#replayFrame').evaluate(frame => frame.contentDocument.title)).toBe('');
   await expect.poll(() => oldSibling.evaluate(async () => (await navigator.serviceWorker.getRegistrations()).length)).toBe(0);
 
-  const fallback = await context.newPage();
-  const unsupported = await replay.launch('fallback.warc', 'Fallback viewer');
-  await fallback.addInitScript(() => {
-    Object.defineProperty(navigator, 'serviceWorker', {value:undefined});
-  });
-  await fallback.goto(unsupported.address.href);
-  await expect(fallback.getByRole('status')).toContainText('Offline WARC Viewer');
-  await fallback.goto('/viewer.html');
-  await fallback.locator('#warcFileInput').setInputFiles(unsupported.archive);
-  await expect(fallback.frameLocator('#replayFrame').getByRole('heading', {name:'Fallback viewer'})).toBeVisible();
   expect(replay.requests).toEqual([]);
 });

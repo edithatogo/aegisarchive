@@ -267,11 +267,16 @@
     }
 
     rewriteStyles(text, pageUrl, assetUrlFor = record => this.blobUrlFor(record)) {
-      return String(text).replace(/url\(\s*(["']?)([^)"']+)\1\s*\)/gi, (m, quote, raw) => {
+      const asset = raw => {
         const target = this.resolveArchiveUrl(raw.trim(), pageUrl);
         const record = target && this.getRecord(target);
-        return record ? `url(${quote}${assetUrlFor(record)}${quote})` : 'url(data:,)';
-      });
+        return record ? assetUrlFor(record) : 'data:,';
+      };
+      const css = String(text).replace(/url\(\s*(["']?)([^)"']+)\1\s*\)/gi,
+        (match, quote, raw) => 'url(' + quote + asset(raw) + quote + ')');
+      const imports = /\/\*[\s\S]*?(?:\*\/|$)|(@import\s+)(?:"([^"]*)"|'([^']*)')|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/gi;
+      return css.replace(imports, (match, rule, doubleQuoted, singleQuoted) =>
+        rule ? rule + '"' + asset(doubleQuoted ?? singleQuoted) + '"' : match);
     }
 
     /**
