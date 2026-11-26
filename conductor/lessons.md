@@ -217,3 +217,7 @@ navigation. Freeze successful proof by revision before later metadata changes.
 For documentation-only closure, verify unchanged runtime bytes and existing
 proof rather than looping identical browser runs. Disclose unrecoverable
 historical references separately; chain integrity does not verify missing bytes.
+
+## 2026-11-27 — repository_health_20261127
+
+Historical test fixtures can be reviewed at immutable Git locations. Fingerprints for URI findings bind the detector, commit, file, line and both scanner value fields. Keep scanner diagnostics separate from any raw credential output.

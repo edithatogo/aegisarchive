@@ -9,6 +9,8 @@ assignees: ''
 **Describe the bug**
 A clear and concise description of what the bug is.
 
+Review any log or screenshot before attaching it. Remove credentials, private URLs, identifiers, and captured page content.
+
 **To Reproduce**
 Steps to reproduce the behavior:
 1. Launch AegisArchive using '...'

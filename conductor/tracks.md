@@ -1,5 +1,9 @@
 # AegisArchive Track Registry
 
+- [x] **Track: Repository health and contributor safeguards**
+  *Status: Completed*
+  *Link: [./tracks/repository_health_20261127/index.md](./tracks/repository_health_20261127/index.md)*
+
 - [x] **Track: Progressive USB debug recording**
   *Status: Completed*
   *Link: [./tracks/progressive_debug_20260911/index.md](./tracks/progressive_debug_20260911/index.md)*

@@ -15,3 +15,7 @@ We take the security and integrity of digital preservation tools seriously. If y
 3. Include a description of the issue, reproduction steps, and potential impact.
 
 We commit to acknowledging receipt within 48 hours and providing a mitigation timeline.
+
+## Automated checks
+
+GitHub Actions runs Presidio for personal identifiers, Gitleaks and TruffleHog for secrets, and OpenGrep, Bandit and CodeQL for static analysis. See the current [OpenSSF Scorecard report](https://scorecard.dev/viewer/?uri=github.com/edithatogo/aegisarchive).

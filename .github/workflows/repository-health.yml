@@ -1,0 +1,91 @@
+name: Repository health
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repository-health-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  trufflehog:
+    name: Secrets scan (TruffleHog)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.15.2'
+      - name: Scan Git history patches with SHA-256-verified TruffleHog v3.100.1
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse --is-shallow-repository)" = false
+          tool_dir="$(mktemp -d "$RUNNER_TEMP/trufflehog.XXXXXXXX")"
+          archive="$tool_dir/trufflehog.tar.gz"
+          curl --fail --silent --show-error --location --retry 2 --connect-timeout 20 --max-time 120 \
+            https://github.com/trufflesecurity/trufflehog/releases/download/v3.100.1/trufflehog_3.100.1_linux_amd64.tar.gz \
+            --output "$archive"
+          printf '%s  %s\n' 'b2460688116f29ce33f1afe16d14fef3fa3db928e74ba55a6c9fed392c60ad69' "$archive" \
+            | sha256sum --check
+          tar -xzf "$archive" -C "$tool_dir" trufflehog
+          "$tool_dir/trufflehog" --version
+          printf 'Checked-out revision has %s reachable commits\n' "$(git rev-list --count HEAD)"
+          if "$tool_dir/trufflehog" git --json --no-update --no-verification --no-ignore-tag \
+              --results=verified,unknown,unverified --fail-on-scan-errors --skip-additional-refs \
+              --branch HEAD "file://$GITHUB_WORKSPACE" 2>/dev/null | python scripts/trufflehog_gate.py; then
+            exit 0
+          else
+            scan_status=( "${PIPESTATUS[@]}" )
+            printf 'TruffleHog exit %s. Redacted result gate exit %s.\n' "${scan_status[@]}" >&2
+            exit 1
+          fi
+
+  alint:
+    name: alint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: asamarts/alint@465e70c48ec13774c8cb3bb58856b58b71e3a93d # v0.23.0
+        with:
+          config: .alint.yml
+          args: --untrusted
+
+  repohealth:
+    name: RepoHealth
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Report Git health with SHA-256-verified RepoHealth v0.5.3
+        shell: bash
+        run: |
+          set -euo pipefail
+          tool_dir="$(mktemp -d "$RUNNER_TEMP/repohealth.XXXXXXXX")"
+          archive="$tool_dir/repohealth.tar.gz"
+          curl --fail --silent --show-error --location --retry 2 --connect-timeout 20 --max-time 120 \
+            https://github.com/spbuilds/repohealth/releases/download/v0.5.3/repohealth_0.5.3_linux_amd64.tar.gz \
+            --output "$archive"
+          printf '%s  %s\n' '68a2fee769ae8f3652d503d07508a91ec1cf73c8463b6846d030762f6d2459d2' "$archive" \
+            | sha256sum --check
+          tar -xzf "$archive" -C "$tool_dir" repohealth
+          "$tool_dir/repohealth" . --format markdown >> "$GITHUB_STEP_SUMMARY"
+          "$tool_dir/repohealth" . --score-only
