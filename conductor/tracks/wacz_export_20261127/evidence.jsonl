@@ -1,2 +1,5 @@
 {"ts":"2026-11-26T14:20:37Z","kind":"track_planned","actor":"codex","summary":"Owner requested granular executable roadmap tracks. Recorded file ownership, focused acceptance, and prerequisite tracks."}
 {"ts":"2026-11-26T14:20:37Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested creating the roadmap tracks in the project. Authority covers the track records."}
+{"ts":"2026-11-26T21:31:22Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested implementation of compressed WARC, CDXJ and WACZ in order."}
+{"ts":"2026-11-26T21:31:22Z","kind":"task_verified","task":"T1","actor":"codex","summary":"Verified deterministic WACZ bytes, original WARC bytes, index ranges, pages and resource manifests. Rejected an altered member, unsafe or duplicate paths and failed readback."}
+{"ts":"2026-11-26T21:31:22Z","kind":"task_verified","task":"T2","actor":"codex","summary":"py-wacz 0.6.0 accepted the WACZ 1.1.1 fixture and rejected the changed index. warcio 1.8.2 resolved the HTML and CSS by indexed ranges. The required hosted capture workflow adds browser rendering and a zero-source-request assertion."}

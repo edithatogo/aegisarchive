@@ -2,6 +2,9 @@ const { test, expect } = require('playwright/test');
 test.beforeEach(async ({page}) => { page.on('dialog', dialog => dialog.accept()); });
 const http = require('node:http');
 const fs = require('node:fs/promises');
+const { execFileSync } = require('node:child_process');
+const os = require('node:os');
+const path = require('node:path');
 let source, origin, requests;
 test.beforeAll(async ({browser}) => {
   console.log(JSON.stringify({platform:process.platform, arch:process.arch, browser:browser.version()}));
@@ -25,6 +28,36 @@ test.beforeAll(async ({browser}) => {
   origin = `http://127.0.0.1:${source.address().port}`;
 });
 test.afterAll(async () => { await new Promise(resolve => source.close(resolve)); });
+
+test('WACZ replay resolves a page and asset without reaching the source', async ({page}) => {
+  const python = process.env.AEGIS_WACZ_PYTHON;
+  test.skip(!python, 'The hash-locked reference validator runs in the Linux capture job');
+  const folder = await fs.mkdtemp(path.join(os.tmpdir(), 'aegis-wacz-'));
+  try {
+    const result = JSON.parse(execFileSync(python, [
+      '-m', 'tests.wacz_reference', folder, origin,
+    ], {cwd: path.resolve(__dirname, '../..'), encoding: 'utf8', timeout: 30000}));
+    const archivedRequests = [];
+    const requestsBefore = requests.length;
+    await page.route('**/*', route => {
+      const url = route.request().url();
+      const reply = result.responses[url];
+      if (!reply) return route.abort();
+      archivedRequests.push(url);
+      return route.fulfill({status:200, contentType:reply.type, body:reply.body});
+    });
+    await page.goto(origin + '/archive.html');
+    const heading = page.getByRole('heading', {name:'Archived WACZ page'});
+    await expect(heading).toBeVisible();
+    await expect(heading).toHaveCSS('color', 'rgb(10, 20, 30)');
+    expect(archivedRequests).toEqual([origin + '/archive.html', origin + '/archive.css']);
+    expect(requests.length).toBe(requestsBefore);
+    console.log(JSON.stringify({wacz_sha256:result.sha256, validator:result.validator}));
+  } finally {
+    await fs.rm(folder, {recursive:true, force:true});
+  }
+});
+
 async function setup(page, path='/') {
   await page.goto('/index.html');
   await page.getByRole('button', {name:'⚙️ Configure Profile'}).click();

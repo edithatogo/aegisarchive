@@ -14,6 +14,7 @@ import argparse
 import re
 
 RECORD_SEPARATOR = b'\r\n\r\n'
+STREAM_CHUNK = 64 * 1024
 
 
 def header_fields(block, *, unique=()):
@@ -34,6 +35,41 @@ def parse_warc_header(block, *, unique=()):
     if not block.startswith((b'WARC/1.1\r\n', b'WARC/1.0\r\n')) or not re.fullmatch(r'[0-9]{1,18}', length):
         raise ValueError('Malformed WARC version or Content-Length')
     return headers, int(length)
+
+
+def read_record_header(stream, limit=STREAM_CHUNK, *, eof_ok=False):
+    """Read a bounded CRLF-terminated header without crossing its byte limit."""
+    lines = []
+    while limit > 0:
+        line = stream.readline(limit + 1)
+        if not line and not lines and eof_ok:
+            return None
+        if len(line) > limit or not line.endswith(b'\r\n'):
+            break
+        lines.append(line)
+        if line == b'\r\n' and len(lines) > 1:
+            return b''.join(lines)
+        limit -= len(line)
+    raise ValueError('Truncated or oversized record header')
+
+
+def copy_record_bytes(stream, length, write):
+    """Copy an exact number of record bytes in bounded chunks."""
+    while length:
+        chunk = stream.read(min(length, STREAM_CHUNK))
+        if not chunk:
+            raise ValueError('Truncated WARC record block')
+        write(chunk)
+        length -= len(chunk)
+
+
+def copy_record_block(stream, length, write):
+    """Copy one framed block, including its separator, in bounded chunks."""
+    copy_record_bytes(stream, length, write)
+    separator = stream.read(len(RECORD_SEPARATOR))
+    if separator != RECORD_SEPARATOR:
+        raise ValueError('Missing WARC record separator')
+    write(separator)
 
 
 def read_container(path):

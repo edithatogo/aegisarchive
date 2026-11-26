@@ -1,2 +1,5 @@
 {"ts":"2026-11-26T14:20:37Z","kind":"track_planned","actor":"codex","summary":"Owner requested granular executable roadmap tracks. Recorded file ownership, focused acceptance, and prerequisite tracks."}
 {"ts":"2026-11-26T14:20:37Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested creating the roadmap tracks in the project. Authority covers the track records."}
+{"ts":"2026-11-26T21:24:44Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested implementation of compressed WARC, CDXJ and WACZ in order."}
+{"ts":"2026-11-26T21:24:44Z","kind":"task_verified","task":"T1","actor":"codex","summary":"Independently decompressed indexed byte ranges and checked captured URL, timestamp, payload, status, MIME and digest for normal and revisit records."}
+{"ts":"2026-11-26T21:24:44Z","kind":"task_verified","task":"T2","actor":"codex","summary":"Sixteen focused tests passed on Python 3.15.2, including CLI readback, tampering, missing or duplicate index rows, truncated gzip members, and legacy export behavior."}

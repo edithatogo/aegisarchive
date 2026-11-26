@@ -29,8 +29,8 @@ Zero-install, server-preserving web archiver and ISO 28500 (WARC/1.1) forensic e
 | Static-site mirroring on Mac/Windows | Capture/recovery/disconnected replay passes at `4255021`; [evidence and limits](docs/MIRRORING_COMPATIBILITY.md) |
 | Synthesised WARC `request` records | Implemented |
 | `.warc.gz` input in verifier and viewer | Implemented |
-| `.warc.gz` output | Planned |
-| WACZ export and service-worker replay | Planned |
+| Record-compressed WARC, CDXJ and WACZ 1.1.1 export | [CLI commands and format limits](docs/PORTABLE_EXPORTS.md) |
+| Isolated service-worker replay | Planned |
 | Windows x64 portable Python | Maintainer preparation supported; see Windows USB setup below |
 | Offline AI features | Optional, separately qualified |
 

@@ -181,20 +181,20 @@
 
 ---
 
-- [ ] **Track: Record-at-a-time compressed WARC export**
-  *Status: Planned*
+- [x] **Track: Record-at-a-time compressed WARC export**
+  *Status: Completed*
   *Link: [./tracks/warc_gzip_export_20261127/index.md](./tracks/warc_gzip_export_20261127/index.md)*
 
 ---
 
-- [ ] **Track: CDXJ index for compressed WARC**
-  *Status: Planned*
+- [x] **Track: CDXJ index for compressed WARC**
+  *Status: Completed*
   *Link: [./tracks/cdxj_index_export_20261127/index.md](./tracks/cdxj_index_export_20261127/index.md)*
 
 ---
 
-- [ ] **Track: WACZ export from a finalized capture**
-  *Status: Planned*
+- [x] **Track: WACZ export from a finalized capture**
+  *Status: Completed*
   *Link: [./tracks/wacz_export_20261127/index.md](./tracks/wacz_export_20261127/index.md)*
 
 ---
