@@ -12,6 +12,44 @@ failed or unsupported. OCR is an explicit, separately provisioned operation; its
 confidence measures the engine output, not source truth. Native extraction does
 not fall back to OCR automatically.
 
+## Search a saved catalogue
+
+Run from the repository with its Python 3.15 environment active.
+
+```sh
+python -m portable.document_search saved.sqlite 'leave approval'
+python -m portable.document_search saved.sqlite 'Who signs off on time away?' --agentic /path/to/manifest.json
+```
+
+Ordinary FTS5 search is the default. The second command selects the [offline model
+manifest](../portable/README.md) explicitly. If the first lookup has no hits, the
+local model sees the question and can supply one alternate keyword query. The
+JSON records whether the follow-up ran, and each hit includes the original URL,
+revision, hash, locators, and extraction status. Use `--source-id` or
+`--revision-id` to limit both lookups. The CLI opens the index read-only.
+Use a manifest from a trusted portable bundle. The adapter checks its asset
+hashes and passes `--offline` to the selected model runner.
+
+The first slice takes a SQLite catalogue whose saved material has already been
+registered and indexed. This example prepares a saved HTML file with confirmed
+public handling.
+
+```python
+from contextlib import closing
+from pathlib import Path
+from portable.document_catalogue import Catalogue
+from portable.document_extract import extract
+from portable.document_search import SearchIndex
+
+body = Path('saved-page.html').read_bytes()
+with closing(Catalogue('saved.sqlite')) as catalogue:
+    record = catalogue.register('https://example.org/saved-page', body, 'text/html', handling='public')
+    SearchIndex(catalogue).add(extract(body, 'text/html'), record['source_id'], record['revision_id'])
+```
+
+Use the captured source URL and recorded handling for your file. Direct intake
+from WARC is the next task in the [agentic search track](../conductor/tracks/agentic_archive_search_20261127/index.md).
+
 ## History and comparisons
 
 `Catalogue.compare_revisions(before_revision_id, after_revision_id)` compares

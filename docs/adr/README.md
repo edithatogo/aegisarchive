@@ -20,7 +20,7 @@ Index: the files in this directory, sorted by number, are the index.
 
 ## Roadmap handoff
 
-The four format and replay tracks form the current product roadmap. Each track has a focused first task and its own acceptance checks. The remaining ADRs retain the prerequisites below.
+The format and replay tracks below each have a focused first task and acceptance checks. The [opt-in agentic search track](../../conductor/tracks/agentic_archive_search_20261127/index.md) covers searching saved catalogues, indexing eligible text from WARC, and comparing search quality. The remaining ADRs retain the prerequisites below.
 
 | ADR | Next decision or executable track |
 | --- | --- |
