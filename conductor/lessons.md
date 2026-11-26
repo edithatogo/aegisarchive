@@ -228,3 +228,20 @@ Resolve archive offsets with an input ID even when filenames match. Verify block
 and payload digests at their respective boundaries. An actual offline model
 comparison can confirm the default search choice even when its fallback adds
 latency and recovers zero additional results.
+
+## 2026-11-27 — warc_gzip_export_20261127
+
+Use the compressor's actual offsets and verify each gzip range with an
+independent decoder before publishing the archive.
+
+## 2026-11-27 — cdxj_index_export_20261127
+
+Keep the transformed lookup key and the original capture URL distinct.
+Check each range against gzip framing and prove that revisit metadata resolves
+to a verified payload before publishing its index.
+
+## 2026-11-27 — wacz_export_20261127
+
+Validate both the saved package and the application-level index. A reference
+validator's output and an independent byte-range read cover distinct failure
+modes.
