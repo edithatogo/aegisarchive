@@ -1,2 +1,4 @@
 {"ts":"2026-11-26T14:20:37Z","kind":"track_planned","actor":"codex","summary":"Owner requested granular executable roadmap tracks. Recorded file ownership, focused acceptance, and prerequisite tracks."}
 {"ts":"2026-11-26T14:20:37Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested creating the roadmap tracks in the project. Authority covers the track records."}
+{"ts":"2026-11-26T21:17:09Z","kind":"gate_authorized","gate":"G1","actor":"user","summary":"Owner requested the remaining product tracks in order, with isolated replay delivered separately."}
+{"ts":"2026-11-26T21:17:09Z","kind":"task_verified","task":"T1","actor":"codex","summary":"Compressed each framed record independently. Readback and targeted tests verified exact source SHA-256, distinct compressed ranges, full round trip, requests, revisits and truncated input."}
