@@ -15,8 +15,9 @@ import gzip
 from pathlib import Path
 import sys
 from cli.aegis_cli import PythonWarcWriter
+from cli.export_mirror import export_warc_gzip
 
-target, origin, label = sys.argv[1:]
+target, origin, label, compression = sys.argv[1:]
 a = Path(target).with_suffix('') if target.endswith('.gz') else Path(target)
 def page(name, body):
     writer.write_response(origin + '/' + name, 200, {'Content-Type':'text/html'}, body.encode())
@@ -37,7 +38,9 @@ with closing(PythonWarcWriter(str(a))) as writer:
                           f'@import "theme.css"; @import "{origin}/remote.css"; h1 {{color:rgb(10,20,30)}}'.encode())
     writer.write_response(origin + '/theme.css', 200, {'Content-Type':'text/css'}, b'h1{background-color:rgb(42,43,44)}')
     writer.write_response(origin + '/inline.css', 200, {'Content-Type':'text/css'}, b'h1{text-align:right}')
-if target.endswith('.gz'):
+if compression == 'record':
+    export_warc_gzip(a, Path(target))
+elif target.endswith('.gz'):
     Path(target).write_bytes(gzip.compress(a.read_bytes(), mtime=0))
 `;
 
@@ -52,9 +55,9 @@ const test = base.extend({
     await new Promise(resolve => source.listen(0, '127.0.0.1', resolve));
     const origin = 'http://127.0.0.1:' + source.address().port;
     const processes = [];
-    async function launch(filename, label) {
+    async function launch(filename, label, compression = 'default') {
       const archive = path.join(folder, filename);
-      execFileSync(python, ['-c', fixture, archive, origin, label], {cwd:root, timeout:15000});
+      execFileSync(python, ['-c', fixture, archive, origin, label, compression], {cwd:root, timeout:15000});
       const child = spawn(python, ['-m', 'cli.replay_serve', archive], {cwd:root});
       processes.push(child);
       const closed = once(child, 'exit');
@@ -98,7 +101,7 @@ const test = base.extend({
 });
 
 test('worker replay isolation serves only the selected archive and clears it on stop', async ({page, context, replay}) => {
-  const running = await replay.launch('main.warc', 'Saved page');
+  const running = await replay.launch('main.warc.gz', 'Saved page', 'record');
   const {address} = running;
   const raw = 'http://127.0.0.1:' + address.port + address.pathname;
   expect((await page.request.get(raw + 'archive')).status()).toBe(421);
