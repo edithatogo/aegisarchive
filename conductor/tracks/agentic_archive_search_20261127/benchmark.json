@@ -2,11 +2,11 @@
   "fixture_sha256": "7d7ec2fb5fcac86b37137ec7cd8c0e6424ed3542dd3f63bb33a5601a58e23b9a",
   "document_count": 6,
   "top_k": 3,
-  "measured_at": "2026-11-26T20:28:05.605891+00:00",
+  "measured_at": "2026-11-26T20:39:16.767537+00:00",
   "source_sha256": {
     "cli/aegis_cli.py": "d9811714dc4f3e69440f7bb0c96dd083485ba6f3bf27fff126fb376ba36969c9",
     "cli/warc_verify.py": "7c101afe50d63983f9e1028714be5d1192a5b76f50e0715d663040e1c45ad4e5",
-    "portable/archive_search_intake.py": "e1e6ebca1c1367e8137acf785cdf1ed6145694531b6ee1a343415e5aa4552963",
+    "portable/archive_search_intake.py": "71f60fe5b74ae94a578033a6f67bb2254d14245f25a186fad20d7f1543d62243",
     "portable/document_catalogue.py": "aaf47f77c7e97e90e103b4ff746ee926e2f0b250381ece65d947c461d1324db4",
     "portable/document_search.py": "be7e578ca502df4ca48ce3f8cb610ac1cdde224fdb89289ecf022161d457e416",
     "portable/intelligence.py": "a489352ae5fd86789307a0e23a0782a29bb74e76b67f0100f2cefb316be59dce",
@@ -24,7 +24,7 @@
       "out_of_scope_empty": 2,
       "non_target_hits": 0,
       "citation_errors": 0,
-      "median_ms": 0.21
+      "median_ms": 0.19
     },
     "agentic": {
       "exact_found": 3,
@@ -32,7 +32,7 @@
       "out_of_scope_empty": 2,
       "non_target_hits": 0,
       "citation_errors": 0,
-      "median_ms": 8365.05,
+      "median_ms": 3677.18,
       "model_calls": 8
     }
   },
@@ -49,7 +49,7 @@
         "revision_ids": [
           "e1c09eb827a6ba236c0c1404223abc4a54fa68fa97bd2729ce99ac2192424b15"
         ],
-        "elapsed_ms": 1.03
+        "elapsed_ms": 0.6
       },
       "agentic": {
         "relevant": true,
@@ -59,7 +59,7 @@
         "revision_ids": [
           "e1c09eb827a6ba236c0c1404223abc4a54fa68fa97bd2729ce99ac2192424b15"
         ],
-        "elapsed_ms": 0.13,
+        "elapsed_ms": 0.12,
         "follow_up": "not_needed"
       }
     },
@@ -75,7 +75,7 @@
         "revision_ids": [
           "ed990cab8ee61b93ebdad4d1938b550a60fd8e34bd33b9b47a3cb281848acba8"
         ],
-        "elapsed_ms": 0.11
+        "elapsed_ms": 0.1
       },
       "agentic": {
         "relevant": true,
@@ -101,7 +101,7 @@
         "revision_ids": [
           "95a14b2dd76e4ef785a277d4345ba7c863ab494784eca22da012ddfc760daacb"
         ],
-        "elapsed_ms": 0.1
+        "elapsed_ms": 0.09
       },
       "agentic": {
         "relevant": true,
@@ -133,7 +133,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 9728.94,
+        "elapsed_ms": 5060.48,
         "follow_up": "searched"
       }
     },
@@ -147,7 +147,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 0.12
+        "elapsed_ms": 0.14
       },
       "agentic": {
         "relevant": false,
@@ -155,7 +155,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 6529.74,
+        "elapsed_ms": 3970.91,
         "follow_up": "searched"
       }
     },
@@ -177,7 +177,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 23434.97,
+        "elapsed_ms": 3477.14,
         "follow_up": "invalid_rewrite"
       }
     },
@@ -191,7 +191,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 6.01
+        "elapsed_ms": 0.19
       },
       "agentic": {
         "relevant": false,
@@ -199,7 +199,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 16987.6,
+        "elapsed_ms": 3677.18,
         "follow_up": "searched"
       }
     },
@@ -213,7 +213,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 0.68
+        "elapsed_ms": 0.41
       },
       "agentic": {
         "relevant": false,
@@ -221,7 +221,7 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 12365.35,
+        "elapsed_ms": 4359.33,
         "follow_up": "invalid_rewrite"
       }
     },
@@ -229,50 +229,6 @@
       "kind": "paraphrase",
       "query": "Where do guests get a temporary badge?",
       "expected_revision_id": "95a14b2dd76e4ef785a277d4345ba7c863ab494784eca22da012ddfc760daacb",
-      "ordinary": {
-        "relevant": false,
-        "empty": true,
-        "non_target_hits": 0,
-        "citation_errors": 0,
-        "revision_ids": [],
-        "elapsed_ms": 2.41
-      },
-      "agentic": {
-        "relevant": false,
-        "empty": true,
-        "non_target_hits": 0,
-        "citation_errors": 0,
-        "revision_ids": [],
-        "elapsed_ms": 8033.69,
-        "follow_up": "searched"
-      }
-    },
-    {
-      "kind": "out_of_scope",
-      "query": "How much does a new solar panel cost?",
-      "expected_revision_id": null,
-      "ordinary": {
-        "relevant": false,
-        "empty": true,
-        "non_target_hits": 0,
-        "citation_errors": 0,
-        "revision_ids": [],
-        "elapsed_ms": 0.92
-      },
-      "agentic": {
-        "relevant": false,
-        "empty": true,
-        "non_target_hits": 0,
-        "citation_errors": 0,
-        "revision_ids": [],
-        "elapsed_ms": 9578.28,
-        "follow_up": "searched"
-      }
-    },
-    {
-      "kind": "out_of_scope",
-      "query": "When do the intercity trains depart?",
-      "expected_revision_id": null,
       "ordinary": {
         "relevant": false,
         "empty": true,
@@ -287,7 +243,51 @@
         "non_target_hits": 0,
         "citation_errors": 0,
         "revision_ids": [],
-        "elapsed_ms": 8365.05,
+        "elapsed_ms": 3992.03,
+        "follow_up": "searched"
+      }
+    },
+    {
+      "kind": "out_of_scope",
+      "query": "How much does a new solar panel cost?",
+      "expected_revision_id": null,
+      "ordinary": {
+        "relevant": false,
+        "empty": true,
+        "non_target_hits": 0,
+        "citation_errors": 0,
+        "revision_ids": [],
+        "elapsed_ms": 1.18
+      },
+      "agentic": {
+        "relevant": false,
+        "empty": true,
+        "non_target_hits": 0,
+        "citation_errors": 0,
+        "revision_ids": [],
+        "elapsed_ms": 3380.04,
+        "follow_up": "searched"
+      }
+    },
+    {
+      "kind": "out_of_scope",
+      "query": "When do the intercity trains depart?",
+      "expected_revision_id": null,
+      "ordinary": {
+        "relevant": false,
+        "empty": true,
+        "non_target_hits": 0,
+        "citation_errors": 0,
+        "revision_ids": [],
+        "elapsed_ms": 0.41
+      },
+      "agentic": {
+        "relevant": false,
+        "empty": true,
+        "non_target_hits": 0,
+        "citation_errors": 0,
+        "revision_ids": [],
+        "elapsed_ms": 3745.84,
         "follow_up": "searched"
       }
     }

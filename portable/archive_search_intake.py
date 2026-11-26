@@ -171,16 +171,16 @@ def _capture(headers, body, mime, reference, catalogue, index, anchors):
             raise ValueError('WARC revisit digest mismatch')
         reference['refers_to'] = target
 
-    result = extract(body, mime)
-    if result['status'] not in ('complete', 'partial') or not result['text'].strip():
-        return result['reason'] or 'empty_text'
     if record_id in anchors:
         previous = anchors[record_id]
         if (previous['url'] != url or previous['captured_at'] != captured
-                or previous['sha256'] != result['source_hash'] or previous['mime'] != mime):
+                or previous['sha256'] != hashlib.sha256(body).hexdigest() or previous['mime'] != mime):
             raise ValueError('conflicting WARC record identity')
         return 'duplicate_record'
 
+    result = extract(body, mime)
+    if result['status'] not in ('complete', 'partial') or not result['text'].strip():
+        return result['reason'] or 'empty_text'
     revision = catalogue.register(url, body, mime, handling='public', acquired=stamp.timestamp())
     result.update(warc=reference, acquisition_receipt_id=revision['receipt_id'])
     index.add(result, revision['source_id'], revision['revision_id'])

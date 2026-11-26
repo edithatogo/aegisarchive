@@ -66,6 +66,8 @@ capture time, record span, acquisition receipt ID, and original payload SHA-256.
 The intake output and the local `warc_inputs` table map each input number to its
 path, including archives with the same filename. Offsets in gzip inputs refer to
 the uncompressed stream.
+When selected archives overlap, intake keeps one occurrence of each identical
+record ID and reports the duplicate in the skip counts.
 
 The command reports skipped records, including unsupported formats and
 revisits whose original payload is unavailable. Use `--handling restricted`
@@ -90,7 +92,7 @@ On macOS arm64, the locked Qwen2.5 1.5B Scout model with llama.cpp b10819
 retrieved the same three exact matches as ordinary search and recovered zero
 of six paraphrases. Both modes left the two out-of-scope queries empty and
 returned valid citations. Median query time across 11 queries was
-0.21 ms for ordinary search and 8.37 s for agentic search.
+0.19 ms for ordinary search and 3.68 s for agentic search.
 The agent made eight model calls, including two replies rejected as invalid rewrites.
 
 The six synthetic documents came from the same indexed WARC. Both modes used the

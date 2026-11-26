@@ -70,6 +70,17 @@ class ArchiveSearchIntakeTests(unittest.TestCase):
                 self.assertEqual(SearchIndex(catalogue).search('approval'), [])
                 self.assertEqual(catalogue.db.execute('SELECT COUNT(*) FROM content_objects').fetchone()[0], 0)
 
+    def test_overlapping_archives_skip_duplicate_record_ids(self):
+        copy = self.root / 'copy.warc'
+        copy.write_bytes(self.archive.read_bytes())
+        result = build_catalogue(self.saved, [self.archive, copy], handling='public')
+        self.assertEqual(result['indexed'], 3)
+        self.assertEqual(result['skipped']['duplicate_record'], 3)
+        with closing(Catalogue(self.saved, read_only=True)) as catalogue:
+            hits = SearchIndex(catalogue).search('approval')
+            self.assertEqual(len(hits), 2)
+            self.assertEqual({hit['warc']['archive_id'] for hit in hits}, {1})
+
     def test_corrupt_container_leaves_existing_outputs_and_inputs_intact(self):
         broken = self.root / 'broken.warc'
         broken.write_bytes(self.archive.read_bytes().replace(b'backup schedule', b'broken schedule'))
