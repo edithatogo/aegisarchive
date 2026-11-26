@@ -5,6 +5,7 @@ import hashlib
 import json
 import math
 import mimetypes
+from pathlib import Path
 import sqlite3
 import time
 from urllib.parse import urlsplit
@@ -106,7 +107,11 @@ def source_identity(url: str) -> str:
     return hashlib.sha256(url.encode('utf-8')).hexdigest()
 
 class Catalogue:
-    def __init__(self, path=':memory:'):
+    def __init__(self, path=':memory:', *, read_only=False):
+        self.read_only = read_only
+        if read_only:
+            self.db = sqlite3.connect(Path(path).absolute().as_uri() + '?mode=ro', uri=True)
+            return
         self.db = sqlite3.connect(str(path))
         self.db.execute('PRAGMA foreign_keys=ON')
         self.db.executescript(SCHEMA)

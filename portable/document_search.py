@@ -12,13 +12,19 @@ Existing catalogue rows remain untouched. Legacy FTS rows lacking validated
 search metadata are ignored until explicitly re-added from extraction results.
 No automatic corpus rebuild, OCR, network access or dependency is required.
 """
-import hashlib
+import argparse
+from contextlib import closing
 import difflib
+import hashlib
 import json
 import math
+import re
 import sqlite3
+import subprocess
+import sys
 
-from .document_catalogue import PROCESSING_STATES, REVISION_ELIGIBLE
+from .document_catalogue import Catalogue, PROCESSING_STATES, REVISION_ELIGIBLE
+from .intelligence import LocalTools
 
 
 # Policy is checked before LIMIT, so hidden hits cannot crowd eligible results
@@ -43,9 +49,19 @@ def _json(value):
         raise ValueError('invalid_derivative_metadata') from None
 
 
+def _literal_query(text, max_words):
+    terms = re.findall(r'[^\W_]+', text)
+    if 1 <= len(terms) <= max_words:
+        return ' '.join(f'"{term}"' for term in terms)
+    return None
+
+
 class SearchIndex:
     def __init__(self, catalogue):
         self.db = catalogue.db
+        if getattr(catalogue, 'read_only', False):
+            self.db.execute('SELECT 1 FROM text_index, search_derivative_metadata LIMIT 0')
+            return
         with self.db:
             self.db.execute('CREATE VIRTUAL TABLE IF NOT EXISTS text_index USING fts5('
                             'derivative_id UNINDEXED,text,source_id UNINDEXED,revision_id UNINDEXED)')
@@ -207,6 +223,41 @@ class SearchIndex:
             raise ValueError('invalid_search_query') from None
         return self._hits(rows)
 
+    def search_agentic(self, question, manifest, source_id=None, limit=20, *, revision_id=None, kind=None):
+        """Try one local-model keyword rewrite after an empty saved-document lookup."""
+        if not isinstance(question, str) or len(question) > 1024:
+            raise ValueError('invalid_search_query')
+        query = _literal_query(question, 64)
+        if query is None:
+            raise ValueError('invalid_search_query')
+        filters = dict(source_id=source_id, limit=limit, revision_id=revision_id, kind=kind)
+        hits = self.search(query, **filters)
+        if hits:
+            return dict(hits=hits, follow_up='not_needed')
+
+        # ponytail: one rewrite from the question alone. Compare retrieval quality
+        # before adding rounds, search context or a second index.
+        prompt = (
+            'A saved archive search found no matches. Choose up to eight alternate '
+            'keywords likely to appear in the saved documents. Reply with one line '
+            'starting with QUERY: followed by the keywords.\nQuestion: '
+            + json.dumps(question, ensure_ascii=False)
+        )
+        try:
+            reply = LocalTools(manifest).generate(prompt, max_tokens=64)
+        except (OSError, ValueError, KeyError, TypeError, RecursionError, subprocess.SubprocessError):
+            return dict(hits=[], follow_up='model_unavailable')
+        candidates = []
+        if isinstance(reply, str) and len(reply) <= 4096:
+            candidates = [line.removeprefix('QUERY: ').strip() for line in map(str.strip, reply.splitlines())
+                          if line.startswith('QUERY: ')]
+        if len(candidates) != 1 or len(candidates[0]) > 160:
+            return dict(hits=[], follow_up='invalid_rewrite')
+        rewrite = _literal_query(candidates[0], 8)
+        if not rewrite or rewrite.casefold() == query.casefold():
+            return dict(hits=[], follow_up='invalid_rewrite')
+        return dict(hits=self.search(rewrite, **filters), follow_up='searched')
+
     @staticmethod
     def _hits(rows):
         hits = []
@@ -301,3 +352,35 @@ class SearchIndex:
         and cannot be recalled; consumers must enforce their own storage/access.
         """
         return dict(self._comparison_hit(derivative_id), handling='public', flags=[], export_kind='derivative')
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description='Search documents in an indexed saved archive catalogue.')
+    parser.add_argument('catalogue', help='Path to the saved SQLite catalogue')
+    parser.add_argument('query', help='FTS5 query, or a question with --agentic')
+    parser.add_argument('--agentic', metavar='MANIFEST', help='Use a local model manifest for an empty search')
+    parser.add_argument('--source-id')
+    parser.add_argument('--revision-id')
+    parser.add_argument('--kind', choices=('text', 'ocr'))
+    parser.add_argument('--limit', type=int, default=20)
+    args = parser.parse_args(argv)
+    filters = dict(source_id=args.source_id, revision_id=args.revision_id, kind=args.kind, limit=args.limit)
+    try:
+        with closing(Catalogue(args.catalogue, read_only=True)) as catalogue:
+            index = SearchIndex(catalogue)
+            if args.agentic is None:
+                result = dict(mode='keyword', hits=index.search(args.query, **filters))
+            else:
+                result = dict(mode='agentic', **index.search_agentic(args.query, args.agentic, **filters))
+    except (OSError, sqlite3.Error):
+        print('Unable to open an indexed saved catalogue.', file=sys.stderr)
+        return 2
+    except ValueError as error:
+        print(error, file=sys.stderr)
+        return 2
+    print(json.dumps(result))
+    return 0
+
+
+if __name__ == '__main__':
+    raise SystemExit(main())
