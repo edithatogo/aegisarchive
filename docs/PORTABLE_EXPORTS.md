@@ -17,3 +17,19 @@ contains one complete WARC record. The command checks the saved member ranges
 and the source SHA-256 before publishing. For native captures with a receipt,
 the receipt must mark the capture complete and match the selected WARC.
 The JSON output lists the actual compressed offsets and lengths.
+
+## Index a compressed WARC with CDXJ
+
+```sh
+python -m cli.export_mirror cdxj export.warc.gz export.cdxj
+python -m cli.export_mirror verify-cdxj export.warc.gz export.cdxj
+```
+
+The sorted index retains the exact archived URL, capture time, MIME type,
+status and payload digest. Keep the index with the archive under its indexed
+filename. Each row points to one complete gzip member. Requests and other
+auxiliary records stay in the archive. Revisits refer to a verified original
+payload earlier in the same archive. The input must contain complete,
+independently compressed WARC records with decoded HTTP transfer framing.
+The verifier checks exact coverage and values for an index produced by this
+command.

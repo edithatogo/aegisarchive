@@ -1,9 +1,9 @@
 {
   "track_id": "cdxj_index_export_20261127",
   "type": "feature",
-  "status": "planned",
+  "status": "completed",
   "created_at": "2026-11-26T14:20:37Z",
-  "updated_at": "2026-11-26T14:20:37Z",
+  "updated_at": "2026-11-26T21:24:44Z",
   "description": "CDXJ index for compressed WARC",
   "dependencies": [
     "warc_gzip_export_20261127"

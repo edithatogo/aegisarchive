@@ -233,3 +233,9 @@ latency and recovers zero additional results.
 
 Use the compressor's actual offsets and verify each gzip range with an
 independent decoder before publishing the archive.
+
+## 2026-11-27 — cdxj_index_export_20261127
+
+Keep the transformed lookup key and the original capture URL distinct.
+Check each range against gzip framing and prove that revisit metadata resolves
+to a verified payload before publishing its index.

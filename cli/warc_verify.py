@@ -53,14 +53,19 @@ def read_record_header(stream, limit=STREAM_CHUNK, *, eof_ok=False):
     raise ValueError('Truncated or oversized record header')
 
 
-def copy_record_block(stream, length, write):
-    """Copy one framed block, including its separator, in bounded chunks."""
+def copy_record_bytes(stream, length, write):
+    """Copy an exact number of record bytes in bounded chunks."""
     while length:
         chunk = stream.read(min(length, STREAM_CHUNK))
         if not chunk:
             raise ValueError('Truncated WARC record block')
         write(chunk)
         length -= len(chunk)
+
+
+def copy_record_block(stream, length, write):
+    """Copy one framed block, including its separator, in bounded chunks."""
+    copy_record_bytes(stream, length, write)
     separator = stream.read(len(RECORD_SEPARATOR))
     if separator != RECORD_SEPARATOR:
         raise ValueError('Missing WARC record separator')

@@ -187,8 +187,8 @@
 
 ---
 
-- [ ] **Track: CDXJ index for compressed WARC**
-  *Status: Planned*
+- [x] **Track: CDXJ index for compressed WARC**
+  *Status: Completed*
   *Link: [./tracks/cdxj_index_export_20261127/index.md](./tracks/cdxj_index_export_20261127/index.md)*
 
 ---
