@@ -270,7 +270,7 @@ def _index_capture(stream, headers, length, originals):
                 if length:
                     raise ValueError('Unexpected archived HTTP payload for status')
             elif declared_length is not None and (not re.fullmatch(r'[0-9]{1,18}', declared_length)
-                                                  or int(declared_length) != length):
+                                                  or (length > 0 and int(declared_length) != length)):
                 raise ValueError('Archived HTTP Content-Length does not match the payload')
         if block:
             block[0].update(raw)

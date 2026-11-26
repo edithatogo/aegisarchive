@@ -112,15 +112,16 @@ class CdxjRowsTest(unittest.TestCase):
         warc = self.root / 'editions.warc'
         compressed = self.root / 'editions.warc.gz'
         with closing(PythonWarcWriter(str(warc))) as writer:
-            for edition, status in (('One', 200), ('Two', 304)):
+            for edition, status in (('One', 200), ('Two', 304), ('Head', 200)):
                 writer.write_response('https://example.test/path;edition=' + edition, status,
-                                      {'Content-Type': 'text/html'}, b'first' if status == 200 else b'')
+                                      {'Content-Type': 'text/html'}, b'first' if edition == 'One' else b'')
         source = warc.read_bytes().replace(b'Content-Length: 0\r\n\r\n', b'Content-Length: 9\r\n\r\n')
         warc.write_bytes(source)
         export_warc_gzip(warc, compressed)
         export_cdxj(compressed, self.index)
         self.assertEqual([row.split(' ')[0] for row in self.index.read_text().splitlines()],
-                         ['test,example)/path;edition=one', 'test,example)/path;edition=two'])
+                         ['test,example)/path;edition=head', 'test,example)/path;edition=one',
+                          'test,example)/path;edition=two'])
         compressed.unlink()
         self.index.unlink()
         warc.write_bytes(source.replace(b'Content-Length: 5\r\n\r\nfirst', b'Content-Length: 9\r\n\r\nfirst'))
