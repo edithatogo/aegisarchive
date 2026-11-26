@@ -1,11 +1,13 @@
 """Serve one selected saved WARC on a private, disposable loopback origin."""
 import argparse
+from gzip import GzipFile
 from http.server import BaseHTTPRequestHandler
 import os
 from pathlib import Path
 from secrets import token_hex
 from shutil import copyfileobj
 from threading import Thread
+import zlib
 
 from .launch import ThreadingHTTPServer
 
@@ -79,12 +81,28 @@ class ReplayHandler(BaseHTTPRequestHandler):
             if _signature(current) != self.server.signature:
                 self._respond(409, 0)
                 return
-            mime = 'application/gzip' if self.server.archive.suffix.lower() == '.gz' else 'application/warc'
-            self._respond(200, current.st_size, mime)
-            try:
-                copyfileobj(archive, self.wfile, 64 * 1024)
-            except (BrokenPipeError, ConnectionResetError):
-                pass
+            if self.server.archive.suffix.lower() != '.gz':
+                self._send_archive(archive, current.st_size)
+                return
+            with GzipFile(fileobj=archive, mode='rb') as uncompressed:
+                try:
+                    # Validate all gzip members and determine the exact response length.
+                    size = uncompressed.seek(0, os.SEEK_END)
+                    uncompressed.rewind()
+                except (OSError, EOFError, zlib.error):
+                    self._respond(422, 0)
+                    return
+                if _signature(os.fstat(archive.fileno())) != self.server.signature:
+                    self._respond(409, 0)
+                    return
+                self._send_archive(uncompressed, size)
+
+    def _send_archive(self, stream, size):
+        self._respond(200, size, 'application/warc')
+        try:
+            copyfileobj(stream, self.wfile, 64 * 1024)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
 
     def do_POST(self):
         name = self._local_path()

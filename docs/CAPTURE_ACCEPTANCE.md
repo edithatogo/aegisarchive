@@ -29,7 +29,8 @@ folder and open the printed address in your browser.
 python -m cli.replay_serve "path/to/capture.warc.gz"
 ```
 
-The command accepts one saved `.warc` or `.warc.gz`. It opens a separate
+The command accepts one saved `.warc` or `.warc.gz`, including a WARC
+compressed one record at a time by the exporter. It opens a separate
 loopback origin and loads the selected archive into memory. Choose an archived
 page from the list or follow its links. The sandbox displays passive HTML and
 supported archived assets. Captured scripts and external requests are blocked.
@@ -38,8 +39,8 @@ A link to a page absent from the archive shows a missing-resource message.
 **Stop replay** clears the displayed material, unregisters its worker and stops
 the local server. The next launch uses a fresh origin, including after an
 unclean shutdown. If the browser cannot activate the worker, press Ctrl+C in
-the replay terminal and open the saved file through the station’s **Offline WARC
-Viewer**.
+the replay terminal and open the original uncompressed WARC through the
+station’s **Offline WARC Viewer**.
 
 ## Reproducible acceptance
 
