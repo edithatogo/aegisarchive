@@ -34,9 +34,9 @@ jobs:
             exit 1
           fi
           mkdir release
-          cd release
           export ARCHIVE="aegisarchive-$version.tar.gz"
-          git archive --format=tar.gz --prefix="aegisarchive-$version/" -o "$ARCHIVE" HEAD
+          git archive --format=tar.gz --prefix="aegisarchive-$version/" -o "release/$ARCHIVE" HEAD
+          cd release
           tar -tzf "$ARCHIVE" > archive-members.txt
           grep -Fx "aegisarchive-$version/README.md" archive-members.txt
           python - <<'PY'

@@ -2,7 +2,7 @@
 
 Owner is chat 01a1a4fa-a107-7502-8670-7abc4e934613 on codex/aegis-maintenance-20261127 at /Users/doughnut/Documents/Codex/2026-11-04/if-y/work/aegis-maintenance. GitHub scope is the listed PRs and workflow runs in AegisArchive. The next operation is exact-head validation before merge.
 
-- [~] T1 Reconcile dependency, security and workflow changes. (AC1, AC2)
+- [ ] T1 Reconcile dependency, security and workflow changes. (AC1, AC2)
   - **Files**: .github/workflows/ci.yml, browser-capture.yml, mirroring-acceptance.yml, portable-full-native.yml, portable-native.yml, scorecard.yml, security.yml, self-improvement.yml, standards-ci.yml, windows-portable-noadmin.yml and release.yml in the same directory, package.json, package-lock.json, pyproject.toml, portable/windows-python.json, scripts/gate.py, scripts/install_opengrep.py, scripts/mirroring_acceptance.py, web/lib/mirror_resources.js, docs/opengrep-migration.md, tests/requirements-dev.txt, tests/requirements-fuzz.txt, tests/test_opengrep_migration.py, tests/test_mirroring_acceptance.py, tests/browser/mirroring_acceptance.spec.js and tests/js/mirror_resources_opengrep.test.js.
   - **Change**: Verify action pins and retain required check identities. Derive browser versions from the source lockfile. Route audit and release-preview output to Actions artifacts.
   - **Verify**: .venv/bin/python -m unittest tests.test_mirroring_acceptance tests.test_opengrep_migration tests.test_security_review tests.test_windows_runtime; node --test tests/js/mirror_resources_opengrep.test.js; exact-head Actions including measured mirroring.

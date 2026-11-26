@@ -71,7 +71,7 @@ jobs:
       - name: Confirm actual platform identity
         run: |
           node -e "if (process.platform+'-'+process.arch !== process.env.EXPECTED_PLATFORM) throw Error('Unexpected runner architecture')"
-          python -c "import os,platform; assert platform.system()==os.environ['EXPECTED_SYSTEM']; assert platform.machine()==os.environ['EXPECTED_MACHINE']; print(platform.platform(),platform.python_version())"
+          python -c "import os,platform; assert platform.system()==os.environ['EXPECTED_SYSTEM']; assert platform.machine()==os.environ['EXPECTED_MACHINE']; assert platform.python_version()=='3.15.2'; print(platform.platform(),platform.python_version())"
       - name: Install locked development tooling only
         run: npm ci --ignore-scripts
       - name: Verify receipt contract

@@ -42,11 +42,11 @@ The [Conductor roadmap](conductor/tracks.md) has executable tracks for compresse
 
 ## Install
 
-You do **not** need Docker, Node.js, `npm`, or database installations to run the application. Python 3 and a compatible modern browser are required; see the [measured environments and limits](docs/MIRRORING_COMPATIBILITY.md). This is not a guarantee for every computer or website.
+You do **not** need Docker, Node.js, `npm`, or database installations to run the application. Python 3.15.2 and a compatible modern browser are required; see the [measured environments and limits](docs/MIRRORING_COMPATIBILITY.md). This is not a guarantee for every computer or website.
 
 ### On macOS
 1. Download or clone this repository.
-2. Ensure Python 3 is available and **`START_MAC.command`** has executable permission (a preparer may need `chmod +x START_MAC.command` after extraction). Then double-click it.
+2. Ensure Python 3.15.2 is available on PATH and **`START_MAC.command`** has executable permission (a preparer may need `chmod +x START_MAC.command` after extraction). Then double-click it.
 3. Your web browser will open automatically to the AegisArchive Web Console.
 
 ### On Windows
