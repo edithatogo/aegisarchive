@@ -4,6 +4,8 @@ Owner is chat 01a1a4fa-a107-7502-8670-7abc4e934613 on codex/aegis-maintenance-20
 
 The same chat records closeout on `codex/aegis-maintenance-evidence-20261127` in `/Users/doughnut/Documents/Codex/2026-11-04/if-y/work/aegis-t7-closeout`. Scope is the track plan, metadata, evidence and backlog status. The next operation is publication of verified run receipts.
 
+Chat `01a21b17-8509-7a02-9771-497afe5860b7` owns the T5 consumer pin on `codex/aegis-python315-qualification-20261127` in `/Users/doughnut/.codex/worktrees/aegis-python315-qualification/aegisarchive`. GitHub scope is the draft candidate and its hosted privacy and secret checks. The next operation is exact-head check readback.
+
 - [x] T1 Reconcile dependency, security and workflow changes. (AC1, AC2) — [PR #97](https://github.com/edithatogo/aegisarchive/pull/97).
   - **Files**: README.md, .github/workflows/ci.yml, browser-capture.yml, mirroring-acceptance.yml, portable-full-native.yml, portable-native.yml, scorecard.yml, security.yml, self-improvement.yml, standards-ci.yml, windows-portable-noadmin.yml and release.yml in the same directory, package.json, package-lock.json, pyproject.toml, portable/windows-python.json, scripts/gate.py, scripts/install_opengrep.py, scripts/mirroring_acceptance.py, web/lib/mirror_resources.js, docs/opengrep-migration.md, tests/requirements-dev.txt, tests/requirements-fuzz.txt, tests/test_opengrep_migration.py, tests/test_mirroring_acceptance.py, tests/browser/mirroring_acceptance.spec.js and tests/js/mirror_resources_opengrep.test.js.
   - **Change**: Verify action pins and retain required check identities. Derive browser versions from the source lockfile. Route audit and release-preview output to Actions artifacts.
@@ -36,7 +38,7 @@ The same chat records closeout on `codex/aegis-maintenance-evidence-20261127` in
 
 - [ ] T5 Qualify the shared privacy scanner on Python 3.15. (AC3)
   - **Files**: .github/workflows/privacy-secrets.yml.
-  - **Change**: Update to the shared privacy action only after its pinned dependency lock and controls qualify on Python 3.15. The current lock contains Presidio Analyzer 2.2.366, which declares Python below 3.15. [Publisher metadata](https://pypi.org/project/presidio-analyzer/2.2.366/)
+  - **Change**: Update to the signed shared privacy action pin after verifying its Python 3.15 lock and controls. Repository-standards PR #148 qualifies the source-verified Presidio build on Python 3.15.2. [Upstream qualification](https://github.com/edithatogo/repository-standards/pull/148)
   - **Verify**: Exact-head hosted privacy and secret controls detect the existing synthetic identifier and secret fixtures and record the selected evaluator runtime.
   - **Done when**: The audited shared action preserves both gates with a qualified Python 3.15 lock.
   - **Do not**: Drop identifier coverage or change the shared action's ownership from this repository.
